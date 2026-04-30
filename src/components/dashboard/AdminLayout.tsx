@@ -38,8 +38,8 @@ function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDa
       {/* Branding */}
       <div className="relative overflow-hidden flex items-center gap-3 p-4 shrink-0" style={{ background: "#2563eb", minHeight: 64 }}>
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
-        <div className="relative z-10 w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-          <span className="text-white font-extrabold text-base">L</span>
+        <div className="relative z-10 w-8 h-8 flex items-center justify-center shrink-0">
+          <img src="/favicon-32x32.png" alt="Luxurious Logo" className="w-full h-full object-contain" />
         </div>
         {!collapsed && (
           <div className="relative z-10 overflow-hidden">
