@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+/* ============================================================
+   LUXURIOUS — Design System CSS Variables
+   Tailwind v4 @theme block + :root / .dark tokens
+   ============================================================ */
+
+@theme {
+  /* Typography */
+  --font-family-sans: "Inter", "Geist", "Segoe UI", Arial, sans-serif;
+
+  /* Border radius */
+  --radius:    0.875rem;
+  --radius-sm: calc(0.875rem - 4px);
+  --radius-md: calc(0.875rem - 2px);
+  --radius-lg: 0.875rem;
+  --radius-xl: calc(0.875rem + 2px);
+  --radius-2xl: calc(0.875rem + 4px);
+
+  /* Color tokens (resolved from CSS vars below) */
+  --color-background:          hsl(var(--background));
+  --color-foreground:          hsl(var(--foreground));
+  --color-card:                hsl(var(--card));
+  --color-card-foreground:     hsl(var(--card-foreground));
+  --color-primary:             hsl(var(--primary));
+  --color-primary-foreground:  hsl(var(--primary-foreground));
+  --color-secondary:           hsl(var(--secondary));
+  --color-secondary-foreground:hsl(var(--secondary-foreground));
+  --color-secondary-muted:     hsl(var(--secondary-muted));
+  --color-secondary-glow:      hsl(var(--secondary-glow));
+  --color-accent:              hsl(var(--accent));
+  --color-accent-foreground:   hsl(var(--accent-foreground));
+  --color-muted:               hsl(var(--muted));
+  --color-muted-foreground:    hsl(var(--muted-foreground));
+  --color-border:              hsl(var(--border));
+  --color-input:               hsl(var(--input));
+  --color-ring:                hsl(var(--ring));
+  --color-destructive:         hsl(0 84% 61%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-success:             hsl(152 69% 42%);
+  --color-warning:             hsl(37 92% 50%);
+}
+
+/* ── Light Mode ────────────────────────────────────────────── */
+:root {
+  --background:           214 45% 98%;
+  --foreground:           222 47% 11%;
+  --card:                 0 0% 100%;
+  --card-foreground:      222 47% 11%;
+  --primary:              221 83% 53%;
+  --primary-foreground:   0 0% 100%;
+  --secondary:            43 96% 48%;   /* Gold ✨ */
+  --secondary-foreground: 0 0% 100%;
+  --secondary-muted:      43 96% 90%;
+  --secondary-glow:       43 96% 60%;
+  --accent:               216 100% 96%;
+  --accent-foreground:    222 47% 11%;
+  --muted:                215 44% 94%;
+  --muted-foreground:     216 23% 45%;
+  --border:               215 32% 90%;
+  --input:                215 32% 90%;
+  --ring:                 221 83% 53%;
+
+  /* Org chart connector */
+  --oc-connector: hsl(215 32% 75%);
+}
+
+/* ── Dark Mode ─────────────────────────────────────────────── */
+.dark {
+  --background:           221 49% 11%;
+  --foreground:           213 36% 97%;
+  --card:                 218 40% 14%;
+  --card-foreground:      213 36% 97%;
+  --primary:              221 83% 53%;
+  --primary-foreground:   0 0% 100%;
+  --secondary:            43 96% 48%;   /* Gold stays vibrant */
+  --secondary-foreground: 222 47% 11%;
+  --secondary-muted:      43 60% 20%;
+  --secondary-glow:       43 96% 60%;
+  --accent:               218 46% 18%;
+  --accent-foreground:    213 36% 97%;
+  --muted:                217 31% 20%;
+  --muted-foreground:     213 36% 65%;
+  --border:               218 36% 24%;
+  --input:                218 36% 24%;
+  --ring:                 221 83% 53%;
+
+  --oc-connector: hsl(218 36% 35%);
+}
+
+/* ── Base Reset ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-color: hsl(var(--border));
+}
+
+html {
+  min-width: 1180px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family-sans);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* ── ReactFlow overrides ────────────────────────────────────── */
+.react-flow__attribution { display: none !important; }
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: hsl(var(--primary)) !important;
+  border: 2px solid hsl(var(--background)) !important;
+  border-radius: 50% !important;
+}
+
+/* Dark mode support for Controls */
+.dark .react-flow__controls button {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  fill: hsl(var(--foreground)) !important;
+  border-bottom-color: hsl(var(--border)) !important;
+}
+
+.dark .react-flow__controls button:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .react-flow__controls button path {
+  fill: currentColor !important;
+}
+
+/* Dark mode support for MiniMap */
+.dark .react-flow__minimap {
+  background-color: hsl(var(--card)) !important;
+}
+
+.dark .react-flow__minimap-mask {
+  fill: hsl(var(--background) / 0.7) !important;
+}
