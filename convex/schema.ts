@@ -24,4 +24,30 @@ export default defineSchema({
     openedAt: v.number(),
     closedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
+
+  // -- Trading Academy --
+  academyLevels: defineTable({
+    order: v.number(),          // 1, 2, 3...
+    title: v.string(),          // "Market Foundations"
+    subtitle: v.string(),       // "Freshman"
+    color: v.string(),          // "hsl(221 83% 53%)"
+    description: v.string(),
+  }).index("by_order", ["order"]),
+
+  academyLessons: defineTable({
+    levelId: v.id("academyLevels"),
+    order: v.number(),          // 1, 2, 3...
+    slug: v.string(),           // "1.1"
+    title: v.string(),
+    duration: v.string(),       // "5 min"
+    content: v.string(),        // Full lesson text
+  }).index("by_level", ["levelId"])
+    .index("by_slug", ["slug"]),
+
+  academyProgress: defineTable({
+    userId: v.id("users"),
+    lessonSlug: v.string(),     // "1.1"
+    completedAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_user_and_slug", ["userId", "lessonSlug"]),
 });

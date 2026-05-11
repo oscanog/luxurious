@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun, Menu, TrendingUp } from "lucide-react";
+import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun, Menu, TrendingUp, BookOpen } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { cn } from "@/lib/utils";
 
