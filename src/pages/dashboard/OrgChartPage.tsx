@@ -1,4 +1,6 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -14,9 +16,16 @@ import {
   type Edge,
   type Node,
 } from "@xyflow/react";
-import { DUMMY_MEMBERS, buildOrgChartNodes, getSubtree, getBreadcrumbs } from "@/data/dummyMembers";
 import { OrgCardNode, type OrgCardData } from "./OrgCardNode";
 import { ChevronRight, Users } from "lucide-react";
+import type { Doc } from "../../../convex/_generated/dataModel";
+import { MemberSidebar } from "./MemberSidebar";
+
+// Helper for initials
+const getInitials = (name?: string) => {
+  if (!name) return "??";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+};
 
 const BRANCH_COLORS = [
   "hsl(221, 83%, 53%)", // Blue
@@ -27,22 +36,58 @@ const BRANCH_COLORS = [
   "hsl(180, 70%, 40%)", // Teal
 ];
 
-function getBranchColors(members: typeof DUMMY_MEMBERS) {
+const RADIUS_STEP = 1200;
+
+function buildOrgChartPositions(rootId: string, members: Doc<"users">[]): Record<string, { x: number; y: number }> {
+  const positions: Record<string, { x: number; y: number }> = {};
+  const childrenMap = new Map<string, string[]>();
+  
+  members.forEach(m => {
+    if (m.uplineId) {
+      const parentId = m.uplineId;
+      if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
+      childrenMap.get(parentId)!.push(m._id);
+    }
+  });
+
+  function assignRadial(id: string, depth: number, startAngle: number, endAngle: number) {
+    const angle = (startAngle + endAngle) / 2;
+    const radius = depth * RADIUS_STEP;
+    
+    positions[id] = {
+      x: radius * Math.cos(angle) - 110,
+      y: radius * Math.sin(angle) - 60
+    };
+
+    const children = childrenMap.get(id) ?? [];
+    if (children.length === 0) return;
+
+    const sliceSize = (endAngle - startAngle) / children.length;
+    let currentAngle = startAngle;
+    
+    for (const c of children) {
+      assignRadial(c, depth + 1, currentAngle, currentAngle + sliceSize);
+      currentAngle += sliceSize;
+    }
+  }
+
+  assignRadial(rootId, 0, 0, 2 * Math.PI);
+  return positions;
+}
+
+function getBranchColors(rootId: string, members: Doc<"users">[]) {
   const colorMap = new Map<string, string>();
-  const root = members.find((m) => m.uplineId === null);
-  if (!root) return colorMap;
+  colorMap.set(rootId, "hsl(43 96% 48%)");
 
-  colorMap.set(root.id, "hsl(43 96% 48%)");
-
-  const children = members.filter((m) => m.uplineId === root.id);
+  const children = members.filter((m) => m.uplineId === rootId);
   children.forEach((child, index) => {
     const color = BRANCH_COLORS[index % BRANCH_COLORS.length];
     function setDescendantsColor(nodeId: string) {
       colorMap.set(nodeId, color);
       const nodeChildren = members.filter((m) => m.uplineId === nodeId);
-      nodeChildren.forEach((c) => setDescendantsColor(c.id));
+      nodeChildren.forEach((c) => setDescendantsColor(c._id));
     }
-    setDescendantsColor(child.id);
+    setDescendantsColor(child._id);
   });
 
   return colorMap;
@@ -50,46 +95,71 @@ function getBranchColors(members: typeof DUMMY_MEMBERS) {
 
 const nodeTypes: NodeTypes = { orgCard: OrgCardNode };
 
-function buildInitialNodes(viewRootId: string): Node<OrgCardData, "orgCard">[] {
-  const positions = buildOrgChartNodes(viewRootId);
-  const subtreeMembers = getSubtree(viewRootId);
-  const branchColors = getBranchColors(subtreeMembers);
+function OrgChartCanvas({ 
+  viewRootId, 
+  setViewRootId, 
+  members 
+}: { 
+  viewRootId: string, 
+  setViewRootId: (id: string) => void,
+  members: Doc<"users">[]
+}) {
+  const positions = useMemo(() => buildOrgChartPositions(viewRootId, members), [viewRootId, members]);
+  const branchColors = useMemo(() => getBranchColors(viewRootId, members), [viewRootId, members]);
 
-  return subtreeMembers.map((member) => ({
-    id: member.id,
-    type: "orgCard" as const,
-    position: positions[member.id] ?? { x: 0, y: 0 },
-    data: {
-      member,
-      isRoot: member.id === viewRootId,
-      branchColor: branchColors.get(member.id),
-    },
-  }));
-}
+  const initialNodes: Node<OrgCardData, "orgCard">[] = useMemo(() => {
+    // Only show nodes that have positions (reachable from root)
+    return members
+      .filter(m => positions[m._id])
+      .map((member) => ({
+        id: member._id,
+        type: "orgCard" as const,
+        position: positions[member._id],
+        data: {
+          member: {
+            id: member._id,
+            name: member.name ?? "Anonymous",
+            email: member.email ?? "",
+            rank: (member.role === "admin" ? "Master" : "Bronze"), // Map role to rank for now
+            status: "active",
+            uplineId: member.uplineId ?? null,
+            joinDate: new Date(member._creationTime).toLocaleDateString(),
+            totalDownlines: members.filter(m => m.uplineId === member._id).length,
+            invitedCount: 0,
+            pendingCount: 0,
+            avatarInitials: getInitials(member.name),
+          },
+          isRoot: member._id === viewRootId,
+          branchColor: branchColors.get(member._id),
+        },
+      }));
+  }, [members, positions, branchColors, viewRootId]);
 
-function buildInitialEdges(viewRootId: string): Edge[] {
-  const subtreeMembers = getSubtree(viewRootId);
-  const branchColors = getBranchColors(subtreeMembers);
+  const initialEdges: Edge[] = useMemo(() => {
+    return members
+      .filter((m) => m.uplineId && positions[m._id] && m._id !== viewRootId)
+      .map((m) => ({
+        id: `edge-${m.uplineId}-${m._id}`,
+        source: m.uplineId!,
+        target: m._id,
+        type: "straight",
+        animated: false,
+        style: { stroke: branchColors.get(m._id) || "var(--oc-connector)", strokeWidth: 2 },
+      }));
+  }, [members, positions, branchColors, viewRootId]);
 
-  return subtreeMembers.filter((m) => m.uplineId !== null && m.id !== viewRootId).map((m) => ({
-    id: `edge-${m.uplineId}-${m.id}`,
-    source: m.uplineId!,
-    target: m.id,
-    type: "straight",
-    animated: false,
-    style: { stroke: branchColors.get(m.id) || "var(--oc-connector)", strokeWidth: 2 },
-  }));
-}
-
-function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, setViewRootId: (id: string) => void }) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(buildInitialNodes(viewRootId));
-  const [edges, setEdges, onEdgesChange] = useEdgesState(buildInitialEdges(viewRootId));
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { setViewport, getViewport, screenToFlowPosition, fitView, setCenter } = useReactFlow();
-
   const nodesInitialized = useNodesInitialized();
 
-  // Robust Centering: Stage 1 (Initial Measure)
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
+
   useEffect(() => {
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
     if (nodesInitialized && isMobile) {
@@ -97,11 +167,7 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
     }
   }, [nodesInitialized, setCenter]);
 
-  // Robust Centering: Stage 2 (Drill-down / Update)
   useEffect(() => {
-    setNodes(buildInitialNodes(viewRootId));
-    setEdges(buildInitialEdges(viewRootId));
-    
     setTimeout(() => {
       const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
       if (isMobile) {
@@ -110,48 +176,35 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
         void fitView({ duration: 800, padding: 0.1, minZoom: 0.02, maxZoom: 1 });
       }
     }, 400);
-  }, [viewRootId, setNodes, setEdges, fitView, setCenter]);
+  }, [viewRootId, fitView, setCenter]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     const data = node.data as OrgCardData;
-    // Drill down only if they have downlines and they aren't already the root
     if (data.member.totalDownlines > 0 && node.id !== viewRootId) {
       setViewRootId(node.id);
     }
   }, [viewRootId, setViewRootId]);
 
+  // Wheel handling...
   useEffect(() => {
     const elem = wrapperRef.current;
     if (!elem) return;
-
     const handleWheel = (e: WheelEvent) => {
-      // Allow trackpad pinch-to-zoom to use default React Flow behavior
       if (e.ctrlKey || e.metaKey) return;
-
       e.preventDefault();
       e.stopPropagation();
-
       const currentZoom = getViewport().zoom;
       const delta = -e.deltaY;
-      
-      // Boss requested 4x less scrolling (4x faster)
       const SPEED_MULTIPLIER = 4; 
       const zoomMultiplier = Math.pow(2, (delta * 0.002) * SPEED_MULTIPLIER);
-      
       let newZoom = currentZoom * zoomMultiplier;
-      newZoom = Math.max(0.02, Math.min(newZoom, 1.8)); // Adhere to min/max zoom limits
-
+      newZoom = Math.max(0.02, Math.min(newZoom, 1.8));
       const pointerPos = { x: e.clientX, y: e.clientY };
-      
-      // Calculate coordinates so it zooms exactly where the mouse pointer is
       const flowPosBefore = screenToFlowPosition(pointerPos);
       const newX = pointerPos.x - flowPosBefore.x * newZoom;
       const newY = pointerPos.y - flowPosBefore.y * newZoom;
-      
       void setViewport({ x: newX, y: newY, zoom: newZoom });
     };
-
-    // Use capture phase to intercept before React Flow's internal d3-zoom
     elem.addEventListener("wheel", handleWheel, { passive: false, capture: true });
     return () => elem.removeEventListener("wheel", handleWheel, { capture: true });
   }, [getViewport, setViewport, screenToFlowPosition]);
@@ -167,38 +220,21 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
         nodeTypes={nodeTypes}
         minZoom={0.1}
         maxZoom={2.0}
-        translateExtent={[
-          [-2000, -2000],
-          [2000, 2000],
-        ]}
-        selectionOnDrag={false}
+        translateExtent={[[-5000, -5000], [5000, 5000]]}
         panOnDrag={true}
-        zoomOnScroll={false} // Custom zoom handles mouse wheel now
-        zoomOnPinch={true}   // Keep trackpad pinch zooming
+        zoomOnScroll={false}
+        zoomOnPinch={true}
         style={{ background: "hsl(var(--background))" }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="hsl(var(--border))"
-        />
-        <Controls
-          style={{
-            borderRadius: 12,
-            overflow: "hidden",
-          }}
-        />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
+        <Controls style={{ borderRadius: 12, overflow: "hidden" }} />
         <MiniMap
           nodeColor={(node) => {
             const d = node.data as OrgCardData;
             if (d?.member?.rank === "Master") return "hsl(43 96% 48%)";
-            if (d?.member?.rank === "Diamond") return "hsl(221 83% 53%)";
             return "hsl(var(--muted-foreground))";
           }}
-          style={{
-            borderRadius: 12,
-          }}
+          style={{ borderRadius: 12 }}
         />
       </ReactFlow>
     </div>
@@ -214,15 +250,48 @@ export function OrgChartPage() {
 }
 
 function OrgChartPageContent() {
-  const [viewRootId, setViewRootId] = useState("m-001");
-  const breadcrumbs = getBreadcrumbs(viewRootId);
-  const { fitView } = useReactFlow();
+  const viewer = useQuery(api.users.viewer);
+  const members = useQuery(api.users.listWithHierarchy) ?? [];
+  const [viewRootId, setViewRootId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (viewer && !viewRootId) {
+      setViewRootId(viewer._id);
+    }
+  }, [viewer, viewRootId]);
+
+  const breadcrumbs = useMemo(() => {
+    if (!viewRootId || members.length === 0) return [];
+    const crumbs: { id: string; name: string }[] = [];
+    let currId: string | null = viewRootId;
+    while (currId) {
+      const m = members.find(u => u._id === currId);
+      if (!m) break;
+      crumbs.unshift({ id: m._id, name: m.name ?? "Anonymous" });
+      currId = m.uplineId ?? null;
+    }
+    return crumbs;
+  }, [viewRootId, members]);
+
+  const visibleMembersList = useMemo(() => {
+    const positions = buildOrgChartPositions(viewRootId, members);
+    return members
+      .filter(m => positions[m._id])
+      .map(m => ({ id: m._id, name: m.name ?? "Anonymous", role: m.role }));
+  }, [viewRootId, members]);
+
+  if (!viewRootId || members.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-pulse text-[hsl(var(--muted-foreground))]">Loading Organization Chart...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
       <div className="flex flex-col border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-        {/* Breadcrumb Trail */}
         <div className="flex items-center gap-1 px-4 sm:px-6 py-2 border-b border-[hsl(var(--border))] overflow-x-auto">
           {breadcrumbs.map((crumb, idx) => (
             <div key={crumb.id} className="flex items-center gap-1 shrink-0">
@@ -241,57 +310,44 @@ function OrgChartPageContent() {
           ))}
         </div>
 
-        {/* Legend */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
-          <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]">
-            Total Members
-          </span>
-          <span
-            className="px-2.5 py-0.5 rounded-xl text-xs font-bold"
-            style={{ background: "hsl(43 96% 48% / 0.12)", color: "hsl(43 96% 38%)" }}
-          >
-            {DUMMY_MEMBERS.length}
-          </span>
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]">Total Members</span>
+            <span className="px-2.5 py-0.5 rounded-xl text-xs font-bold" style={{ background: "hsl(43 96% 48% / 0.12)", color: "hsl(43 96% 38%)" }}>
+              {members.length}
+            </span>
+          </div>
+          <div className="w-px h-4 bg-[hsl(var(--border))]" />
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full" style={{ background: "hsl(152 69% 42%)" }} />
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">Active</span>
+          </div>
+          <div className="ml-auto flex items-center gap-4">
+            <p className="text-xs text-[hsl(var(--muted-foreground))] hidden lg:block">Click card to focus · Scroll to zoom</p>
+            <button
+              onClick={() => void fitView({ duration: 400, padding: 0.2 })}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--secondary)/0.8)] text-[hsl(var(--secondary-foreground))] text-xs font-bold transition-all active:scale-95"
+            >
+              <Users size={14} />
+              Fit View
+            </button>
+          </div>
         </div>
-        <div className="w-px h-4 bg-[hsl(var(--border))]" />
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: "hsl(152 69% 42%)" }} />
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-            {DUMMY_MEMBERS.filter((m) => m.status === "active").length} Active
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: "hsl(37 92% 50%)" }} />
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-            {DUMMY_MEMBERS.filter((m) => m.status === "pending").length} Pending
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: "hsl(0 84% 61%)" }} />
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">
-            {DUMMY_MEMBERS.filter((m) => m.status === "inactive").length} Inactive
-          </span>
-        </div>
-        
-        <div className="ml-auto flex items-center gap-4">
-          <p className="text-xs text-[hsl(var(--muted-foreground))] hidden lg:block">
-            Drag to rearrange · Scroll to zoom · Ctrl+scroll for zoom
-          </p>
-          <button
-            onClick={() => void fitView({ duration: 400, padding: 0.2 })}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--secondary)/0.8)] text-[hsl(var(--secondary-foreground))] text-xs font-bold transition-all active:scale-95"
-          >
-            <Users size={14} />
-            Fit View
-          </button>
-        </div>
-      </div>
       </div>
 
-      {/* Canvas */}
       <div className="flex-1 relative">
-        <OrgChartCanvas viewRootId={viewRootId} setViewRootId={setViewRootId} />
+        <OrgChartCanvas viewRootId={viewRootId} setViewRootId={setViewRootId} members={members} />
+        <MemberSidebar 
+          currentPivotId={viewRootId} 
+          isOpen={isSidebarOpen} 
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
+          visibleMembers={visibleMembersList}
+          onSuccess={() => {
+            setTimeout(() => {
+              void fitView({ duration: 800, padding: 0.1 });
+            }, 100);
+          }}
+        />
       </div>
     </div>
   );

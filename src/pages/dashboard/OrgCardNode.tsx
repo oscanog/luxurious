@@ -1,7 +1,10 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { Users, UserPlus, Clock } from "lucide-react";
+import { Users, UserPlus, Clock, Trash2 } from "lucide-react";
 import { type DummyMember, RANK_COLORS, STATUS_COLORS } from "@/data/dummyMembers";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { toast } from "react-hot-toast";
 
 export type OrgCardData = {
   member: DummyMember;
@@ -23,11 +26,24 @@ function StatusDot({ status }: { status: DummyMember["status"] }) {
 
 export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodeProps<OrgCardNode>) {
   const { member, isRoot } = data;
+  const removeUpline = useMutation(api.users.removeUpline);
+  
   const rankColor = RANK_COLORS[member.rank];
   const isGoldTier = member.rank === "Master" || member.rank === "Diamond" || member.rank === "Gold";
   
-  // Can only drill down if not already root, and has downlines
   const isClickable = !isRoot && member.totalDownlines > 0;
+
+  const handleRemove = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Remove ${member.name} from hierarchy?`)) {
+      try {
+        await removeUpline({ userId: member.id as any });
+        toast.success("Member removed");
+      } catch {
+        toast.error("Failed to remove member");
+      }
+    }
+  }, [member.id, member.name, removeUpline]);
 
   return (
     <div
@@ -52,7 +68,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
 
       {/* Rank band */}
       <div
-        className="rounded-t-[12px] px-2 sm:px-3 py-1 sm:py-1.5 flex items-center justify-between border-b"
+        className="rounded-t-[12px] px-2 sm:px-3 py-1 sm:py-1.5 flex items-center justify-between border-b group"
         style={{
           background: isGoldTier
             ? "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))"
@@ -60,12 +76,22 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
           borderBottomColor: `${rankColor}30`,
         }}
       >
-        <span
-          className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest"
-          style={{ color: isGoldTier ? "white" : rankColor }}
-        >
-          {member.rank}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest"
+            style={{ color: isGoldTier ? "white" : rankColor }}
+          >
+            {member.rank}
+          </span>
+          {!isRoot && (
+            <button
+              onClick={handleRemove}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-500 text-white/70"
+            >
+              <Trash2 size={10} />
+            </button>
+          )}
+        </div>
         <StatusDot status={member.status} />
       </div>
 

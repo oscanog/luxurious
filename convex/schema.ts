@@ -19,9 +19,11 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     // ── Custom fields ──
     role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
+    uplineId: v.optional(v.union(v.id("users"), v.null())),
   })
     .index("email", ["email"])
-    .index("phone", ["phone"]),
+    .index("phone", ["phone"])
+    .index("by_upline", ["uplineId"]),
 
   wallets: defineTable({
     userId: v.id("users"),

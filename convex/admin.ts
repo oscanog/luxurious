@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
@@ -115,5 +115,24 @@ export const getAllTrades = query({
         pnl,
       };
     });
+  },
+});
+
+export const clearAllConnections = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const currentUserId = await getAuthUserId(ctx);
+    if (!currentUserId) throw new Error("Not authenticated");
+    const currentUser = await ctx.db.get("users", currentUserId);
+    if (currentUser?.email !== "admin@luxurious.trade" && currentUser?.role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const users = await ctx.db.query("users").collect();
+    for (const user of users) {
+      if (user.uplineId !== null) {
+        await ctx.db.patch(user._id, { uplineId: null });
+      }
+    }
   },
 });

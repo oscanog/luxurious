@@ -8,8 +8,12 @@ Capability contract.
 
 ## 2. Org Chart
 - [x] Visualize hierarchy.
-- [ ] Add/Remove nodes on chart.
-- [ ] Edit details in nodes.
+- [ ] **Full CRUD**: Add/Remove nodes on chart via modern UI.
+- [ ] **Dynamic Root**: Pivot focus on card click.
+- [ ] **Breadcrumbs**: Show navigation path back to root.
+- [x] **Member Sidebar**: Collapsible panel for quick user assignment.
+- [x] **Connection Dialog**: Dynamic manager selection from visible canvas.
+- [ ] **Reset Hook**: Capability to clear all member connections.
 - [ ] Drag-drop reorganize.
 
 ## 3. Member Management
