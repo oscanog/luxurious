@@ -3,19 +3,22 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { BookOpen, Lock, CheckCircle, ChevronRight, ArrowLeft, Trophy, Zap, Star } from "lucide-react";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { Skeleton } from "../../components/ui/Skeleton";
 
 type View = "hub" | "lesson";
 
-export function TradingAcademy() {
+export function AcademyPage() {
   const [currentLevelId, setCurrentLevelId] = useState<Id<"academyLevels"> | null>(null);
   const [currentSlug, setCurrentSlug] = useState<string | null>(null);
   const [view, setView] = useState<View>("hub");
 
-  const levels = useQuery(api.academy.getLevels) ?? [];
+  const levels = useQuery(api.academy.getLevels);
   const progress = useQuery(api.academy.getUserProgress) ?? [];
   const completeLessonMutation = useMutation(api.academy.completeLesson);
 
   const completedSlugs = progress.map((p) => p.lessonSlug);
+  const isHubLoading = levels === undefined;
+  const levelList = levels ?? [];
 
   // Get lessons for selected level
   const currentLessons = useQuery(
@@ -29,23 +32,17 @@ export function TradingAcademy() {
     currentSlug ? { slug: currentSlug } : "skip"
   );
 
-  // Get all lessons for all levels (for progress calc)
-  const allLevelLessons = levels.map((level) => ({
-    level,
-    lessonCount: 5, // Each level has 5 lessons
-  }));
-
-  const totalLessons = levels.length * 5;
+  const totalLessons = levelList.length * 5;
   const xp = completedSlugs.length * 50;
 
   function getUnlockedLevel() {
-    for (let i = 0; i < levels.length; i++) {
-      const levelOrder = levels[i].order;
+    for (let i = 0; i < levelList.length; i++) {
+      const levelOrder = levelList[i].order;
       const levelSlugs = Array.from({ length: 5 }, (_, j) => `${levelOrder}.${j + 1}`);
       const allDone = levelSlugs.every((s) => completedSlugs.includes(s));
       if (!allDone) return levelOrder;
     }
-    return levels.length + 1;
+    return levelList.length + 1;
   }
 
   const unlockedLevel = getUnlockedLevel();
@@ -71,7 +68,7 @@ export function TradingAcademy() {
 
   // -- Lesson View --
   if (view === "lesson" && currentSlug && currentLevelId) {
-    const level = levels.find((l) => l._id === currentLevelId);
+    const level = levelList.find((l) => l._id === currentLevelId);
     const lessonIdx = currentLessons.findIndex((l) => l.slug === currentSlug);
     const isDone = completedSlugs.includes(currentSlug);
 
@@ -136,19 +133,24 @@ export function TradingAcademy() {
           <h1 className="text-2xl font-black text-[hsl(var(--foreground))]">Trading Academy</h1>
           <p className="text-[hsl(var(--muted-foreground))] mt-1">Master trading from zero to hero. Self-paced. No fluff.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="px-4 py-2 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center gap-3">
-            <Zap size={16} className="text-yellow-500" />
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 rounded-xl border border-amber-500/30 flex items-center gap-3 shadow-lg shadow-amber-500/10" style={{ background: "linear-gradient(135deg, hsl(43 96% 58%), hsl(43 96% 48%))" }}>
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <Zap size={18} className="text-white fill-white" />
+            </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">XP Earned</p>
-              <p className="text-sm font-extrabold text-[hsl(var(--foreground))] tabular-nums">{xp}</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-900/60">XP Earned</p>
+              {isHubLoading ? <Skeleton className="h-4 w-8 bg-white/40" /> : <p className="text-sm font-black text-white tabular-nums">{xp}</p>}
             </div>
           </div>
-          <div className="px-4 py-2 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center gap-3">
-            <Trophy size={16} className="text-yellow-500" />
+          
+          <div className="px-4 py-2 rounded-xl border border-amber-500/30 flex items-center gap-3 shadow-lg shadow-amber-500/10" style={{ background: "linear-gradient(135deg, hsl(43 96% 58%), hsl(43 96% 48%))" }}>
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <Trophy size={18} className="text-white fill-white" />
+            </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Progress</p>
-              <p className="text-sm font-extrabold text-[hsl(var(--foreground))] tabular-nums">{completedSlugs.length}/{totalLessons}</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-900/60">Progress</p>
+              {isHubLoading ? <Skeleton className="h-4 w-12 bg-white/40" /> : <p className="text-sm font-black text-white tabular-nums">{completedSlugs.length}/{totalLessons}</p>}
             </div>
           </div>
         </div>
@@ -158,44 +160,60 @@ export function TradingAcademy() {
       <div className="p-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Overall Progress</p>
-          <p className="text-xs font-black text-[hsl(var(--foreground))]">{totalLessons > 0 ? Math.round((completedSlugs.length / totalLessons) * 100) : 0}%</p>
+          {isHubLoading ? <Skeleton className="h-4 w-8" /> : <p className="text-xs font-black text-[hsl(var(--foreground))]">{totalLessons > 0 ? Math.round((completedSlugs.length / totalLessons) * 100) : 0}%</p>}
         </div>
         <div className="w-full h-2 bg-[hsl(var(--muted)/0.3)] rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${totalLessons > 0 ? (completedSlugs.length / totalLessons) * 100 : 0}%`, background: "linear-gradient(90deg, hsl(221 83% 53%), hsl(152 69% 42%))" }} />
         </div>
       </div>
 
-      {/* Empty State */}
-      {levels.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card))] p-12 text-center">
-          <BookOpen size={48} className="mx-auto mb-4 text-[hsl(var(--muted-foreground))] opacity-20" />
-          <h2 className="text-lg font-bold text-[hsl(var(--foreground))]">No Academy Content Yet</h2>
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 max-w-md mx-auto">Seed the database using: <code className="text-[hsl(var(--primary))]">npx convex run academy:seedLevel</code></p>
-        </div>
-      )}
-
       {/* Level Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {levels.map((level) => {
-          const levelSlugs = Array.from({ length: 5 }, (_, j) => `${level.order}.${j + 1}`);
-          const levelCompleted = levelSlugs.filter((s) => completedSlugs.includes(s)).length;
-          const isLocked = level.order > unlockedLevel;
-          const isComplete = levelCompleted === 5;
-          const progress = (levelCompleted / 5) * 100;
+        {isHubLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
+              <Skeleton className="h-1.5 w-full rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            </div>
+          ))
+        ) : levelList.length === 0 ? (
+          <div className="col-span-full rounded-2xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card))] p-12 text-center">
+            <BookOpen size={48} className="mx-auto mb-4 text-[hsl(var(--muted-foreground))] opacity-20" />
+            <h2 className="text-lg font-bold text-[hsl(var(--foreground))]">No Academy Content Yet</h2>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 max-w-md mx-auto">Seed the database using: <code className="text-[hsl(var(--primary))]">npx convex run academy:seedLevel</code></p>
+          </div>
+        ) : (
+          levelList.map((level) => {
+            const levelSlugs = Array.from({ length: 5 }, (_, j) => `${level.order}.${j + 1}`);
+            const levelCompleted = levelSlugs.filter((s) => completedSlugs.includes(s)).length;
+            const isLocked = level.order > unlockedLevel;
+            const isComplete = levelCompleted === 5;
+            const progress = (levelCompleted / 5) * 100;
 
-          return (
-            <LevelCard
-              key={level._id}
-              level={level}
-              levelCompleted={levelCompleted}
-              isLocked={isLocked}
-              isComplete={isComplete}
-              progress={progress}
-              completedSlugs={completedSlugs}
-              onOpenLesson={(slug) => openLesson(level._id, slug)}
-            />
-          );
-        })}
+            return (
+              <LevelCard
+                key={level._id}
+                level={level}
+                levelCompleted={levelCompleted}
+                isLocked={isLocked}
+                isComplete={isComplete}
+                progress={progress}
+                completedSlugs={completedSlugs}
+                onOpenLesson={(slug) => openLesson(level._id, slug)}
+              />
+            );
+          })
+        )}
       </div>
     </div>
   );

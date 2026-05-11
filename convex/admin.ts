@@ -7,25 +7,25 @@ export const isAdmin = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return false;
-    const user = await ctx.db.get(userId);
-    // Hardcoded check for first admin or property check
-    return user?.email === "admin@luxurious.trade" || (user as any)?.isAdmin === true;
+    const user = await ctx.db.get("users", userId);
+    return user?.email === "admin@luxurious.trade" || user?.role === "admin";
   },
 });
+
 
 export const setAdminStatus = mutation({
   args: { userId: v.id("users"), status: v.boolean() },
   handler: async (ctx, args) => {
     const currentUserId = await getAuthUserId(ctx);
     if (!currentUserId) throw new Error("Not authenticated");
-    const currentUser = await ctx.db.get(currentUserId);
+    const currentUser = await ctx.db.get("users", currentUserId);
     
     // Only existing admins can promote others
-    if (currentUser?.email !== "admin@luxurious.trade" && !(currentUser as any)?.isAdmin) {
+    if (currentUser?.email !== "admin@luxurious.trade" && currentUser?.role !== "admin") {
       throw new Error("Unauthorized");
     }
 
-    await ctx.db.patch(args.userId, { isAdmin: args.status } as any);
+    await ctx.db.patch("users", args.userId, { role: args.status ? "admin" : "member" });
   },
 });
 
@@ -34,8 +34,8 @@ export const getPlatformStats = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
-    const user = await ctx.db.get(userId);
-    if (user?.email !== "admin@luxurious.trade" && !(user as any)?.isAdmin) return null;
+    const user = await ctx.db.get("users", userId);
+    if (user?.email !== "admin@luxurious.trade" && user?.role !== "admin") return null;
 
     const totalTrades = await ctx.db.query("trades").collect();
     const totalUsers = await ctx.db.query("users").collect();
@@ -54,8 +54,8 @@ export const getUsers = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    const user = await ctx.db.get(userId);
-    if (user?.email !== "admin@luxurious.trade" && !(user as any)?.isAdmin) return [];
+    const user = await ctx.db.get("users", userId);
+    if (user?.email !== "admin@luxurious.trade" && user?.role !== "admin") return [];
 
     const users = await ctx.db.query("users").collect();
     const wallets = await ctx.db.query("wallets").collect();
@@ -72,8 +72,8 @@ export const resetBalance = mutation({
   handler: async (ctx, args) => {
     const currentUserId = await getAuthUserId(ctx);
     if (!currentUserId) throw new Error("Not authenticated");
-    const currentUser = await ctx.db.get(currentUserId);
-    if (currentUser?.email !== "admin@luxurious.trade" && !(currentUser as any)?.isAdmin) {
+    const currentUser = await ctx.db.get("users", currentUserId);
+    if (currentUser?.email !== "admin@luxurious.trade" && currentUser?.role !== "admin") {
       throw new Error("Unauthorized");
     }
 
@@ -83,7 +83,7 @@ export const resetBalance = mutation({
       .unique();
 
     if (wallet) {
-      await ctx.db.patch(wallet._id, { balance: args.amount });
+      await ctx.db.patch("wallets", wallet._id, { balance: args.amount });
     } else {
       await ctx.db.insert("wallets", { userId: args.userId, balance: args.amount });
     }
@@ -95,16 +95,25 @@ export const getAllTrades = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    const user = await ctx.db.get(userId);
-    if (user?.email !== "admin@luxurious.trade" && !(user as any)?.isAdmin) return [];
+    const user = await ctx.db.get("users", userId);
+    if (user?.email !== "admin@luxurious.trade" && user?.role !== "admin") return [];
 
     const trades = await ctx.db.query("trades").order("desc").collect();
     const users = await ctx.db.query("users").collect();
 
-    return trades.map(t => ({
-      ...t,
-      userName: users.find(u => u._id === t.userId)?.name ?? "Unknown",
-      userEmail: users.find(u => u._id === t.userId)?.email ?? "Unknown",
-    }));
+    return trades.map(t => {
+      const user = users.find(u => u._id === t.userId);
+      // Simple mock P/L for display
+      const pnl = t.status === "closed" 
+        ? ((t.exitPrice ?? 0) - t.entryPrice) * (t.side === "long" ? 1 : -1) * (t.amount / t.entryPrice)
+        : (Math.random() - 0.5) * 200; // Floating mock
+
+      return {
+        ...t,
+        userName: user?.name ?? "Unknown",
+        userEmail: user?.email ?? "Unknown",
+        pnl,
+      };
+    });
   },
 });

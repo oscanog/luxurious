@@ -1,47 +1,54 @@
 import { Authenticated, Unauthenticated } from "convex/react";
 import { Toaster } from "react-hot-toast";
-import { useState } from "react";
-import { LoginPage } from "@/components/auth/LoginPage";
-import { AdminLayout, type NavItem } from "@/components/dashboard/AdminLayout";
-import { OrgChartPage } from "@/components/org-chart/OrgChartPage";
-import { MembersPage } from "@/components/members/MembersPage";
-import { InvitationsPage } from "@/components/invitations/InvitationsPage";
-import { SettingsPage } from "@/components/settings/SettingsPage";
-import { LearnToTradePage } from "@/components/dashboard/LearnToTradePage";
-import { TradingAcademy } from "@/components/dashboard/TradingAcademy";
-import { AdminPortal } from "@/components/dashboard/AdminPortal";
-import { AcademyManager } from "@/components/dashboard/AcademyManager";
-import { UserManager } from "@/components/dashboard/UserManager";
-import { TradeMonitor } from "@/components/dashboard/TradeMonitor";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { LoginPage } from "@/pages/LoginPage";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { OrgChartPage } from "@/pages/dashboard/OrgChartPage";
+import { MembersPage } from "@/pages/dashboard/MembersPage";
+import { InvitationsPage } from "@/pages/dashboard/InvitationsPage";
+import { SettingsPage } from "@/pages/dashboard/SettingsPage";
+import { LearnToTradePage } from "@/pages/dashboard/LearnToTradePage";
+import { AcademyPage } from "@/pages/dashboard/AcademyPage";
+import { AdminPortalPage } from "@/pages/admin/AdminPortalPage";
+import { AcademyManagerPage } from "@/pages/admin/AcademyManagerPage";
+import { TradeMonitorPage } from "@/pages/admin/TradeMonitorPage";
 
-function Dashboard() {
-  const [page, setPage] = useState<NavItem>("org-chart");
-
+function AuthenticatedApp() {
   return (
-    <AdminLayout active={page} onNavigate={setPage}>
-      {page === "org-chart" && <OrgChartPage />}
-      {page === "members" && <UserManager />}
-      {page === "invitations" && <InvitationsPage />}
-      {page === "settings" && <SettingsPage />}
-      {page === "learn-to-trade" && <LearnToTradePage />}
-      {page === "academy" && <TradingAcademy />}
-      {page === "admin-portal" && <AdminPortal onNavigate={setPage} />}
-      {page === "academy-manager" && <AcademyManager />}
-      {page === "trade-monitor" && <TradeMonitor />}
+    <AdminLayout>
+      <Routes>
+        <Route path="/" element={<Navigate to="/org-chart" replace />} />
+        <Route path="/org-chart" element={<OrgChartPage />} />
+        <Route path="/members" element={<MembersPage />} />
+        <Route path="/invitations" element={<InvitationsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/learn-to-trade" element={<LearnToTradePage />} />
+        <Route path="/academy" element={<AcademyPage />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminPortalPage />} />
+        <Route path="/admin/academy" element={<AcademyManagerPage />} />
+        <Route path="/admin/trades" element={<TradeMonitorPage />} />
+        
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AdminLayout>
   );
 }
 
 export default function App() {
   return (
-    <>
+    <BrowserRouter>
       <Toaster position="top-right" />
       <Authenticated>
-        <Dashboard />
+        <AuthenticatedApp />
       </Authenticated>
       <Unauthenticated>
-        <LoginPage />
+        <Routes>
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
       </Unauthenticated>
-    </>
+    </BrowserRouter>
   );
 }

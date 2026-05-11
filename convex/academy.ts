@@ -147,16 +147,16 @@ export const deleteLevel = mutation({
       .withIndex("by_level", (q) => q.eq("levelId", args.id))
       .take(50);
     for (const lesson of lessons) {
-      await ctx.db.delete(lesson._id);
+      await ctx.db.delete("academyLessons", lesson._id);
     }
-    await ctx.db.delete(args.id);
+    await ctx.db.delete("academyLevels", args.id);
   },
 });
 
 export const deleteLesson = mutation({
   args: { id: v.id("academyLessons") },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
+    await ctx.db.delete("academyLessons", args.id);
   },
 });
 

@@ -1,10 +1,14 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Users, BarChart3, Activity, ShieldAlert, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
-export function AdminPortal({ onNavigate }: { onNavigate: (item: any) => void }) {
+export function AdminPortalPage() {
   const stats = useQuery(api.admin.getPlatformStats);
   const isAdmin = useQuery(api.admin.isAdmin);
+
+  // Not yet determined (query loading)
+  if (isAdmin === undefined) return null;
 
   if (!isAdmin) {
     return (
@@ -49,14 +53,14 @@ export function AdminPortal({ onNavigate }: { onNavigate: (item: any) => void })
           <h3 className="text-sm font-extrabold uppercase tracking-widest text-[hsl(var(--muted-foreground))] mb-6">Management Tools</h3>
           <div className="space-y-3">
             {[
-              { title: "Academy Content Manager", desc: "Edit levels, lessons, and slugs.", path: "academy-manager" },
-              { title: "User Directory", desc: "Manage roles and virtual balances.", path: "members" },
-              { title: "Global Trade Monitor", desc: "View all live and past trades.", path: "trade-monitor" },
-              { title: "Risk Parameters", desc: "Configure leverage and fees.", path: "settings" },
+              { title: "Academy Content Manager", desc: "Edit levels, lessons, and slugs.", path: "/admin/academy" },
+              { title: "User Directory", desc: "Manage roles and virtual balances.", path: "/members" },
+              { title: "Global Trade Monitor", desc: "View all live and past trades.", path: "/admin/trades" },
+              { title: "Risk Parameters", desc: "Configure leverage and fees.", path: "/settings" },
             ].map((tool) => (
-              <button 
+              <Link 
                 key={tool.title} 
-                onClick={() => onNavigate(tool.path as any)}
+                to={tool.path}
                 className="w-full flex items-center justify-between p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] hover:border-[hsl(var(--primary)/0.5)] transition-all group"
               >
                 <div className="text-left">
@@ -64,7 +68,7 @@ export function AdminPortal({ onNavigate }: { onNavigate: (item: any) => void })
                   <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{tool.desc}</p>
                 </div>
                 <ChevronRight size={16} className="text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors" />
-              </button>
+              </Link>
             ))}
           </div>
         </div>

@@ -7,10 +7,9 @@ import toast from "react-hot-toast";
 
 type View = "list" | "edit-level" | "edit-lesson";
 
-export function AcademyManager() {
+export function AcademyManagerPage() {
   const [view, setView] = useState<View>("list");
   const [selectedLevelId, setSelectedLevelId] = useState<Id<"academyLevels"> | null>(null);
-  const [selectedLessonId, setSelectedLessonId] = useState<Id<"academyLessons"> | null>(null);
   
   const levels = useQuery(api.academy.getLevels) ?? [];
   const lessons = useQuery(api.academy.getLessons, selectedLevelId ? { levelId: selectedLevelId } : "skip") ?? [];
@@ -37,7 +36,7 @@ export function AcademyManager() {
       });
       toast.success("Level saved");
       setView("list");
-    } catch (e) { toast.error("Failed to save level"); }
+    } catch { toast.error("Failed to save level"); }
   }
 
   async function handleSaveLesson() {
@@ -54,7 +53,7 @@ export function AcademyManager() {
       });
       toast.success("Lesson saved");
       setView("edit-level");
-    } catch (e) { toast.error("Failed to save lesson"); }
+    } catch { toast.error("Failed to save lesson"); }
   }
 
   if (view === "edit-level" && selectedLevelId) {
@@ -76,6 +75,25 @@ export function AcademyManager() {
           </button>
         </div>
 
+        <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-extrabold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">Edit Level Settings</h3>
+            <button onClick={() => void handleSaveLevel()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--primary))] text-white text-xs font-bold shadow-lg">
+              <Save size={14} /> Save Changes
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))]">Title</label>
+              <input value={levelForm.title ?? ""} onChange={e => setLevelForm({...levelForm, title: e.target.value})} className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl px-4 py-2 text-sm font-medium outline-none focus:border-[hsl(var(--primary))]" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))]">Subtitle</label>
+              <input value={levelForm.subtitle ?? ""} onChange={e => setLevelForm({...levelForm, subtitle: e.target.value})} className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl px-4 py-2 text-sm font-medium outline-none focus:border-[hsl(var(--primary))]" />
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-3">
           {lessons.map(lesson => (
             <div key={lesson._id} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] flex items-center justify-between group">
@@ -92,7 +110,7 @@ export function AcademyManager() {
                 <button onClick={() => { setLessonForm(lesson); setView("edit-lesson"); }} className="p-2 rounded-lg hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
                   <Edit2 size={14} />
                 </button>
-                <button onClick={() => { if(confirm("Delete lesson?")) void deleteLesson({ id: lesson._id }); }} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500">
+                <button onClick={() => { if(confirm("Delete lesson?")) { void deleteLesson({ id: lesson._id }); } }} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500">
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -121,7 +139,7 @@ export function AcademyManager() {
             <button onClick={() => setIsPreview(!isPreview)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] text-xs font-bold border border-[hsl(var(--border))]">
               {isPreview ? <Layout size={14} /> : <Eye size={14} />} {isPreview ? "Edit Mode" : "Preview Mode"}
             </button>
-            <button onClick={() => { void handleSaveLesson(); }} className="flex items-center gap-2 px-6 py-2 rounded-xl bg-[hsl(var(--primary))] text-white text-xs font-bold shadow-lg shadow-[hsl(var(--primary)/0.2)]">
+            <button onClick={() => void handleSaveLesson()} className="flex items-center gap-2 px-6 py-2 rounded-xl bg-[hsl(var(--primary))] text-white text-xs font-bold shadow-lg shadow-[hsl(var(--primary)/0.2)]">
               <Save size={14} /> Save Lesson
             </button>
           </div>
@@ -179,7 +197,7 @@ export function AcademyManager() {
                 <button onClick={() => { setLevelForm(level); setView("edit-level"); setSelectedLevelId(level._id); }} className="p-2 rounded-lg bg-[hsl(var(--background))] hover:bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] transition-all">
                   <Edit2 size={14} />
                 </button>
-                <button onClick={() => { if(confirm("Delete level and all lessons?")) void deleteLevel({ id: level._id }); }} className="p-2 rounded-lg bg-[hsl(var(--background))] hover:bg-red-500/10 text-red-500 transition-all">
+                <button onClick={() => { if(confirm("Delete level and all lessons?")) { void deleteLevel({ id: level._id }); } }} className="p-2 rounded-lg bg-[hsl(var(--background))] hover:bg-red-500/10 text-red-500 transition-all">
                   <Trash2 size={14} />
                 </button>
              </div>

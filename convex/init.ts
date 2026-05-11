@@ -1,4 +1,4 @@
-import { internalMutation, mutation } from "./_generated/server";
+import { mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 const LEVEL_1 = {
@@ -68,5 +68,6 @@ export const run = mutation({
     await ctx.runMutation(internal.academy.seedLevel, LEVEL_2);
     await ctx.runMutation(internal.academy.seedLevel, LEVEL_3);
     await ctx.runMutation(internal.academy.seedLevel, LEVEL_4);
+    await ctx.runMutation(internal.seed.seedUsers, {});
   },
 });

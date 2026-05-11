@@ -1,9 +1,9 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { TrendingUp, TrendingDown, Clock, User, Filter, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, User, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useState } from "react";
 
-export function TradeMonitor() {
+export function TradeMonitorPage() {
   const trades = useQuery(api.admin.getAllTrades) ?? [];
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
 
@@ -42,15 +42,15 @@ export function TradeMonitor() {
             <div key={trade._id} className="p-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:border-[hsl(var(--primary)/0.3)] transition-all">
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  trade.side === "buy" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                  trade.side === "long" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
                 }`}>
-                  {trade.side === "buy" ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                  {trade.side === "long" ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-black text-[hsl(var(--foreground))] uppercase">{trade.symbol}</span>
                     <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
-                      trade.side === "buy" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                      trade.side === "long" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
                     }`}>
                       {trade.side}
                     </span>
