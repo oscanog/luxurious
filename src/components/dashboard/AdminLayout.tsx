@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun } from "lucide-react";
+import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun, Menu } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { cn } from "@/lib/utils";
 
-export type NavItem = "org-chart" | "members" | "invitations" | "settings";
+export type NavItem = "org-chart" | "members" | "invitations" | "settings" | "learn-to-trade";
 
-const NAV_ITEMS: { key: NavItem; label: string; icon: React.ElementType }[] = [
+const NAV_ITEMS: { key: NavItem; label: string; icon: React.ElementType; primary?: boolean }[] = [
   { key: "org-chart", label: "Org Chart", icon: Network },
   { key: "members", label: "Members", icon: Users },
   { key: "invitations", label: "Invitations", icon: Mail },
   { key: "settings", label: "Settings", icon: Settings },
+  { key: "learn-to-trade", label: "Learn to Trade", icon: TrendingUp, primary: true },
 ];
 
 const PAGE_LABELS: Record<NavItem, string> = {
@@ -17,6 +18,7 @@ const PAGE_LABELS: Record<NavItem, string> = {
   members: "Members",
   invitations: "Invitations",
   settings: "Settings",
+  "learn-to-trade": "Learn to Trade",
 };
 
 interface SidebarProps {
@@ -26,15 +28,27 @@ interface SidebarProps {
   onToggle: () => void;
   darkMode: boolean;
   onToggleDark: () => void;
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
 }
 
-function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDark }: SidebarProps) {
+function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDark, mobileOpen, setMobileOpen }: SidebarProps) {
   const { signOut } = useAuthActions();
   return (
-    <aside
-      className="flex flex-col h-screen border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-all duration-300 shrink-0 relative"
-      style={{ width: collapsed ? 64 : 232 }}
-    >
+    <>
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm transition-opacity" onClick={() => setMobileOpen(false)} />
+      )}
+      
+      <aside
+        className={cn(
+          "flex flex-col h-screen border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-all duration-300 shrink-0",
+          "fixed inset-y-0 left-0 z-50 md:relative",
+          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0 md:shadow-none"
+        )}
+        style={{ width: collapsed ? 64 : 240 }}
+      >
       {/* Branding */}
       <div className="relative overflow-hidden flex items-center gap-3 p-4 shrink-0" style={{ background: "#2563eb", minHeight: 64 }}>
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
@@ -49,24 +63,27 @@ function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDa
         )}
       </div>
 
-      {/* Collapse toggle */}
-      <button onClick={onToggle} className="absolute -right-3 top-12 z-20 w-6 h-6 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] shadow-sm transition-colors">
+      {/* Collapse toggle (Desktop only) */}
+      <button onClick={onToggle} className="hidden md:flex absolute -right-3 top-12 z-20 w-6 h-6 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] shadow-sm transition-colors">
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
         {!collapsed && <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">Management</p>}
-        {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ key, label, icon: Icon, primary }) => {
           const isActive = active === key;
           return (
-            <button key={key} onClick={() => onNavigate(key)} title={collapsed ? label : undefined}
-              className={cn("w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-all",
-                isActive ? "bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+            <button key={key} onClick={() => { onNavigate(key); setMobileOpen(false); }} title={collapsed ? label : undefined}
+              className={cn("w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-all mb-1",
+                isActive 
+                  ? primary ? "bg-[hsl(var(--primary))] text-white shadow-lg shadow-[hsl(var(--primary)/0.2)]" : "bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]" 
+                  : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
+                primary && !isActive && "text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.05)] border border-[hsl(var(--primary)/0.1)]"
               )}>
               <Icon size={18} className="shrink-0" />
               {!collapsed && <span className="truncate">{label}</span>}
-              {isActive && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "hsl(43 96% 48%)" }} />}
+              {isActive && !collapsed && !primary && <span className="ml-auto w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "hsl(43 96% 48%)" }} />}
             </button>
           );
         })}
@@ -86,15 +103,19 @@ function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDa
         </button>
       </div>
     </aside>
+    </>
   );
 }
 
-function TopHeader({ page }: { page: NavItem }) {
+function TopHeader({ page, onOpenMobileMenu }: { page: NavItem; onOpenMobileMenu: () => void }) {
   return (
-    <header className="h-14 shrink-0 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] flex items-center justify-between px-6">
-      <div className="flex items-center gap-2">
+    <header className="h-14 shrink-0 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] flex items-center justify-between px-4 sm:px-6">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button onClick={onOpenMobileMenu} className="md:hidden p-1.5 -ml-1.5 rounded-md hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] transition-colors">
+          <Menu size={20} />
+        </button>
         <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{PAGE_LABELS[page]}</h2>
-        <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "hsl(43 96% 48%)" }} />
+        <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full" style={{ background: "hsl(43 96% 48%)" }} />
       </div>
       <div className="flex items-center gap-3">
         <div className="text-right hidden sm:block">
@@ -118,6 +139,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, active, onNavigate }: AdminLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
   function toggleDark() {
@@ -129,9 +151,9 @@ export function AdminLayout({ children, active, onNavigate }: AdminLayoutProps) 
 
   return (
     <div className="flex h-screen overflow-hidden bg-[hsl(var(--background))]">
-      <Sidebar active={active} onNavigate={onNavigate} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} darkMode={darkMode} onToggleDark={toggleDark} />
+      <Sidebar active={active} onNavigate={onNavigate} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} darkMode={darkMode} onToggleDark={toggleDark} mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <TopHeader page={active} />
+        <TopHeader page={active} onOpenMobileMenu={() => setMobileMenuOpen(true)} />
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>

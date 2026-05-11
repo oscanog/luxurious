@@ -22,3 +22,34 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ── GSD: Runtime / Ephemeral (per-developer, per-session) ──────────────────
+# Auto-mode dispatch tracker — prevents re-running completed units (includes archived per-milestone files)
+.gsd/completed-units*.json
+# State manifest — workflow state for recovery
+.gsd/state-manifest.json
+# Derived state projection — regenerated from the authoritative database
+.gsd/STATE.md
+# Per-developer token/cost accumulator
+.gsd/metrics.json
+# Raw JSONL session dumps — crash recovery forensics, auto-pruned
+.gsd/activity/
+# Unit execution records — dispatch phase, timeout recovery progress, and finalize tracking
+.gsd/runtime/
+# Git worktree working copies
+.gsd/worktrees/
+# Parallel runtime locks and per-milestone isolation artifacts
+.gsd/parallel/
+# SQLite database and WAL sidecars — authoritative runtime state, local only
+.gsd/gsd.db*
+# Daily-rotated event journal — structured unit/finalize/iteration event log for forensics
+.gsd/journal/
+# Doctor run history — diagnostic check results
+.gsd/doctor-history.jsonl
+# Workflow event log — structured event stream
+.gsd/event-log.jsonl
+# Generated HTML reports (regenerable via /gsd export --html)
+.gsd/reports/
+# Session-specific interrupted-work markers
+.gsd/milestones/**/continue.md
+.gsd/milestones/**/*-CONTINUE.md

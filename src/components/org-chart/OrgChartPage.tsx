@@ -10,12 +10,13 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useNodesInitialized,
   type Edge,
   type Node,
 } from "@xyflow/react";
 import { DUMMY_MEMBERS, buildOrgChartNodes, getSubtree, getBreadcrumbs } from "@/data/dummyMembers";
 import { OrgCardNode, type OrgCardData } from "./OrgCardNode";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Users } from "lucide-react";
 
 const BRANCH_COLORS = [
   "hsl(221, 83%, 53%)", // Blue
@@ -84,17 +85,32 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
   const [nodes, setNodes, onNodesChange] = useNodesState(buildInitialNodes(viewRootId));
   const [edges, setEdges, onEdgesChange] = useEdgesState(buildInitialEdges(viewRootId));
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { setViewport, getViewport, screenToFlowPosition, fitView } = useReactFlow();
+  const { setViewport, getViewport, screenToFlowPosition, fitView, setCenter } = useReactFlow();
 
+  const nodesInitialized = useNodesInitialized();
+
+  // Robust Centering: Stage 1 (Initial Measure)
+  useEffect(() => {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (nodesInitialized && isMobile) {
+      void setCenter(-30, 0, { zoom: 1.5, duration: 400 });
+    }
+  }, [nodesInitialized, setCenter]);
+
+  // Robust Centering: Stage 2 (Drill-down / Update)
   useEffect(() => {
     setNodes(buildInitialNodes(viewRootId));
     setEdges(buildInitialEdges(viewRootId));
     
-    // Animate fitView to smoothly center the new sub-tree
     setTimeout(() => {
-      fitView({ duration: 800, padding: 0.1, minZoom: 0.02, maxZoom: 1 });
-    }, 50);
-  }, [viewRootId, setNodes, setEdges, fitView]);
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      if (isMobile) {
+        void setCenter(-30, 0, { zoom: 1.5, duration: 800 });
+      } else {
+        void fitView({ duration: 800, padding: 0.1, minZoom: 0.02, maxZoom: 1 });
+      }
+    }, 400);
+  }, [viewRootId, setNodes, setEdges, fitView, setCenter]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     const data = node.data as OrgCardData;
@@ -132,7 +148,7 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
       const newX = pointerPos.x - flowPosBefore.x * newZoom;
       const newY = pointerPos.y - flowPosBefore.y * newZoom;
       
-      setViewport({ x: newX, y: newY, zoom: newZoom });
+      void setViewport({ x: newX, y: newY, zoom: newZoom });
     };
 
     // Use capture phase to intercept before React Flow's internal d3-zoom
@@ -149,10 +165,12 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.1, minZoom: 0.02, maxZoom: 1 }}
-        minZoom={0.02}
-        maxZoom={1.8}
+        minZoom={0.1}
+        maxZoom={2.0}
+        translateExtent={[
+          [-2000, -2000],
+          [2000, 2000],
+        ]}
         selectionOnDrag={false}
         panOnDrag={true}
         zoomOnScroll={false} // Custom zoom handles mouse wheel now
@@ -188,17 +206,26 @@ function OrgChartCanvas({ viewRootId, setViewRootId }: { viewRootId: string, set
 }
 
 export function OrgChartPage() {
+  return (
+    <ReactFlowProvider>
+      <OrgChartPageContent />
+    </ReactFlowProvider>
+  );
+}
+
+function OrgChartPageContent() {
   const [viewRootId, setViewRootId] = useState("m-001");
   const breadcrumbs = getBreadcrumbs(viewRootId);
+  const { fitView } = useReactFlow();
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex flex-col border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         {/* Breadcrumb Trail */}
-        <div className="flex flex-wrap items-center gap-1 px-6 py-2 border-b border-[hsl(var(--border))]">
+        <div className="flex items-center gap-1 px-4 sm:px-6 py-2 border-b border-[hsl(var(--border))] overflow-x-auto">
           {breadcrumbs.map((crumb, idx) => (
-            <div key={crumb.id} className="flex items-center gap-1">
+            <div key={crumb.id} className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => setViewRootId(crumb.id)}
                 className={`text-sm font-semibold transition-colors hover:text-[hsl(var(--primary))] ${
@@ -215,7 +242,7 @@ export function OrgChartPage() {
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 px-6 py-3">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
           <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]">
             Total Members
@@ -246,17 +273,25 @@ export function OrgChartPage() {
             {DUMMY_MEMBERS.filter((m) => m.status === "inactive").length} Inactive
           </span>
         </div>
-        <p className="ml-auto text-xs text-[hsl(var(--muted-foreground))]">
-          Drag to rearrange · Scroll to zoom · Ctrl+scroll for zoom
-        </p>
+        
+        <div className="ml-auto flex items-center gap-4">
+          <p className="text-xs text-[hsl(var(--muted-foreground))] hidden lg:block">
+            Drag to rearrange · Scroll to zoom · Ctrl+scroll for zoom
+          </p>
+          <button
+            onClick={() => void fitView({ duration: 400, padding: 0.2 })}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--secondary)/0.8)] text-[hsl(var(--secondary-foreground))] text-xs font-bold transition-all active:scale-95"
+          >
+            <Users size={14} />
+            Fit View
+          </button>
+        </div>
       </div>
       </div>
 
       {/* Canvas */}
       <div className="flex-1 relative">
-        <ReactFlowProvider>
-          <OrgChartCanvas viewRootId={viewRootId} setViewRootId={setViewRootId} />
-        </ReactFlowProvider>
+        <OrgChartCanvas viewRootId={viewRootId} setViewRootId={setViewRootId} />
       </div>
     </div>
   );

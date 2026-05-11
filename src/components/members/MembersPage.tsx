@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, TrendingUp, Users, Award, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, TrendingUp, Users, Award, ChevronDown, ChevronUp, UserPlus } from "lucide-react";
 import { DUMMY_MEMBERS, RANK_COLORS, STATUS_COLORS, type MemberRank, type MemberStatus } from "@/data/dummyMembers";
 import { formatDate } from "@/lib/utils";
 
@@ -7,10 +7,15 @@ const RANK_ORDER_MAP: Record<MemberRank, number> = { Master: 5, Diamond: 4, Gold
 
 function StatusBadge({ status }: { status: MemberStatus }) {
   const labels: Record<MemberStatus, string> = { active: "Active", inactive: "Inactive", pending: "Pending" };
+  const color = STATUS_COLORS[status];
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-xl text-[11px] font-bold"
-      style={{ background: `${STATUS_COLORS[status]}18`, color: STATUS_COLORS[status] }}>
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_COLORS[status] }} />
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-tight border shadow-sm"
+      style={{ 
+        background: `${color}12`, 
+        color, 
+        borderColor: `${color}30` 
+      }}>
+      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: color }} />
       {labels[status]}
     </span>
   );
@@ -18,11 +23,15 @@ function StatusBadge({ status }: { status: MemberStatus }) {
 
 function RankBadge({ rank }: { rank: MemberRank }) {
   const color = RANK_COLORS[rank];
-  const isGold = rank === "Master";
+  const isGold = rank === "Master" || rank === "Diamond" || rank === "Gold";
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-extrabold uppercase tracking-[0.1em]"
-      style={{ background: isGold ? `hsl(43 96% 48% / 0.15)` : `${color}18`, color }}>
-      <Award size={10} />
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-[0.08em] shadow-sm border"
+      style={{ 
+        background: isGold ? `linear-gradient(135deg, ${color}20, ${color}10)` : `${color}12`, 
+        color,
+        borderColor: `${color}40`
+      }}>
+      <Award size={10} style={{ color }} />
       {rank}
     </span>
   );
@@ -72,7 +81,7 @@ export function MembersPage() {
   return (
     <div className="p-6 space-y-5">
       {/* Summary cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: "Total Members", value: DUMMY_MEMBERS.length, icon: Users, color: "hsl(221 83% 53%)" },
           { label: "Active", value: DUMMY_MEMBERS.filter((m) => m.status === "active").length, icon: TrendingUp, color: "hsl(152 69% 42%)" },
@@ -92,28 +101,46 @@ export function MembersPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members…"
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm outline-none focus:border-[hsl(var(--primary))] transition-colors" />
+      {/* Filters & Actions */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+        <div className="relative flex-1 max-w-md group">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] group-focus-within:text-[hsl(var(--primary))] transition-colors" />
+          <input 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            placeholder="Search members by name, email or rank…"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm outline-none focus:border-[hsl(var(--primary))] focus:ring-4 focus:ring-[hsl(var(--primary)/0.08)] transition-all shadow-sm" 
+          />
         </div>
-        {(["all", "active", "pending", "inactive"] as const).map((s) => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors capitalize"
-            style={filterStatus === s
-              ? { background: "hsl(43 96% 48%)", color: "white" }
-              : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>
-            {s === "all" ? "All" : s}
+        
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
+          {(["all", "active", "pending", "inactive"] as const).map((s) => (
+            <button key={s} onClick={() => setFilterStatus(s)}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all capitalize whitespace-nowrap active:scale-95"
+              style={filterStatus === s
+                ? { background: "hsl(43 96% 48%)", color: "white", boxShadow: "0 4px 12px hsl(43 96% 48% / 0.25)" }
+                : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>
+              {s === "all" ? "All Status" : s}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 lg:ml-auto">
+          <span className="hidden sm:inline text-xs font-bold text-[hsl(var(--muted-foreground))] tabular-nums">
+            {filtered.length} / {DUMMY_MEMBERS.length} <span className="opacity-50">members</span>
+          </span>
+          <button
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[hsl(var(--primary))] hover:opacity-90 text-[hsl(var(--primary-foreground))] text-sm font-bold transition-all active:scale-95 shadow-[0_4px_16px_hsl(var(--primary)/0.25)]"
+          >
+            <UserPlus size={16} />
+            Invite Member
           </button>
-        ))}
-        <span className="ml-auto text-xs text-[hsl(var(--muted-foreground))]">{filtered.length} results</span>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-x-auto">
+        <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.5)]">
               {[

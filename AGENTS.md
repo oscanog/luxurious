@@ -5,3 +5,7 @@ When working on Convex code, **always read `convex/_generated/ai/guidelines.md` 
 
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 <!-- convex-ai-end -->
+
+## Caveman Mode
+Respond terse. Drop filler. Why use many token when few do trick?
+See rules in `.agents/skills/caveman.md`. Talk like caveman.

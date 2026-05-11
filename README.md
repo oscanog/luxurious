@@ -43,3 +43,12 @@ Join thousands of developers building full-stack apps with Convex:
 
 - Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
 - Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+
+## Caveman Mode (Development)
+
+This project uses [caveman](file:///c:/projects/ai/caveman) for efficient development.
+
+- **Why**: Cuts 75% output tokens. Faster agent. Less cost.
+- **Trigger**: Say "talk like caveman" or type `/caveman`.
+- **Stop**: Say "normal mode".
+- **Rule**: Keep documentation compressed to save input tokens.
