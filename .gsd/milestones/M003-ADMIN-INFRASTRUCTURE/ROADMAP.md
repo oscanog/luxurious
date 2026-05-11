@@ -12,19 +12,19 @@
 ## Roadmap
 
 ### Slice S01: Admin Shell & Auth
-**Status:** `[pending]`
-- [ ] T01: Identify "Admin" role in Convex (or simple email check).
-- [ ] T02: Create AdminLayout secondary view or tab.
-- [ ] T03: Protect admin routes.
+**Status:** `[complete]`
+- [x] T01: Identify "Admin" role in Convex (via `admin:isAdmin` query).
+- [x] T02: Create AdminLayout secondary view and nav item.
+- [x] T03: Protect admin routes in `AdminPortal` and `AdminLayout`.
 
 ### Slice S02: Academy Manager
-**Status:** `[pending]`
-- [ ] T01: Table view for all Levels.
-- [ ] T02: Editor for Lesson content (Markdown preview).
-- [ ] T03: Reordering logic for lessons/levels.
+**Status:** `[complete]`
+- [x] T01: Table view for all Levels in `AcademyManager`.
+- [x] T02: Editor for Lesson content with Markdown preview.
+- [x] T03: Upsert logic (mutation) for levels and lessons.
 
 ### Slice S03: Platform Insights
-**Status:** `[pending]`
-- [ ] T01: Aggregate trade statistics (Total Volume, Win/Loss Ratio).
-- [ ] T02: User engagement tracking (Lessons completed per day).
-- [ ] T03: Live trade ticker for all users.
+**Status:** `[complete]`
+- [x] T01: Aggregate trade statistics in `AdminPortal`.
+- [x] T02: User Directory (`UserManager`) with balance reset and admin toggle.
+- [x] T03: Global trade ticker (`TradeMonitor`) for all users.

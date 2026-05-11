@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun, Menu, TrendingUp, BookOpen } from "lucide-react";
+import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun, Menu, TrendingUp, BookOpen, ShieldCheck } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { cn } from "@/lib/utils";
 
-export type NavItem = "org-chart" | "members" | "invitations" | "settings" | "learn-to-trade" | "academy";
+export type NavItem = "org-chart" | "members" | "invitations" | "settings" | "learn-to-trade" | "academy" | "admin-portal" | "academy-manager" | "trade-monitor";
 
 const NAV_ITEMS: { key: NavItem; label: string; icon: React.ElementType; primary?: boolean }[] = [
   { key: "org-chart", label: "Org Chart", icon: Network },
@@ -21,6 +21,9 @@ const PAGE_LABELS: Record<NavItem, string> = {
   settings: "Settings",
   "learn-to-trade": "Learn to Trade",
   academy: "Trading Academy",
+  "admin-portal": "Platform Admin",
+  "academy-manager": "Academy Manager",
+  "trade-monitor": "Trade Monitor",
 };
 
 interface SidebarProps {
@@ -32,9 +35,10 @@ interface SidebarProps {
   onToggleDark: () => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  isAdmin: boolean;
 }
 
-function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDark, mobileOpen, setMobileOpen }: SidebarProps) {
+function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDark, mobileOpen, setMobileOpen, isAdmin }: SidebarProps) {
   const { signOut } = useAuthActions();
   return (
     <>
@@ -89,6 +93,18 @@ function Sidebar({ active, onNavigate, collapsed, onToggle, darkMode, onToggleDa
             </button>
           );
         })}
+        {isAdmin && (
+          <>
+            {!collapsed && <p className="px-2 pb-2 mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">Administration</p>}
+            <button onClick={() => { onNavigate("admin-portal"); setMobileOpen(false); }} title={collapsed ? "Platform Admin" : undefined}
+              className={cn("w-full flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-all mb-1",
+                active === "admin-portal" ? "bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              )}>
+              <ShieldCheck size={18} className="shrink-0" />
+              {!collapsed && <span className="truncate">Platform Admin</span>}
+            </button>
+          </>
+        )}
       </nav>
 
       {/* Bottom */}
@@ -139,10 +155,14 @@ interface AdminLayoutProps {
   onNavigate: (item: NavItem) => void;
 }
 
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+
 export function AdminLayout({ children, active, onNavigate }: AdminLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const isAdmin = useQuery(api.admin.isAdmin);
 
   // Apply dark mode on mount
   useEffect(() => {
@@ -160,7 +180,17 @@ export function AdminLayout({ children, active, onNavigate }: AdminLayoutProps) 
 
   return (
     <div className="flex h-screen overflow-hidden bg-[hsl(var(--background))]">
-      <Sidebar active={active} onNavigate={onNavigate} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} darkMode={darkMode} onToggleDark={toggleDark} mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
+      <Sidebar 
+        active={active} 
+        onNavigate={onNavigate} 
+        collapsed={collapsed} 
+        onToggle={() => setCollapsed((c) => !c)} 
+        darkMode={darkMode} 
+        onToggleDark={toggleDark} 
+        mobileOpen={mobileMenuOpen} 
+        setMobileOpen={setMobileMenuOpen} 
+        isAdmin={!!isAdmin} 
+      />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader page={active} onOpenMobileMenu={() => setMobileMenuOpen(true)} />
         <main className="flex-1 overflow-auto">{children}</main>
