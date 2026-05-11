@@ -19,13 +19,13 @@
 - [x] T03: Route navigation in App.tsx.
 
 ### Slice S02: Charting & Data
-**Status:** `[pending]`
-- [ ] T01: Integrate Lightweight Charts library.
-- [ ] T02: Setup Convex schema for virtual balance.
-- [ ] T03: Fetch dummy price data for simulation.
+**Status:** `[complete]`
+- [x] T01: Integrate Lightweight Charts library.
+- [x] T02: Setup Convex schema for virtual balance.
+- [x] T03: Fetch dummy price data for simulation.
 
 ### Slice S03: Trade Execution
-**Status:** `[pending]`
+**Status:** `[in-progress]`
 - [ ] T01: Create Trade Terminal UI.
 - [ ] T02: Implement "Buy/Sell" mutations.
 - [ ] T03: Add real-time P/L tracking.
