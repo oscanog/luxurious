@@ -17,9 +17,12 @@ import {
   type Node,
 } from "@xyflow/react";
 import { OrgCardNode, type OrgCardData } from "./OrgCardNode";
-import { ChevronRight, Users } from "lucide-react";
+import { ChevronRight, Users, Edit3, Trash2, UserMinus } from "lucide-react";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { MemberSidebar } from "./MemberSidebar";
+import { useContextMenu } from "../../components/ui/ContextMenu";
+import { useMutation } from "convex/react";
+import { toast } from "react-hot-toast";
 
 // Helper for initials
 const getInitials = (name?: string) => {
@@ -98,17 +101,21 @@ const nodeTypes: NodeTypes = { orgCard: OrgCardNode };
 function OrgChartCanvas({ 
   viewRootId, 
   setViewRootId, 
-  members 
+  members,
+  onOpenConnectionDialog
 }: { 
   viewRootId: string, 
   setViewRootId: (id: string) => void,
-  members: Doc<"users">[]
+  members: Doc<"users">[],
+  onOpenConnectionDialog: (member: any) => void
 }) {
   const positions = useMemo(() => buildOrgChartPositions(viewRootId, members), [viewRootId, members]);
   const branchColors = useMemo(() => getBranchColors(viewRootId, members), [viewRootId, members]);
 
+  const { handleContextMenu, ContextMenuComponent } = useContextMenu();
+  const removeUpline = useMutation(api.users.removeUpline);
+
   const initialNodes: Node<OrgCardData, "orgCard">[] = useMemo(() => {
-    // Only show nodes that have positions (reachable from root)
     return members
       .filter(m => positions[m._id])
       .map((member) => ({
@@ -120,7 +127,7 @@ function OrgChartCanvas({
             id: member._id,
             name: member.name ?? "Anonymous",
             email: member.email ?? "",
-            rank: (member.role === "admin" ? "Master" : "Bronze"), // Map role to rank for now
+            rank: (member.role === "admin" ? "Master" : "Bronze"), 
             status: "active",
             uplineId: member.uplineId ?? null,
             joinDate: new Date(member._creationTime).toLocaleDateString(),
@@ -185,6 +192,35 @@ function OrgChartCanvas({
     }
   }, [viewRootId, setViewRootId]);
 
+  const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
+    const data = node.data as OrgCardData;
+    const items = [
+      {
+        label: "Move / Re-parent",
+        icon: <Edit3 size={14} />,
+        onClick: () => onOpenConnectionDialog(data.member),
+        disabled: node.id === viewRootId,
+      },
+      {
+        label: "Remove Connection",
+        icon: <UserMinus size={14} />,
+        variant: "danger" as const,
+        onClick: async () => {
+          if (confirm(`Sever connection for ${data.member.name}?`)) {
+            try {
+              await removeUpline({ userId: node.id as any });
+              toast.success("Connection severed");
+            } catch {
+              toast.error("Failed to sever connection");
+            }
+          }
+        },
+        disabled: node.id === viewRootId,
+      }
+    ];
+    handleContextMenu(e, items);
+  }, [handleContextMenu, onOpenConnectionDialog, removeUpline, viewRootId]);
+
   // Wheel handling...
   useEffect(() => {
     const elem = wrapperRef.current;
@@ -217,6 +253,7 @@ function OrgChartCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
         nodeTypes={nodeTypes}
         minZoom={0.1}
         maxZoom={2.0}
@@ -237,6 +274,7 @@ function OrgChartCanvas({
           style={{ borderRadius: 12 }}
         />
       </ReactFlow>
+      {ContextMenuComponent}
     </div>
   );
 }
@@ -254,6 +292,10 @@ function OrgChartPageContent() {
   const members = useQuery(api.users.listWithHierarchy) ?? [];
   const [viewRootId, setViewRootId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Connection Dialog State
+  const [selectedMemberForDialog, setSelectedMemberForDialog] = useState<any | null>(null);
+  const [targetManagerId, setTargetManagerId] = useState<string>("");
 
   useEffect(() => {
     if (viewer && !viewRootId) {
@@ -336,12 +378,24 @@ function OrgChartPageContent() {
       </div>
 
       <div className="flex-1 relative">
-        <OrgChartCanvas viewRootId={viewRootId} setViewRootId={setViewRootId} members={members} />
+        <OrgChartCanvas 
+          viewRootId={viewRootId} 
+          setViewRootId={setViewRootId} 
+          members={members} 
+          onOpenConnectionDialog={(member) => {
+            setSelectedMemberForDialog(member);
+            setTargetManagerId(viewRootId);
+          }}
+        />
         <MemberSidebar 
           currentPivotId={viewRootId} 
           isOpen={isSidebarOpen} 
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
           visibleMembers={visibleMembersList}
+          selectedMember={selectedMemberForDialog}
+          setSelectedMember={setSelectedMemberForDialog}
+          targetManagerId={targetManagerId}
+          setTargetManagerId={setTargetManagerId}
           onSuccess={() => {
             setTimeout(() => {
               void fitView({ duration: 800, padding: 0.1 });

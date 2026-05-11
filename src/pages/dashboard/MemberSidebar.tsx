@@ -9,13 +9,25 @@ interface MemberSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   visibleMembers: any[];
+  selectedMember: any | null;
+  setSelectedMember: (member: any | null) => void;
+  targetManagerId: string;
+  setTargetManagerId: (id: string) => void;
   onSuccess?: () => void;
 }
 
-export function MemberSidebar({ currentPivotId, isOpen, onToggle, visibleMembers, onSuccess }: MemberSidebarProps) {
+export function MemberSidebar({ 
+  currentPivotId, 
+  isOpen, 
+  onToggle, 
+  visibleMembers, 
+  selectedMember,
+  setSelectedMember,
+  targetManagerId,
+  setTargetManagerId,
+  onSuccess 
+}: MemberSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMember, setSelectedMember] = useState<any | null>(null); // For the dialog
-  const [targetManagerId, setTargetManagerId] = useState<string>(currentPivotId);
   
   const members = useQuery(api.users.listWithHierarchy) ?? [];
   const setUpline = useMutation(api.users.setUpline);
@@ -28,8 +40,9 @@ export function MemberSidebar({ currentPivotId, isOpen, onToggle, visibleMembers
 
   const handleConfirmConnection = async () => {
     if (!selectedMember || !targetManagerId) return;
+    const userId = selectedMember._id || selectedMember.id;
     try {
-      await setUpline({ userId: selectedMember._id, uplineId: targetManagerId as any });
+      await setUpline({ userId: userId as any, uplineId: targetManagerId as any });
       toast.success(`${selectedMember.name} connected to ${visibleMembers.find(m => m.id === targetManagerId)?.name}`);
       setSelectedMember(null);
       onSuccess?.();
