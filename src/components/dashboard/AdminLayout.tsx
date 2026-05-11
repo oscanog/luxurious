@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Network, Users, Mail, Settings, ChevronLeft, ChevronRight, LogOut, Moon, Sun, Menu, TrendingUp } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { cn } from "@/lib/utils";
 
-export type NavItem = "org-chart" | "members" | "invitations" | "settings" | "learn-to-trade";
+export type NavItem = "org-chart" | "members" | "invitations" | "settings" | "learn-to-trade" | "academy";
 
 const NAV_ITEMS: { key: NavItem; label: string; icon: React.ElementType; primary?: boolean }[] = [
   { key: "org-chart", label: "Org Chart", icon: Network },
@@ -11,6 +11,7 @@ const NAV_ITEMS: { key: NavItem; label: string; icon: React.ElementType; primary
   { key: "invitations", label: "Invitations", icon: Mail },
   { key: "settings", label: "Settings", icon: Settings },
   { key: "learn-to-trade", label: "Learn to Trade", icon: TrendingUp, primary: true },
+  { key: "academy", label: "Trading Academy", icon: BookOpen },
 ];
 
 const PAGE_LABELS: Record<NavItem, string> = {
@@ -19,6 +20,7 @@ const PAGE_LABELS: Record<NavItem, string> = {
   invitations: "Invitations",
   settings: "Settings",
   "learn-to-trade": "Learn to Trade",
+  academy: "Trading Academy",
 };
 
 interface SidebarProps {
@@ -140,7 +142,14 @@ interface AdminLayoutProps {
 export function AdminLayout({ children, active, onNavigate }: AdminLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+
+  // Apply dark mode on mount
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
 
   function toggleDark() {
     setDarkMode((d) => {

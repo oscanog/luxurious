@@ -130,23 +130,64 @@ export function LearnToTradePage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { title: "Trading Academy", desc: "Learn technical analysis.", icon: BookOpen, color: "hsl(221 83% 53%)" },
-              { title: "Live Sim", desc: "Real-time data experience.", icon: BarChart3, color: "hsl(152 69% 42%)" },
-              { title: "Performance", desc: "Track your strategy.", icon: TrendingUp, color: "hsl(43 96% 48%)" },
-            ].map((c) => (
-              <div key={c.title} className="p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--primary)/0.5)] transition-colors group cursor-pointer">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${c.color}15` }}>
-                  <c.icon size={20} style={{ color: c.color }} />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">Trading Academy</h3>
+              <button className="text-[10px] font-bold text-[hsl(var(--primary))] hover:underline cursor-pointer bg-transparent border-none">View All Modules</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { 
+                  title: "Intro to Markets", 
+                  desc: "Master pips, OHLC, and exchange basics.", 
+                  progress: 100, 
+                  icon: BookOpen, 
+                  color: "hsl(221 83% 53%)" 
+                },
+                { 
+                  title: "Technical Analysis", 
+                  desc: "S/R levels, trend lines, and MAs.", 
+                  progress: 45, 
+                  icon: BarChart3, 
+                  color: "hsl(152 69% 42%)" 
+                },
+                { 
+                  title: "Risk Management", 
+                  desc: "Position sizing and the 1% rule.", 
+                  progress: 0, 
+                  icon: TrendingUp, 
+                  color: "hsl(43 96% 48%)" 
+                },
+              ].map((c) => (
+                <div key={c.title} className="p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--primary)/0.5)] transition-all group cursor-pointer hover:shadow-md">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${c.color}15` }}>
+                      <c.icon size={20} style={{ color: c.color }} />
+                    </div>
+                    {c.progress === 100 ? (
+                      <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-500 text-[9px] font-black uppercase">Complete</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))]">{c.progress}%</span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-bold text-[hsl(var(--foreground))] flex items-center gap-2">
+                    {c.title}
+                    <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-all translate-x--1 group-hover:translate-x-0" />
+                  </h3>
+                  <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 mb-4 leading-relaxed">{c.desc}</p>
+                  
+                  <div className="w-full h-1 bg-[hsl(var(--muted)/0.3)] rounded-full overflow-hidden">
+                    <div 
+                      className="h-full transition-all duration-1000" 
+                      style={{ 
+                        width: `${c.progress}%`, 
+                        background: c.progress === 100 ? 'hsl(152 69% 42%)' : c.color 
+                      }} 
+                    />
+                  </div>
                 </div>
-                <h3 className="text-sm font-bold text-[hsl(var(--foreground))] flex items-center gap-2">
-                  {c.title}
-                  <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                </h3>
-                <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1">{c.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 

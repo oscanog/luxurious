@@ -1,14 +1,14 @@
 # Milestone M002: Trading Simulation
-**Status:** `[in-progress]`
+**Status:** `[complete]`
 **Start Date:** 2026-05-11
 **Objective:** Implement "Learn to Trade" feature with live-style market simulation.
 
 ## Success Criteria
 1. [x] Sidebar navigation added.
 2. [x] Placeholder Academy page live.
-3. [ ] Simulation Dashboard with chart.
-4. [ ] Virtual wallet and order execution.
-5. [ ] Module-based learning content.
+3. [x] Simulation Dashboard with chart (Binance Live).
+4. [x] Virtual wallet and order execution.
+5. [x] Module-based learning content.
 
 ## Roadmap
 
@@ -22,10 +22,16 @@
 **Status:** `[complete]`
 - [x] T01: Integrate Lightweight Charts library.
 - [x] T02: Setup Convex schema for virtual balance.
-- [x] T03: Fetch dummy price data for simulation.
+- [x] T03: Fetch live Binance price data for simulation.
 
 ### Slice S03: Trade Execution
-**Status:** `[in-progress]`
-- [ ] T01: Create Trade Terminal UI.
-- [ ] T02: Implement "Buy/Sell" mutations.
-- [ ] T03: Add real-time P/L tracking.
+**Status:** `[complete]`
+- [x] T01: Create Trade Terminal UI.
+- [x] T02: Implement "Buy/Sell" mutations.
+- [x] T03: Add real-time P/L tracking.
+
+### Slice S04: Academy & Learning
+**Status:** `[complete]`
+- [x] T01: Design Academy module cards.
+- [x] T02: Implement progress tracking indicators.
+- [x] T03: Link placeholder content and navigation.

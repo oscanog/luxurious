@@ -8,6 +8,7 @@ import { MembersPage } from "@/components/members/MembersPage";
 import { InvitationsPage } from "@/components/invitations/InvitationsPage";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import { LearnToTradePage } from "@/components/dashboard/LearnToTradePage";
+import { TradingAcademy } from "@/components/dashboard/TradingAcademy";
 
 function Dashboard() {
   const [page, setPage] = useState<NavItem>("org-chart");
@@ -19,6 +20,7 @@ function Dashboard() {
       {page === "invitations" && <InvitationsPage />}
       {page === "settings" && <SettingsPage />}
       {page === "learn-to-trade" && <LearnToTradePage />}
+      {page === "academy" && <TradingAcademy />}
     </AdminLayout>
   );
 }
