@@ -1,7 +1,7 @@
 import { TrendingUp, PlayCircle, BookOpen, BarChart3, ArrowUpRight, Wallet } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { TradingChart } from "./TradingChart";
+import { TradingChart } from "../../components/dashboard/TradingChart";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 

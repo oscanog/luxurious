@@ -17,10 +17,10 @@ import {
   type Node,
   type Connection,
 } from "@xyflow/react";
-import { OrgCardNode, type OrgCardData } from "./OrgCardNode";
+import { OrgCardNode, type OrgCardData } from "../../components/org-chart/OrgCardNode";
 import { ChevronRight, Users, Edit3, UserMinus } from "lucide-react";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { MemberSidebar } from "./MemberSidebar";
+import { MemberSidebar } from "../../components/org-chart/MemberSidebar";
 import { useContextMenu } from "../../components/ui/ContextMenu";
 import { useMutation } from "convex/react";
 import { toast } from "react-hot-toast";
