@@ -58,7 +58,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     if (member.lastUplineId) {
       void (async () => {
         try {
-          await setUpline({ userId: member.id, uplineId: member.lastUplineId });
+          await setUpline({ userId: member.id, uplineId: member.lastUplineId as Id<"users"> });
           toast.success(`Reconnected to previous manager`);
         } catch (_err) {
           toast.error("Failed to reconnect");

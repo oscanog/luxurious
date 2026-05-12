@@ -231,7 +231,10 @@ function OrgChartCanvas({
       {
         label: "Move / Re-parent",
         icon: <Edit3 size={14} />,
-        onClick: () => onOpenConnectionDialog(data.member),
+        onClick: () => {
+          const fullMember = members.find(m => m._id === data.member.id);
+          if (fullMember) onOpenConnectionDialog(fullMember);
+        },
         disabled: node.id === viewRootId,
       },
       {
@@ -307,9 +310,10 @@ function OrgChartCanvas({
     });
 
     if (targetNode) {
-      onOpenConnectionDialog(data.member, targetNode.id);
+      const fullMember = members.find(m => m._id === data.member.id);
+      if (fullMember) onOpenConnectionDialog(fullMember, targetNode.id);
     }
-  }, [nodes, viewRootId, onOpenConnectionDialog]);
+  }, [nodes, viewRootId, onOpenConnectionDialog, members]);
 
   // Wheel handling...
   useEffect(() => {
@@ -388,6 +392,7 @@ function OrgChartPageContent() {
   const [viewRootId, setViewRootId] = useState<string | null>(null);
   const effectiveRootId = viewRootId || viewer?._id;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { fitView } = useReactFlow();
   
   // Connection Dialog State
   const [selectedMemberForDialog, setSelectedMemberForDialog] = useState<Doc<"users"> | null>(null);

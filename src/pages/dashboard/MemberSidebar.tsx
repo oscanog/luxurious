@@ -41,7 +41,7 @@ export function MemberSidebar({
 
   const handleConfirmConnection = () => {
     if (!selectedMember || !targetManagerId) return;
-    const userId = (selectedMember._id || selectedMember.id) as Id<"users">;
+    const userId = selectedMember._id as Id<"users">;
     void (async () => {
       try {
         await setUpline({ userId, uplineId: targetManagerId as Id<"users"> });
