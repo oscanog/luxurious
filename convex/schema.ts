@@ -20,6 +20,7 @@ export default defineSchema({
     // ── Custom fields ──
     role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
     uplineId: v.optional(v.union(v.id("users"), v.null())),
+    lastUplineId: v.optional(v.union(v.id("users"), v.null())),
   })
     .index("email", ["email"])
     .index("phone", ["phone"])

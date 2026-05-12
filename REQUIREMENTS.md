@@ -13,8 +13,9 @@ Capability contract.
 - [ ] **Breadcrumbs**: Show navigation path back to root.
 - [x] **Member Sidebar**: Collapsible panel for quick user assignment.
 - [x] **Connection Dialog**: Dynamic manager selection from visible canvas.
-- [ ] **Reset Hook**: Capability to clear all member connections.
-- [ ] Drag-drop reorganize.
+- [x] **Reconnect Handle**: One-click restoration of previous connections.
+- [x] **Connection Tracking**: Backend support to trace broken vs unused links.
+- [x] **Drag-drop**: Reorganize hierarchy via canvas interactions.
 
 ## 3. Member Management
 - [x] List members.

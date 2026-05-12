@@ -28,7 +28,15 @@ export const setUpline = mutation({
 
     if (args.userId === args.uplineId) throw new Error("Cannot report to self");
 
-    await ctx.db.patch(args.userId, { uplineId: args.uplineId });
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) throw new Error("User not found");
+    
+    // Store current as last before update
+    const currentUplineId = user.uplineId;
+    await ctx.db.patch("users", args.userId, { 
+      uplineId: args.uplineId,
+      lastUplineId: currentUplineId || undefined 
+    });
   },
 });
 
@@ -38,6 +46,12 @@ export const removeUpline = mutation({
     const viewerId = await getAuthUserId(ctx);
     if (!viewerId) throw new Error("Not authenticated");
 
-    await ctx.db.patch(args.userId, { uplineId: null });
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) throw new Error("User not found");
+    
+    await ctx.db.patch("users", args.userId, { 
+      uplineId: null,
+      lastUplineId: user.uplineId 
+    });
   },
 });

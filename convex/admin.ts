@@ -131,7 +131,7 @@ export const clearAllConnections = mutation({
     const users = await ctx.db.query("users").collect();
     for (const user of users) {
       if (user.uplineId !== null) {
-        await ctx.db.patch(user._id, { uplineId: null });
+        await ctx.db.patch("users", user._id, { uplineId: null });
       }
     }
   },

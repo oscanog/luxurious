@@ -1,13 +1,18 @@
 import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { Users, UserPlus, Clock, Trash2 } from "lucide-react";
+import { Users, UserPlus, Clock, Trash2, Link2 } from "lucide-react";
 import { type DummyMember, RANK_COLORS, STATUS_COLORS } from "@/data/dummyMembers";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { toast } from "react-hot-toast";
 
 export type OrgCardData = {
-  member: DummyMember;
+  member: Omit<DummyMember, "id" | "uplineId"> & { 
+    id: Id<"users">;
+    uplineId: Id<"users"> | null;
+    lastUplineId?: Id<"users"> | null;
+  };
   isRoot?: boolean;
   branchColor?: string;
 };
@@ -27,27 +32,44 @@ function StatusDot({ status }: { status: DummyMember["status"] }) {
 export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodeProps<OrgCardNode>) {
   const { member, isRoot } = data;
   const removeUpline = useMutation(api.users.removeUpline);
+  const setUpline = useMutation(api.users.setUpline);
   
   const rankColor = RANK_COLORS[member.rank];
   const isGoldTier = member.rank === "Master" || member.rank === "Diamond" || member.rank === "Gold";
   
   const isClickable = !isRoot && member.totalDownlines > 0;
 
-  const handleRemove = useCallback(async (e: React.MouseEvent) => {
+  const handleRemove = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Remove ${member.name} from hierarchy?`)) {
-      try {
-        await removeUpline({ userId: member.id as any });
-        toast.success("Member removed");
-      } catch {
-        toast.error("Failed to remove member");
-      }
+      void (async () => {
+        try {
+          await removeUpline({ userId: member.id });
+          toast.success("Member removed");
+        } catch (_err) {
+          toast.error("Failed to remove member");
+        }
+      })();
     }
   }, [member.id, member.name, removeUpline]);
 
+  const handleReconnect = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (member.lastUplineId) {
+      void (async () => {
+        try {
+          await setUpline({ userId: member.id, uplineId: member.lastUplineId });
+          toast.success(`Reconnected to previous manager`);
+        } catch (_err) {
+          toast.error("Failed to reconnect");
+        }
+      })();
+    }
+  }, [member.id, member.lastUplineId, setUpline]);
+
   return (
     <div
-      className={`w-[160px] sm:w-[220px] rounded-[14px] transition-all duration-300 ${
+      className={`relative w-[160px] sm:w-[220px] rounded-[14px] transition-all duration-300 ${
         isClickable ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : ""
       } ${selected ? "scale-[1.05] z-10" : "z-0"}`}
       style={{
@@ -63,8 +85,33 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         transition: "box-shadow 0.3s, border-color 0.3s, transform 0.3s",
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ visibility: "hidden", top: "50%", left: "50%" }} />
-      <Handle type="source" position={Position.Bottom} style={{ visibility: "hidden", top: "50%", left: "50%" }} />
+      {/* Reconnect Handle */}
+      {!isRoot && !member.uplineId && member.lastUplineId && (
+        <button
+          onClick={handleReconnect}
+          className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 w-8 h-8 rounded-full bg-[hsl(var(--primary))] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-bounce border-2 border-[hsl(var(--background))]"
+          title="Quick reconnect to previous manager"
+        >
+          <Link2 size={14} />
+        </button>
+      )}
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        className="!w-3 !h-3 !bg-[hsl(var(--primary))] !border-2 !border-[hsl(var(--background))] !shadow-lg hover:scale-125 transition-transform cursor-pointer"
+        style={{ top: -2 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReconnect(e); // Quick reconnect if possible, or maybe open dialog?
+          // For now, let's make it trigger the reconnection or dialog
+        }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className="!w-3 !h-3 !bg-[hsl(var(--primary))] !border-2 !border-[hsl(var(--background))] !shadow-lg hover:scale-125 transition-transform cursor-pointer"
+        style={{ bottom: -2 }}
+      />
 
       {/* Rank band */}
       <div

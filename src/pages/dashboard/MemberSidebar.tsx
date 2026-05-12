@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Search, UserPlus, X, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -8,9 +9,9 @@ interface MemberSidebarProps {
   currentPivotId: string;
   isOpen: boolean;
   onToggle: () => void;
-  visibleMembers: any[];
-  selectedMember: any | null;
-  setSelectedMember: (member: any | null) => void;
+  visibleMembers: { id: string; name: string; role?: string }[];
+  selectedMember: Doc<"users"> | null;
+  setSelectedMember: (member: Doc<"users"> | null) => void;
   targetManagerId: string;
   setTargetManagerId: (id: string) => void;
   onSuccess?: () => void;
@@ -38,17 +39,19 @@ export function MemberSidebar({
      m.email?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleConfirmConnection = async () => {
+  const handleConfirmConnection = () => {
     if (!selectedMember || !targetManagerId) return;
-    const userId = selectedMember._id || selectedMember.id;
-    try {
-      await setUpline({ userId: userId as any, uplineId: targetManagerId as any });
-      toast.success(`${selectedMember.name} connected to ${visibleMembers.find(m => m.id === targetManagerId)?.name}`);
-      setSelectedMember(null);
-      onSuccess?.();
-    } catch (error) {
-      toast.error("Failed to connect member");
-    }
+    const userId = (selectedMember._id || selectedMember.id) as Id<"users">;
+    void (async () => {
+      try {
+        await setUpline({ userId, uplineId: targetManagerId as Id<"users"> });
+        toast.success(`${selectedMember.name} connected to ${visibleMembers.find(m => m.id === targetManagerId)?.name}`);
+        setSelectedMember(null);
+        onSuccess?.();
+      } catch (_err) {
+        toast.error("Failed to connect member");
+      }
+    })();
   };
 
   return (
@@ -97,7 +100,12 @@ export function MemberSidebar({
                 filteredMembers.map((member) => (
                   <div 
                     key={member._id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-[hsl(var(--secondary)/0.5)] transition-colors group"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("application/reactflow", JSON.stringify(member));
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-[hsl(var(--secondary)/0.5)] transition-colors group cursor-grab active:cursor-grabbing"
                   >
                     <div className="w-8 h-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))] shrink-0">
                       {member.image ? (
@@ -107,7 +115,14 @@ export function MemberSidebar({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{member.name ?? "Anonymous"}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold truncate">{member.name ?? "Anonymous"}</p>
+                        {member.lastUplineId ? (
+                          <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20">Broken</span>
+                        ) : (
+                          <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">Unused</span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{member.email}</p>
                     </div>
                     <button

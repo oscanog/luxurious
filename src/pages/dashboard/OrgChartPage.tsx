@@ -15,10 +15,11 @@ import {
   useNodesInitialized,
   type Edge,
   type Node,
+  type Connection,
 } from "@xyflow/react";
 import { OrgCardNode, type OrgCardData } from "./OrgCardNode";
-import { ChevronRight, Users, Edit3, Trash2, UserMinus } from "lucide-react";
-import type { Doc } from "../../../convex/_generated/dataModel";
+import { ChevronRight, Users, Edit3, UserMinus } from "lucide-react";
+import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { MemberSidebar } from "./MemberSidebar";
 import { useContextMenu } from "../../components/ui/ContextMenu";
 import { useMutation } from "convex/react";
@@ -102,26 +103,38 @@ function OrgChartCanvas({
   viewRootId, 
   setViewRootId, 
   members,
-  onOpenConnectionDialog
+  importedNodes,
+  onOpenConnectionDialog,
+  onImportMember
 }: { 
   viewRootId: string, 
   setViewRootId: (id: string) => void,
   members: Doc<"users">[],
-  onOpenConnectionDialog: (member: any) => void
+  importedNodes: Record<string, { x: number; y: number }>,
+  onOpenConnectionDialog: (member: Doc<"users">, targetId?: string) => void,
+  onImportMember: (memberId: string, pos: { x: number; y: number }) => void
 }) {
   const positions = useMemo(() => buildOrgChartPositions(viewRootId, members), [viewRootId, members]);
   const branchColors = useMemo(() => getBranchColors(viewRootId, members), [viewRootId, members]);
 
+  const { 
+    screenToFlowPosition, 
+    fitView, 
+    setViewport, 
+    getViewport, 
+    setCenter 
+  } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
   const removeUpline = useMutation(api.users.removeUpline);
+  const setUpline = useMutation(api.users.setUpline);
 
   const initialNodes: Node<OrgCardData, "orgCard">[] = useMemo(() => {
     return members
-      .filter(m => positions[m._id])
+      .filter(m => positions[m._id] || importedNodes[m._id])
       .map((member) => ({
         id: member._id,
         type: "orgCard" as const,
-        position: positions[member._id],
+        position: positions[member._id] || importedNodes[member._id],
         data: {
           member: {
             id: member._id,
@@ -130,6 +143,7 @@ function OrgChartCanvas({
             rank: (member.role === "admin" ? "Master" : "Bronze"), 
             status: "active",
             uplineId: member.uplineId ?? null,
+            lastUplineId: member.lastUplineId ?? null,
             joinDate: new Date(member._creationTime).toLocaleDateString(),
             totalDownlines: members.filter(m => m.uplineId === member._id).length,
             invitedCount: 0,
@@ -140,26 +154,33 @@ function OrgChartCanvas({
           branchColor: branchColors.get(member._id),
         },
       }));
-  }, [members, positions, branchColors, viewRootId]);
+  }, [members, positions, importedNodes, branchColors, viewRootId]);
 
   const initialEdges: Edge[] = useMemo(() => {
     return members
-      .filter((m) => m.uplineId && positions[m._id] && m._id !== viewRootId)
-      .map((m) => ({
-        id: `edge-${m.uplineId}-${m._id}`,
-        source: m.uplineId!,
-        target: m._id,
-        type: "straight",
-        animated: false,
-        style: { stroke: branchColors.get(m._id) || "var(--oc-connector)", strokeWidth: 2 },
-      }));
-  }, [members, positions, branchColors, viewRootId]);
+      .filter((m) => m.uplineId && (positions[m._id] || importedNodes[m._id]) && m._id !== viewRootId)
+      .map((m) => {
+        const sourceId = m.uplineId!;
+        const targetId = m._id;
+        // Only show edge if source also has a position
+        if (!positions[sourceId] && !importedNodes[sourceId]) return null;
+
+        return {
+          id: `edge-${sourceId}-${targetId}`,
+          source: sourceId,
+          target: targetId,
+          type: "straight",
+          animated: false,
+          style: { stroke: branchColors.get(targetId) || "var(--oc-connector)", strokeWidth: 2 },
+        };
+      })
+      .filter(Boolean) as Edge[];
+  }, [members, positions, importedNodes, branchColors, viewRootId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { setViewport, getViewport, screenToFlowPosition, fitView, setCenter } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
 
   useEffect(() => {
@@ -192,6 +213,18 @@ function OrgChartCanvas({
     }
   }, [viewRootId, setViewRootId]);
 
+  const onConnect = useCallback((params: Connection) => {
+    if (!params.source || !params.target) return;
+    void (async () => {
+      try {
+        await setUpline({ userId: params.target as Id<"users">, uplineId: params.source as Id<"users"> });
+        toast.success("Connection established");
+      } catch (_err) {
+        toast.error("Failed to connect");
+      }
+    })();
+  }, [setUpline]);
+
   const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
     const data = node.data as OrgCardData;
     const items = [
@@ -208,7 +241,7 @@ function OrgChartCanvas({
         onClick: async () => {
           if (confirm(`Sever connection for ${data.member.name}?`)) {
             try {
-              await removeUpline({ userId: node.id as any });
+              await removeUpline({ userId: node.id as Id<"users"> });
               toast.success("Connection severed");
             } catch {
               toast.error("Failed to sever connection");
@@ -220,6 +253,63 @@ function OrgChartCanvas({
     ];
     handleContextMenu(e, items);
   }, [handleContextMenu, onOpenConnectionDialog, removeUpline, viewRootId]);
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    const data = event.dataTransfer.getData("application/reactflow");
+    if (!data) return;
+    
+    const member = JSON.parse(data);
+    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    
+    // Check if dropped on a node
+    const targetNode = nodes.find((n) => {
+      const rect = { x: n.position.x, y: n.position.y, width: 220, height: 140 };
+      return (
+        position.x > rect.x &&
+        position.x < rect.x + rect.width &&
+        position.y > rect.y &&
+        position.y < rect.y + rect.height
+      );
+    });
+
+    if (targetNode) {
+      onOpenConnectionDialog(member, targetNode.id);
+    } else {
+      onImportMember(member._id, position);
+      toast.success(`Imported ${member.name} to canvas`);
+    }
+  }, [screenToFlowPosition, nodes, onOpenConnectionDialog, onImportMember]);
+
+  const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
+    const data = node.data as OrgCardData;
+    if (node.id === viewRootId) return;
+
+    const targetNode = nodes.find((n) => {
+      if (n.id === node.id) return false;
+      const rect = {
+        x: n.position.x,
+        y: n.position.y,
+        width: 220,
+        height: 140,
+      };
+      return (
+        node.position.x > rect.x &&
+        node.position.x < rect.x + rect.width &&
+        node.position.y > rect.y &&
+        node.position.y < rect.y + rect.height
+      );
+    });
+
+    if (targetNode) {
+      onOpenConnectionDialog(data.member, targetNode.id);
+    }
+  }, [nodes, viewRootId, onOpenConnectionDialog]);
 
   // Wheel handling...
   useEffect(() => {
@@ -254,6 +344,10 @@ function OrgChartCanvas({
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onNodeContextMenu={onNodeContextMenu}
+        onNodeDragStop={onNodeDragStop}
+        onConnect={onConnect}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         nodeTypes={nodeTypes}
         minZoom={0.1}
         maxZoom={2.0}
@@ -289,24 +383,23 @@ export function OrgChartPage() {
 
 function OrgChartPageContent() {
   const viewer = useQuery(api.users.viewer);
-  const members = useQuery(api.users.listWithHierarchy) ?? [];
+  const membersRaw = useQuery(api.users.listWithHierarchy);
+  const members = useMemo(() => membersRaw ?? [], [membersRaw]);
   const [viewRootId, setViewRootId] = useState<string | null>(null);
+  const effectiveRootId = viewRootId || viewer?._id;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Connection Dialog State
-  const [selectedMemberForDialog, setSelectedMemberForDialog] = useState<any | null>(null);
+  const [selectedMemberForDialog, setSelectedMemberForDialog] = useState<Doc<"users"> | null>(null);
   const [targetManagerId, setTargetManagerId] = useState<string>("");
 
-  useEffect(() => {
-    if (viewer && !viewRootId) {
-      setViewRootId(viewer._id);
-    }
-  }, [viewer, viewRootId]);
+  // Track members dropped into canvas manually
+  const [importedNodes, setImportedNodes] = useState<Record<string, { x: number; y: number }>>({});
 
   const breadcrumbs = useMemo(() => {
-    if (!viewRootId || members.length === 0) return [];
+    if (!effectiveRootId || members.length === 0) return [];
     const crumbs: { id: string; name: string }[] = [];
-    let currId: string | null = viewRootId;
+    let currId: string | null = effectiveRootId;
     while (currId) {
       const m = members.find(u => u._id === currId);
       if (!m) break;
@@ -314,16 +407,21 @@ function OrgChartPageContent() {
       currId = m.uplineId ?? null;
     }
     return crumbs;
-  }, [viewRootId, members]);
+  }, [effectiveRootId, members]);
 
   const visibleMembersList = useMemo(() => {
-    const positions = buildOrgChartPositions(viewRootId, members);
+    const positions = buildOrgChartPositions(effectiveRootId || "", members);
     return members
-      .filter(m => positions[m._id])
-      .map(m => ({ id: m._id, name: m.name ?? "Anonymous", role: m.role }));
-  }, [viewRootId, members]);
+      .filter(m => positions[m._id] || importedNodes[m._id])
+      .map(m => ({ 
+        id: m._id, 
+        name: m.name ?? "Anonymous", 
+        role: m.role, 
+        lastUplineId: m.lastUplineId 
+      }));
+  }, [effectiveRootId, members, importedNodes]);
 
-  if (!viewRootId || members.length === 0) {
+  if (!effectiveRootId || members.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-pulse text-[hsl(var(--muted-foreground))]">Loading Organization Chart...</div>
@@ -379,16 +477,20 @@ function OrgChartPageContent() {
 
       <div className="flex-1 relative">
         <OrgChartCanvas 
-          viewRootId={viewRootId} 
+          viewRootId={effectiveRootId} 
           setViewRootId={setViewRootId} 
           members={members} 
-          onOpenConnectionDialog={(member) => {
+          importedNodes={importedNodes}
+          onOpenConnectionDialog={(member, targetId) => {
             setSelectedMemberForDialog(member);
-            setTargetManagerId(viewRootId);
+            setTargetManagerId(targetId || effectiveRootId || "");
+          }}
+          onImportMember={(memberId, pos) => {
+            setImportedNodes(prev => ({ ...prev, [memberId]: pos }));
           }}
         />
         <MemberSidebar 
-          currentPivotId={viewRootId} 
+          currentPivotId={effectiveRootId} 
           isOpen={isSidebarOpen} 
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
           visibleMembers={visibleMembersList}
@@ -398,7 +500,7 @@ function OrgChartPageContent() {
           setTargetManagerId={setTargetManagerId}
           onSuccess={() => {
             setTimeout(() => {
-              void fitView({ duration: 800, padding: 0.1 });
+              // fitView might need to be accessed differently if it's inside OrgChartCanvas
             }, 100);
           }}
         />
