@@ -1,13 +1,13 @@
 # Milestone M003: Admin Infrastructure
-**Status:** `[planning]`
+**Status:** `[complete]`
 **Start Date:** 2026-05-11
 **Objective:** Build internal tools to manage the platform, content, and users.
 
 ## Success Criteria
-1. [ ] Admin-only dashboard route.
-2. [ ] CRUD UI for Academy Levels and Lessons.
-3. [ ] Global trade monitor (view all open positions).
-4. [ ] User management (reset balance, view progress).
+1. [x] Admin-only dashboard route.
+2. [x] CRUD UI for Academy Levels and Lessons.
+3. [x] Global trade monitor (view all open positions).
+4. [x] User management (reset balance, view progress).
 
 ## Roadmap
 

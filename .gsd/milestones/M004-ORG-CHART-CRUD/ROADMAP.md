@@ -1,5 +1,5 @@
 # Milestone M004: Org Chart CRUD
-**Status:** `[in-progress]`
+**Status:** `[complete]`
 **Start Date:** 2026-05-11
 **Objective:** Implement full management of organization hierarchy with modern UI/UX.
 
@@ -27,7 +27,7 @@
 - [x] T05: Connection verification dialog with dynamic manager selection and auto-zoom.
 
 ### Slice S03: UX Polish
-**Status:** `[in-progress]`
+**Status:** `[complete]`
 - [x] T01: Drag-and-drop re-parenting (React Flow integration).
 - [x] T02: Reconnect Handle: One-click restore of broken connections.
 - [x] T03: Connection Tracking: Differentiate "Broken" vs "Unused" members.

@@ -10,11 +10,18 @@
 
 import type * as academy from "../academy.js";
 import type * as admin from "../admin.js";
+import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
+import type * as financials from "../financials.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
+import type * as mobile from "../mobile.js";
+import type * as mobileHelpers from "../mobileHelpers.js";
+import type * as network from "../network.js";
+import type * as planning from "../planning.js";
 import type * as seed from "../seed.js";
 import type * as simulation from "../simulation.js";
+import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -26,11 +33,18 @@ import type {
 declare const fullApi: ApiFromModules<{
   academy: typeof academy;
   admin: typeof admin;
+  analytics: typeof analytics;
   auth: typeof auth;
+  financials: typeof financials;
   http: typeof http;
   init: typeof init;
+  mobile: typeof mobile;
+  mobileHelpers: typeof mobileHelpers;
+  network: typeof network;
+  planning: typeof planning;
   seed: typeof seed;
   simulation: typeof simulation;
+  transactions: typeof transactions;
   users: typeof users;
 }>;
 
