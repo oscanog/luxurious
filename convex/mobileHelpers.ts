@@ -5,6 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export type MobileProfile = Doc<"mobileProfiles">;
 export type MobileViewer = Doc<"users">;
 export type MobileCtx = QueryCtx | MutationCtx;
+export type AvatarFilter = "natural" | "gold" | "cool" | "mono";
 
 type AccountSeed = {
   name: string;
@@ -351,7 +352,7 @@ export async function requireMobileViewer(ctx: MobileCtx): Promise<MobileViewer>
   if (!userId) {
     throw new Error("Not authenticated");
   }
-  const user = await ctx.db.get(userId);
+  const user = await ctx.db.get("users", userId);
   if (!user) {
     throw new Error("Authenticated user missing.");
   }
@@ -385,13 +386,21 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
   const viewer = await requireMobileViewer(ctx);
   const existing = await getMobileProfileByUserId(ctx, viewer._id);
   const now = Date.now();
-  const displayName = getViewerDisplayName(viewer);
+  const fallbackDisplayName = getViewerDisplayName(viewer);
 
   if (existing) {
+    const storedDisplayName = existing.displayName.trim();
     await ctx.db.patch("mobileProfiles", existing._id, {
       userId: viewer._id,
       viewerKey: `auth_${viewer._id}`,
-      displayName,
+      displayName:
+        storedDisplayName.length > 0 ? storedDisplayName : fallbackDisplayName,
+      avatarFilter: existing.avatarFilter ?? "natural",
+      avatarMirror: existing.avatarMirror ?? false,
+      avatarOffsetX: existing.avatarOffsetX ?? 0,
+      avatarOffsetY: existing.avatarOffsetY ?? 0,
+      avatarRotationQuarterTurns: existing.avatarRotationQuarterTurns ?? 0,
+      avatarScale: existing.avatarScale ?? 1,
       updatedAt: now,
     });
     await syncNetworkMembersForViewer(ctx, existing._id, viewer, now);
@@ -401,8 +410,14 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
   const profileId = await ctx.db.insert("mobileProfiles", {
     userId: viewer._id,
     viewerKey: `auth_${viewer._id}`,
-    displayName,
+    displayName: fallbackDisplayName,
     preferredCurrencyCode: "USD",
+    avatarFilter: "natural",
+    avatarMirror: false,
+    avatarOffsetX: 0,
+    avatarOffsetY: 0,
+    avatarRotationQuarterTurns: 0,
+    avatarScale: 1,
     createdAt: now,
     updatedAt: now,
   });
@@ -525,7 +540,7 @@ async function syncNetworkMembersForViewer(
 ) {
   const existingMembers = await listNetworkMembersForProfile(ctx, profileId);
   for (const member of existingMembers) {
-    await ctx.db.delete(member._id);
+    await ctx.db.delete("networkMembers", member._id);
   }
   const seeds = await buildNetworkSeedsForViewer(ctx, viewer);
   await seedDefaultNetworkMembers(ctx, profileId, seeds, now);
@@ -558,7 +573,10 @@ async function buildNetworkSeedsForViewer(
 
   let parentKey: string | null = null;
   for (let i = 0; i < uplineChain.length; i += 1) {
-    const upline = uplineChain[i]!;
+    const upline = uplineChain[i];
+    if (!upline) {
+      continue;
+    }
     const key = `upline_${i}`;
     seeds.push({
       key,
@@ -587,7 +605,10 @@ async function buildNetworkSeedsForViewer(
   const descendants: DescendantEntry[] = [];
   await collectDescendants(ctx, viewer._id, 1, "viewer", descendants);
   for (let i = 0; i < descendants.length; i += 1) {
-    const entry = descendants[i]!;
+    const entry = descendants[i];
+    if (!entry) {
+      continue;
+    }
     seeds.push({
       key: entry.key,
       name: getViewerDisplayName(entry.user),
@@ -640,7 +661,10 @@ async function collectDescendants(
     .take(4);
 
   for (let i = 0; i < children.length; i += 1) {
-    const child = children[i]!;
+    const child = children[i];
+    if (!child) {
+      continue;
+    }
     const key = `member_${descendants.length}`;
     descendants.push({
       depth,
@@ -662,7 +686,7 @@ function getViewerDisplayName(user: MobileViewer): string {
   }
   const email = user.email?.trim();
   if (email !== undefined && email.length > 0) {
-    return email.split("@")[0]!;
+    return email.split("@")[0] ?? "Trader";
   }
   return "Trader";
 }
@@ -690,14 +714,15 @@ function buildProspectNames(viewer: MobileViewer): [string, string] {
   ];
 
   const source = viewer.email ?? viewer._id;
-  var hash = 0;
+  let hash = 0;
   for (const character of source) {
     hash = (hash * 31 + character.charCodeAt(0)) & 0x7fffffff;
   }
 
   function buildName(offset: number) {
-    const first = firstNames[(hash + offset) % firstNames.length]!;
-    const last = lastNames[(hash + (offset * 3)) % lastNames.length]!;
+    const first = firstNames[(hash + offset) % firstNames.length] ?? firstNames[0] ?? "Amara";
+    const last =
+      lastNames[(hash + (offset * 3)) % lastNames.length] ?? lastNames[0] ?? "Torres";
     return `${first} ${last}`;
   }
 
@@ -745,4 +770,16 @@ export function getMonthStart(timestamp: number) {
 
 export function getCurrentMonthStart() {
   return getMonthStart(Date.now());
+}
+
+export function getAvatarEditorState(profile: MobileProfile) {
+  const filter: AvatarFilter = profile.avatarFilter ?? "natural";
+  return {
+    filter,
+    mirrored: profile.avatarMirror ?? false,
+    offsetX: profile.avatarOffsetX ?? 0,
+    offsetY: profile.avatarOffsetY ?? 0,
+    rotationQuarterTurns: profile.avatarRotationQuarterTurns ?? 0,
+    scale: profile.avatarScale ?? 1,
+  };
 }

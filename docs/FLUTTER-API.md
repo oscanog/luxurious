@@ -116,15 +116,34 @@ Example response:
 - Returns summary metrics and expense breakdown.
 
 ### `network:getDashboard`
-- Returns network dashboard data for the mobile home.
+- Returns network-first home payload:
+  - viewer summary
+  - joined / invited / pending / to-invite stats
+  - uplines / downlines counts
+  - direct members list
+  - org chart tree
 
 ### `network:getTree`
-- Returns the org chart tree.
+- Returns org chart tree nodes for the network view.
 
 ### `network:listMembers`
-- Returns member rows.
+- Returns network members for the members screen.
 - Optional args:
-  - `status`
+  - `status` = `joined` | `invited` | `pending`
+
+### `profile:getMe`
+- Returns authenticated profile data:
+  - display name
+  - email
+  - role
+  - optional identity fields
+  - joined downline count
+  - derived rank + frame
+  - avatar editor state
+  - verification flags
+
+### `profile:getRank`
+- Returns joined-downline count plus derived rank metadata only.
 
 ### `transactions:listHistory`
 - Returns recent transaction history.
@@ -161,9 +180,36 @@ Example response:
   - `note` optional
   - `occurredAt` optional
 
+### `profile:updateMe`
+- Updates profile fields for current authenticated user.
+- Args:
+  - `displayName` optional
+  - `birthday` optional
+  - `bonchatId` optional
+  - `bonchatUsername` optional
+  - `yepbitId` optional
+  - `yepbitUsername` optional
+
+### `profile:updateAvatar`
+- Saves avatar editor state for current authenticated user.
+- Args:
+  - `filter` = `natural` | `gold` | `cool` | `mono`
+  - `mirrored`
+  - `offsetX`
+  - `offsetY`
+  - `rotationQuarterTurns`
+  - `scale`
+
+### `profile:changePassword`
+- Changes current authenticated user's password.
+- Invalidates existing sessions after success.
+
 ## Current M007 Coverage
 
 Wired now:
+- Network dashboard
+- Org chart
+- Members
 - Accounts
 - Cashflow
 - Currency
@@ -184,6 +230,26 @@ Still pending audit:
 ## Recommendation
 
 Do not route new Flutter mobile identity through `viewerKey`. Use authenticated mobile routes only.
+
+## M008 Profile Notes
+
+Implemented now:
+- `profile:getMe`
+- `profile:updateMe`
+- `profile:updateAvatar`
+- `profile:changePassword`
+- `profile:getRank`
+
+Current avatar model:
+- editor state stored in Convex
+- binary image still device-local on Flutter side
+
+Current verification model:
+- `emailVerified` reflects auth user email verification timestamp
+- `phoneCertified` reflects auth user phone verification timestamp
+- delivery / OTP flows still future work
+
+Rank must be derived from **joined downlines only**. Invited, pending, and prospect records must not count.
 
 ## Production Deploy Gotcha
 

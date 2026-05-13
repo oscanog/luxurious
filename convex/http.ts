@@ -23,6 +23,10 @@ type MobileRpcPayload = {
   args?: Record<string, unknown>;
 };
 
+function readStringArg(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -173,6 +177,21 @@ http.route({
               : undefined,
         });
         break;
+      case "notifications:getFeed":
+        result = await ctx.runQuery(api.notifications.getFeed, {});
+        break;
+      case "notifications:getSummary":
+        result = await ctx.runQuery(api.notifications.getSummary, {});
+        break;
+      case "promotions:listActive":
+        result = await ctx.runQuery(api.notifications.listPromotions, {});
+        break;
+      case "profile:getMe":
+        result = await ctx.runQuery(api.profile.getMe, {});
+        break;
+      case "profile:getRank":
+        result = await ctx.runQuery(api.profile.getRank, {});
+        break;
       case "transactions:listHistory":
         result = await ctx.runQuery(api.transactions.listHistory, {
           limit:
@@ -209,8 +228,8 @@ http.route({
       case "financials:createAccount":
         await ctx.runMutation(api.mobile.bootstrap, {});
         result = await ctx.runMutation(api.financials.createAccount, {
-          name: String(body.args?.name ?? ""),
-          institution: String(body.args?.institution ?? ""),
+          name: readStringArg(body.args?.name),
+          institution: readStringArg(body.args?.institution),
           type: body.args?.type as
             | "savings"
             | "cash"
@@ -227,7 +246,7 @@ http.route({
         await ctx.runMutation(api.mobile.bootstrap, {});
         result = await ctx.runMutation(api.transactions.createIncome, {
           amount: typeof body.args?.amount === "number" ? body.args.amount : 0,
-          category: String(body.args?.category ?? "Other"),
+          category: readStringArg(body.args?.category, "Other"),
           note: typeof body.args?.note === "string" ? body.args.note : undefined,
           occurredAt: typeof body.args?.occurredAt === "number" ? body.args.occurredAt : undefined,
         });
@@ -236,9 +255,75 @@ http.route({
         await ctx.runMutation(api.mobile.bootstrap, {});
         result = await ctx.runMutation(api.transactions.createExpense, {
           amount: typeof body.args?.amount === "number" ? body.args.amount : 0,
-          category: String(body.args?.category ?? "Other"),
+          category: readStringArg(body.args?.category, "Other"),
           note: typeof body.args?.note === "string" ? body.args.note : undefined,
           occurredAt: typeof body.args?.occurredAt === "number" ? body.args.occurredAt : undefined,
+        });
+        break;
+      case "profile:updateMe":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.profile.updateMe, {
+          displayName:
+            typeof body.args?.displayName === "string" ? body.args.displayName : undefined,
+          birthday: typeof body.args?.birthday === "string" ? body.args.birthday : undefined,
+          bonchatId: typeof body.args?.bonchatId === "string" ? body.args.bonchatId : undefined,
+          bonchatUsername:
+            typeof body.args?.bonchatUsername === "string"
+              ? body.args.bonchatUsername
+              : undefined,
+          yepbitId: typeof body.args?.yepbitId === "string" ? body.args.yepbitId : undefined,
+          yepbitUsername:
+            typeof body.args?.yepbitUsername === "string"
+              ? body.args.yepbitUsername
+              : undefined,
+        });
+        break;
+      case "profile:generateAvatarUploadUrl":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.profile.generateAvatarUploadUrl, {});
+        break;
+      case "profile:updateAvatar":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.profile.updateAvatar, {
+          filter:
+            body.args?.filter === "gold" ||
+            body.args?.filter === "cool" ||
+            body.args?.filter === "mono"
+              ? body.args.filter
+              : "natural",
+          mirrored: body.args?.mirrored === true,
+          offsetX: typeof body.args?.offsetX === "number" ? body.args.offsetX : 0,
+          offsetY: typeof body.args?.offsetY === "number" ? body.args.offsetY : 0,
+          rotationQuarterTurns:
+            typeof body.args?.rotationQuarterTurns === "number"
+              ? body.args.rotationQuarterTurns
+              : 0,
+          scale: typeof body.args?.scale === "number" ? body.args.scale : 1,
+          storageId: typeof body.args?.storageId === "string" ? (body.args.storageId as any) : undefined,
+        });
+        break;
+      case "profile:changePassword":
+        result = await ctx.runAction(api.profile.changePassword, {
+          currentPassword:
+            typeof body.args?.currentPassword === "string" ? body.args.currentPassword : "",
+          newPassword:
+            typeof body.args?.newPassword === "string" ? body.args.newPassword : "",
+        });
+        break;
+      case "notifications:markAllRead":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.notifications.markAllRead, {});
+        break;
+      case "notifications:registerDeviceToken":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.notifications.registerDeviceToken, {
+          installationId:
+            typeof body.args?.installationId === "string" ? body.args.installationId : "",
+          token: typeof body.args?.token === "string" ? body.args.token : "",
+          platform: typeof body.args?.platform === "string" ? body.args.platform : "",
+          provider: typeof body.args?.provider === "string" ? body.args.provider : "",
+          environment:
+            typeof body.args?.environment === "string" ? body.args.environment : "",
         });
         break;
       default:

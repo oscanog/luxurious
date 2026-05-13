@@ -75,11 +75,51 @@ export default defineSchema({
     viewerKey: v.string(),
     displayName: v.string(),
     preferredCurrencyCode: v.string(),
+    birthday: v.optional(v.string()),
+    bonchatId: v.optional(v.string()),
+    bonchatUsername: v.optional(v.string()),
+    yepbitId: v.optional(v.string()),
+    yepbitUsername: v.optional(v.string()),
+    avatarFilter: v.optional(
+      v.union(
+        v.literal("natural"),
+        v.literal("gold"),
+        v.literal("cool"),
+        v.literal("mono"),
+      ),
+    ),
+    avatarMirror: v.optional(v.boolean()),
+    avatarOffsetX: v.optional(v.number()),
+    avatarOffsetY: v.optional(v.number()),
+    avatarRotationQuarterTurns: v.optional(v.number()),
+    avatarScale: v.optional(v.number()),
+    avatarStorageId: v.optional(v.id("_storage")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"])
     .index("by_viewer_key", ["viewerKey"]),
+
+  mobileNotificationStates: defineTable({
+    profileId: v.id("mobileProfiles"),
+    lastReadAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_profileId", ["profileId"]),
+
+  mobileDeviceTokens: defineTable({
+    profileId: v.id("mobileProfiles"),
+    installationId: v.string(),
+    token: v.string(),
+    platform: v.string(),
+    provider: v.string(),
+    environment: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_profileId_and_installationId", ["profileId", "installationId"])
+    .index("by_profileId_and_updatedAt", ["profileId", "updatedAt"])
+    .index("by_token", ["token"]),
 
   financialAccounts: defineTable({
     profileId: v.id("mobileProfiles"),
