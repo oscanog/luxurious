@@ -271,4 +271,60 @@ export default defineSchema({
   })
     .index("by_profileId", ["profileId"])
     .index("by_status", ["status"]),
+
+  tradingSignals: defineTable({
+    symbol: v.string(),
+    type: v.union(v.literal("buy"), v.literal("sell")),
+    entry: v.number(),
+    tp1: v.number(),
+    tp2: v.optional(v.number()),
+    tp3: v.optional(v.number()),
+    sl: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("tp_hit"),
+      v.literal("sl_hit"),
+      v.literal("cancelled")
+    ),
+    result: v.optional(v.number()),
+    riskReward: v.optional(v.string()),
+    timeframe: v.string(),
+    strategy: v.string(),
+    notes: v.optional(v.string()),
+    isFeatured: v.boolean(),
+    tier: v.union(v.literal("free"), v.literal("silver"), v.literal("gold")),
+    analystId: v.id("users"),
+    closedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_analyst", ["analystId"])
+    .index("by_tier", ["tier"]),
+
+  signalSchedules: defineTable({
+    title: v.string(),
+    session: v.union(
+      v.literal("london"),
+      v.literal("new_york"),
+      v.literal("asia"),
+      v.literal("custom")
+    ),
+    dayOfWeek: v.number(),
+    time: v.string(),
+    timezone: v.string(),
+    analystName: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }),
+
+  signalMilestones: defineTable({
+    title: v.string(),
+    description: v.string(),
+    tier: v.union(v.literal("free"), v.literal("silver"), v.literal("gold")),
+    requiredSignals: v.number(),
+    requiredWinRate: v.optional(v.number()),
+    sortOrder: v.number(),
+    isActive: v.boolean(),
+  }).index("by_sortOrder", ["sortOrder"]),
 });

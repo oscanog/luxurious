@@ -30,6 +30,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
@@ -44,6 +45,7 @@ export type NavPath =
   | "/org-chart"
   | "/members"
   | "/activity-feed"
+  | "/trading-signals"
   | "/accounts"
   | "/cashflow"
   | "/currency"
@@ -72,6 +74,7 @@ const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
   { path: "/org-chart", label: "Org Chart", icon: Network },
   { path: "/members", label: "Members", icon: Users },
   { path: "/activity-feed", label: "Activity Feed", icon: Bell },
+  { path: "/trading-signals", label: "Trading Signals", icon: Zap },
 ];
 
 const FINANCE_GROUPS = [
@@ -133,6 +136,7 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/org-chart": "Organization Chart",
   "/members": "Members",
   "/activity-feed": "Activity Feed",
+  "/trading-signals": "Trading Signals",
   "/accounts": "Accounts",
   "/cashflow": "Cashflow",
   "/currency": "Currency",
