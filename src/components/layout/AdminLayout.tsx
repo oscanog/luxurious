@@ -178,8 +178,9 @@ function SidebarLink({
         cn(
           "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition-all",
           isActive
-            ? "bg-[hsl(var(--primary))] text-white shadow-[0_16px_40px_-24px_hsl(221_83%_53%_/_0.7)]"
+            ? "bg-[hsl(var(--primary))] text-white shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.4)]"
             : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
+
         )
       }
     >
@@ -496,11 +497,12 @@ export function AdminLayout({
             </div>
 
             <div className="flex min-w-0 items-center justify-center xl:px-4">
-              <div className="flex min-w-0 w-full items-center justify-center gap-2 rounded-[18px] border border-[hsl(var(--primary)/0.28)] bg-[hsl(var(--primary)/0.12)] px-4 py-[11px] text-[14px] font-semibold text-[hsl(var(--foreground))] xl:max-w-[360px]">
-                <Network size={17} className="shrink-0 text-[hsl(var(--secondary))]" />
-                <span className="truncate">Live network sync</span>
+              <div className="flex min-w-0 w-full items-center justify-center gap-2 rounded-[22px] border border-[hsl(var(--primary)/0.15)] bg-[hsl(var(--primary)/0.06)] px-5 py-[12px] text-[13px] font-bold text-[hsl(var(--foreground))] xl:max-w-[340px] shadow-sm">
+                <Network size={16} className="shrink-0 text-[hsl(var(--primary))]" />
+                <span className="truncate tracking-tight">System dynamic parity active</span>
               </div>
             </div>
+
 
             <div className="flex min-w-0 items-center gap-3 xl:justify-self-end">
               <NavLink
@@ -527,10 +529,11 @@ export function AdminLayout({
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen((current) => !current)}
-                  className="flex items-center gap-3 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1.5 pl-1.5 pr-3 text-left shadow-[0_12px_32px_-28px_hsl(221_83%_53%_/_0.5)] transition-colors hover:bg-[hsl(var(--accent))]"
+                  className="flex items-center gap-3 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1.5 pl-1.5 pr-3 text-left shadow-sm transition-all hover:bg-[hsl(var(--muted))] active:scale-95"
                   aria-haspopup="menu"
                   aria-expanded={profileMenuOpen}
                 >
+
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] text-xs font-black text-white">
                     {initials}
                   </div>

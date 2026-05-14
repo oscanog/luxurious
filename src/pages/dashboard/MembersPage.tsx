@@ -38,19 +38,21 @@ export function MembersPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
-        <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+      <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
+        <div className="flex flex-col gap-6 px-[22px] py-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
           <div className="flex-1 pb-[18px]">
-            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">Network</p>
-            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] dark:text-blue-100/60">Network</p>
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
               Directory
             </h1>
-            <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-xl">
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-xl">
               Joined, invited, and pending members. Admin directory moved back under admin.
             </p>
           </div>
         </div>
       </section>
+
+
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <StatTile label="Joined" value={dashboard?.stats.joinedCount} accentClassName="text-[hsl(var(--secondary))]" />

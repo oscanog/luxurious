@@ -40,22 +40,24 @@ export function HistoryPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+      <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
         <div className="flex flex-col gap-6 px-[22px] py-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))] mb-2">
+          <div className="flex-1 pb-[18px]">
+            <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))] dark:text-blue-100/60 mb-2">
               <Clock3 size={16} />
               <span className="text-[11px] font-black uppercase tracking-[0.18em]">History</span>
             </div>
-            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
               Activity log.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-2xl">
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-2xl">
               Promotions route here when momentum needs proof. Same underlying mobile transaction history.
             </p>
           </div>
         </div>
       </section>
+
+
       
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div />

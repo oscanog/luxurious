@@ -5,12 +5,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
 const HERO_TONES = {
-  primary: "bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]",
-  success: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300",
-  warning: "bg-amber-500/12 text-amber-600 dark:text-amber-300",
-  danger: "bg-red-500/12 text-red-600 dark:text-red-300",
+  primary: "bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]",
+  success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+  warning: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
+  danger: "bg-red-500/10 text-red-600 dark:text-red-300",
   neutral: "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]",
 } as const;
+
 
 export const INCOME_CATEGORIES = ["Salary", "Freelance", "Dividends", "Other"] as const;
 export const EXPENSE_CATEGORIES = [
@@ -45,11 +46,11 @@ export function DashboardPageHero({
   metrics?: Array<{ label: string; value: React.ReactNode; tone?: keyof typeof HERO_TONES }>;
 }) {
   return (
-    <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+    <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
       <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
         <div className="flex-1 pb-[18px]">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--foreground))]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] dark:bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--foreground))] dark:text-white">
               <Icon size={13} />
               {eyebrow}
             </span>
@@ -65,13 +66,15 @@ export function DashboardPageHero({
               </span>
             ))}
           </div>
-          <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+          <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
             {title}
           </h1>
-          <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-2xl">
+          <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-2xl">
             {description}
           </p>
         </div>
+
+
 
         {metrics.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 lg:mb-[18px] xl:min-w-[420px] xl:grid-cols-3">

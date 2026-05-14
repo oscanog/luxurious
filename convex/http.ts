@@ -192,6 +192,32 @@ http.route({
       case "profile:getRank":
         result = await ctx.runQuery(api.profile.getRank, {});
         break;
+      case "invitations:list":
+        result = await ctx.runQuery(api.invitations.list, {});
+        break;
+      case "planning:getSchedule":
+        result = await ctx.runQuery(api.planning.getEvents, {});
+        break;
+
+      case "receipts:list":
+        result = await ctx.runQuery(api.receipts.getReceipts, {});
+        break;
+
+      case "shopping:list":
+        result = await ctx.runQuery(api.shopping.getItems, {});
+        break;
+      case "support:listTickets":
+        result = await ctx.runQuery(api.support.getTickets, {});
+        break;
+      case "academy:list":
+        result = await ctx.runQuery(api.academy.getLevels, {});
+        break;
+      case "academy:get":
+        result = await ctx.runQuery(api.academy.getLesson, {
+          slug: typeof body.args?.slug === "string" ? body.args.slug : "",
+        });
+        break;
+
       case "transactions:listHistory":
         result = await ctx.runQuery(api.transactions.listHistory, {
           limit:
@@ -310,7 +336,51 @@ http.route({
             typeof body.args?.newPassword === "string" ? body.args.newPassword : "",
         });
         break;
+      case "invitations:create":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.invitations.create, {
+          email: readStringArg(body.args?.email),
+        });
+        break;
+      case "invitations:revoke":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.invitations.revoke, {
+          id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+        });
+        break;
+      case "shopping:create":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.shopping.addItem, {
+          name: readStringArg(body.args?.text),
+          quantity: "1",
+          category: "Other",
+          priority: body.args?.priority === "high" || body.args?.priority === "medium" ? body.args.priority : "low",
+        });
+        break;
+      case "shopping:toggle":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.shopping.toggleItem, {
+          id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          isChecked: body.args?.isChecked === true,
+        });
+        break;
+      case "shopping:delete":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.shopping.removeItem, {
+          id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+        });
+        break;
+      case "support:createTicket":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.support.createTicket, {
+          subject: readStringArg(body.args?.subject, "Support Ticket"),
+          message: readStringArg(body.args?.body),
+          priority: "medium",
+        });
+        break;
       case "notifications:markAllRead":
+
+
         await ctx.runMutation(api.mobile.bootstrap, {});
         result = await ctx.runMutation(api.notifications.markAllRead, {});
         break;
@@ -326,7 +396,18 @@ http.route({
             typeof body.args?.environment === "string" ? body.args.environment : "",
         });
         break;
+      case "receipts:uploadUrl":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.receipts.generateUploadUrl, {});
+        break;
+      case "receipts:save":
+        await ctx.runMutation(api.mobile.bootstrap, {});
+        result = await ctx.runMutation(api.receipts.saveReceipt, {
+          storageId: typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
+        });
+        break;
       default:
+
         return jsonResponse({ error: `Unknown mobile mutation: ${body.name}` }, 404);
     }
 

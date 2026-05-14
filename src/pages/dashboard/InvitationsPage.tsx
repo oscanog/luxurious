@@ -174,7 +174,7 @@ export function InvitationsPage() {
   };
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       {showModal && <InviteModal onClose={() => setShowModal(false)} onSend={(e) => { void handleSend(e); }} isSending={isSending} />}
       {revokeId && (
         <RevokeDialog 
@@ -184,18 +184,31 @@ export function InvitationsPage() {
         />
       )}
 
-      {/* Header row */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">Manage Invitations</h3>
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">Invite new members by sending them a secure link.</p>
+      <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
+        <div className="flex flex-col gap-6 px-[22px] py-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+          <div className="flex-1 pb-[18px]">
+            <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))] dark:text-blue-100/60 mb-2">
+              <Mail size={16} />
+              <span className="text-[11px] font-black uppercase tracking-[0.18em]">Invitations</span>
+            </div>
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
+              Manage Network
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-xl">
+              Invite new members by sending them a secure link. Track pending status and acceptance rates.
+            </p>
+          </div>
+
+          <div className="pb-[18px]">
+            <button onClick={() => setShowModal(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 shadow-[0_4px_16px_hsl(43_96%_48%/0.3)]"
+              style={{ background: "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))" }}>
+              <Plus size={15} /> Invite Member
+            </button>
+          </div>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 shadow-[0_4px_16px_hsl(43_96%_48%/0.3)]"
-          style={{ background: "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))" }}>
-          <Plus size={15} /> Invite Member
-        </button>
-      </div>
+      </section>
+
 
       {/* Count chips */}
       <div className="flex flex-wrap gap-3">

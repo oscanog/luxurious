@@ -21,17 +21,20 @@ function formatRelativeTime(timestamp: number) {
 }
 
 const toneClass: Record<string, string> = {
-  blue: "bg-blue-500/12 text-blue-600 dark:text-blue-300",
-  gold: "bg-amber-500/12 text-amber-600 dark:text-amber-300",
-  emerald: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300",
-  amber: "bg-orange-500/12 text-orange-600 dark:text-orange-300",
-  violet: "bg-violet-500/12 text-violet-600 dark:text-violet-300",
+  blue: "bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]",
+  gold: "bg-[hsl(var(--secondary)/0.14)] text-[hsl(43_76%_32%)] dark:text-[hsl(var(--secondary))]",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+  amber: "bg-orange-500/10 text-orange-600 dark:text-orange-300",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
 };
 
 export function ActivityFeedPage() {
   const feed = useQuery(api.notifications.getFeed);
   const markAllRead = useMutation(api.notifications.markAllRead);
   const markedRef = useRef(false);
+  const [limit, setLimit] = useState(10);
+  const [search, setSearch] = useState("");
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
     if (!feed || feed.unreadCount === 0 || markedRef.current) {
@@ -40,9 +43,6 @@ export function ActivityFeedPage() {
     markedRef.current = true;
     void markAllRead({});
   }, [feed, markAllRead]);
-
-  const [limit, setLimit] = useState(10);
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const loadMoreRef = useCallback((node: HTMLTableRowElement | null) => {
     if (!node) return;
@@ -65,9 +65,8 @@ export function ActivityFeedPage() {
     );
   }
 
-  const [search, setSearch] = useState("");
-
   const filteredItems = (feed?.items ?? []).filter((item) => {
+
     const needle = search.trim().toLowerCase();
     if (!needle) return true;
     return (
@@ -81,28 +80,30 @@ export function ActivityFeedPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+      <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
         <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
           <div className="flex-1 pb-[18px]">
             <div className="flex flex-wrap items-center gap-3 mb-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--foreground))]">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] dark:bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--foreground))] dark:text-white">
                 <BellRing size={13} />
                 Activity Feed
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] dark:bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))] dark:text-blue-100/80">
                 <RefreshCcw size={13} />
                 Auto-sync
               </span>
             </div>
-            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
               Alerts, rank motion, finance pulse.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-xl">
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-xl">
               Feed follows mobile behavior. Opening page clears unread badge and keeps next actions close.
             </p>
           </div>
         </div>
       </section>
+
+
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <StatTile label="Total Events" value={feed.items.length} accentClassName="text-[hsl(var(--secondary))]" />

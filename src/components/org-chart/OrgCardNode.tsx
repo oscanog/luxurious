@@ -123,12 +123,13 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         }`,
         background: "hsl(var(--card))",
         boxShadow: isRoot
-          ? "0 0 24px hsl(43 96% 48% / 0.35), 0 8px 32px hsl(0 0% 0% / 0.12)"
+          ? "0 0 24px hsl(43 96% 48% / 0.25), var(--shadow-surface)"
           : selected
-            ? `0 0 30px ${rankColor}50, 0 8px 24px hsl(0 0% 0% / 0.1)`
-            : "0 2px 12px hsl(0 0% 0% / 0.08)",
+            ? `0 0 30px ${rankColor}40, var(--shadow-surface)`
+            : "var(--shadow-surface)",
         transition: "box-shadow 0.3s, border-color 0.3s, transform 0.3s",
       }}
+
     >
       {/* Reconnect Handle */}
       {!isRoot && !member.uplineId && member.lastUplineId && (

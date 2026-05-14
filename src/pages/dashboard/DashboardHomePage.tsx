@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "convex/react";
-import { Star, UserRound, RefreshCcw } from "lucide-react";
+import { Star, UserRound, RefreshCcw, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
@@ -40,7 +40,7 @@ function MetricChip({
   value: number;
 }) {
   return (
-    <div className="rounded-[20px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-4">
+    <div className="rounded-[20px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--background))] px-4 py-4 shadow-sm">
       <p className="text-[11px] font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
       <p className="mt-1 text-[17px] leading-none font-bold text-[hsl(var(--foreground))] tabular-nums">{value}</p>
     </div>
@@ -58,18 +58,19 @@ function StatusChip({
 }) {
   const toneClassName =
     status === "joined"
-      ? "bg-[hsl(var(--primary)/0.14)] text-[hsl(var(--primary))]"
+      ? "bg-[hsl(var(--primary)/0.08)] text-[hsl(var(--primary))]"
       : status === "invited"
-        ? "bg-[hsl(var(--secondary)/0.18)] text-[hsl(43_76%_32%)] dark:text-[hsl(var(--foreground))]"
-        : "bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]";
+        ? "bg-[hsl(var(--secondary)/0.12)] text-[hsl(43_76%_32%)] dark:text-[hsl(var(--foreground))]"
+        : "bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--foreground))]";
 
   return (
-    <div className={`inline-flex items-center gap-2 rounded-full border border-[hsl(var(--border))] px-3 py-2 text-[12px] font-semibold ${toneClassName}`}>
+    <div className={`inline-flex items-center gap-2 rounded-full border border-[hsl(var(--border)/0.6)] px-3.5 py-2 text-[12px] font-bold ${toneClassName} shadow-sm`}>
       {isViewer ? <Star size={14} className="text-[hsl(var(--secondary))]" /> : <UserRound size={14} className="text-[hsl(var(--secondary))]" />}
       <span>{label}</span>
     </div>
   );
 }
+
 
 function DashboardSkeleton() {
   return (
@@ -92,6 +93,7 @@ function DashboardSkeleton() {
 
 export function DashboardHomePage() {
   const dashboard = useQuery(api.network.getDashboard);
+  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
 
   const dateLabel = useMemo(
     () =>
@@ -103,54 +105,93 @@ export function DashboardHomePage() {
     [],
   );
 
+  useEffect(() => {
+    async function fetchQuote() {
+      const CACHE_KEY = "luxxurie_daily_quote";
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const { quote, expiry } = JSON.parse(cached);
+          if (Date.now() < expiry) {
+            setQuote(quote);
+            return;
+          }
+        } catch (e) {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+
+      try {
+        const res = await fetch("https://api.allorigins.win/raw?url=https://zenquotes.io/api/random");
+        const data = await res.json();
+        if (data && data[0]) {
+          const newQuote = { text: data[0].q, author: "Luxxurie" };
+          setQuote(newQuote);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            quote: newQuote,
+            expiry: Date.now() + 24 * 60 * 60 * 1000 // 24h
+          }));
+        }
+      } catch (e) {
+        setQuote({ text: "The path to luxury is paved with consistent focus.", author: "Luxxurie" });
+      }
+    }
+    void fetchQuote();
+  }, []);
+
   if (dashboard === undefined) {
     return <DashboardSkeleton />;
   }
 
-  const heroSummary = `${dashboard.stats.joinedCount} joined, ${dashboard.stats.invitedCount} invited, ${dashboard.stats.pendingCount} pending.`;
+  const statsText = `${dashboard.stats.joinedCount} joined, ${dashboard.stats.invitedCount} invited, ${dashboard.stats.pendingCount} pending`;
 
   return (
-    <div className="mx-auto max-w-[1160px] space-y-5 p-4 sm:p-6 lg:p-8">
-      <div className="flex items-start justify-between">
+    <div className="mx-auto max-w-[1160px] space-y-6 p-4 sm:p-6 lg:p-8 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
-          <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
-            Build the network.
-          </h1>
+          <h2 className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--primary))]">Network Pulse</h2>
         </div>
-        <button 
-          onClick={() => {
-            toast.success("Metrics synced with backend", {
-              icon: <RefreshCcw size={16} className="animate-spin text-emerald-500" />,
-              style: {
-                borderRadius: '16px',
-                background: 'hsl(var(--card))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
-                fontWeight: 'bold',
-                fontSize: '13px'
-              }
-            });
-          }}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-all hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:scale-105 active:scale-95"
-        >
-          <RefreshCcw size={18} />
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => {
+              toast.success("Metrics synced", {
+                style: {
+                  borderRadius: '16px',
+                  background: 'hsl(var(--card))',
+                  color: 'hsl(var(--foreground))',
+                  border: '1px solid hsl(var(--border))',
+                  fontWeight: 'bold',
+                  fontSize: '13px'
+                }
+              });
+            }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-all hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:scale-105 active:scale-95"
+          >
+            <RefreshCcw size={18} />
+          </button>
+        </div>
+
       </div>
 
-      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[linear-gradient(135deg,#F5F8FF,#DDE9FF)] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
+      <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
         <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
           <div className="flex-1 pb-[18px]">
-            <div className="max-w-[260px] rounded-[20px] border border-[#D6E4FF] bg-white px-[14px] py-[10px] dark:border-white/10 dark:bg-[rgb(15_42_107_/_0.9)]">
-              <p className="text-[15px] leading-[1.35] font-normal text-[hsl(var(--foreground))]">{heroSummary}</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(210_30%_90%)] bg-white/60 backdrop-blur-sm px-[14px] py-[6px] dark:border-white/10 dark:bg-[rgb(15_42_107_/_0.9)]">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[hsl(var(--foreground))] dark:text-white/80">{statsText}</p>
             </div>
-            <p className="mt-[18px] text-[24px] font-bold leading-[1.08] text-[hsl(var(--foreground))]">
-              {dashboard.viewer?.name ?? "Trader"}
-            </p>
-            <p className="mt-1 text-[14px] font-medium text-[hsl(43_76%_40%)] dark:text-[hsl(var(--secondary))]">
-              {dashboard.viewer?.roleTitle ?? "Network Lead"}
-            </p>
+            
+            <div className="mt-8 max-w-xl pb-4">
+              <p className="text-[20px] font-bold leading-[1.3] text-[hsl(var(--foreground))] dark:text-white sm:text-[28px] italic">
+                "{quote?.text ?? "Loading inspiration..."}"
+              </p>
+              <p className="mt-3 text-[14px] font-black uppercase tracking-[0.18em] text-[hsl(var(--primary))] dark:text-blue-300">
+                — {quote?.author ?? "Luxxurie"}
+              </p>
+            </div>
           </div>
+
           <div className="flex justify-end">
             <img
               src={owlFrontLeft}
@@ -161,7 +202,7 @@ export function DashboardHomePage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-4 lg:max-w-[760px]">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {HERO_STATS.map((item) => (
           <StatTile
             key={item.key}
@@ -244,3 +285,4 @@ export function DashboardHomePage() {
     </div>
   );
 }
+

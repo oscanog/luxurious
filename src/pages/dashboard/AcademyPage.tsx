@@ -127,37 +127,49 @@ export function AcademyPage() {
 
   // -- Hub View --
   return (
-    <div className="p-6 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[hsl(var(--foreground))]">Trading Academy</h1>
-          <p className="text-[hsl(var(--muted-foreground))] mt-1">Master trading from zero to hero. Self-paced. No fluff.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 rounded-xl border border-amber-500/30 flex items-center gap-3 shadow-lg shadow-amber-500/10" style={{ background: "linear-gradient(135deg, hsl(43 96% 58%), hsl(43 96% 48%))" }}>
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Zap size={18} className="text-white fill-white" />
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
+      <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
+        <div className="flex flex-col gap-6 px-[22px] py-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+          <div className="flex-1 pb-[4px]">
+            <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))] dark:text-blue-100/60 mb-2">
+              <BookOpen size={16} />
+              <span className="text-[11px] font-black uppercase tracking-[0.18em]">Academy</span>
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-amber-900/60">XP Earned</p>
-              {isHubLoading ? <Skeleton className="h-4 w-8 bg-white/40" /> : <p className="text-sm font-black text-white tabular-nums">{xp}</p>}
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
+              Trading Academy
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-xl">
+              Master trading from zero to hero. Self-paced, no fluff, strictly results-driven.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 pb-[18px]">
+            <div className="px-4 py-3 rounded-[24px] border border-amber-500/20 bg-white/60 backdrop-blur-md flex items-center gap-3 shadow-lg shadow-amber-500/5 dark:bg-white/5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Zap size={18} className="text-amber-500 fill-amber-500" />
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-wider text-amber-600/60 dark:text-amber-400/60">XP Earned</p>
+                {isHubLoading ? <Skeleton className="h-4 w-8" /> : <p className="text-[16px] font-black text-[hsl(var(--foreground))] tabular-nums leading-none mt-0.5">{xp}</p>}
+              </div>
+            </div>
+            
+            <div className="px-4 py-3 rounded-[24px] border border-blue-500/20 bg-white/60 backdrop-blur-md flex items-center gap-3 shadow-lg shadow-blue-500/5 dark:bg-white/5">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Trophy size={18} className="text-blue-500 fill-blue-500" />
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-wider text-blue-600/60 dark:text-blue-400/60">Progress</p>
+                {isHubLoading ? <Skeleton className="h-4 w-12" /> : <p className="text-[16px] font-black text-[hsl(var(--foreground))] tabular-nums leading-none mt-0.5">{completedSlugs.length}/{totalLessons}</p>}
+              </div>
             </div>
           </div>
-          
-          <div className="px-4 py-2 rounded-xl border border-amber-500/30 flex items-center gap-3 shadow-lg shadow-amber-500/10" style={{ background: "linear-gradient(135deg, hsl(43 96% 58%), hsl(43 96% 48%))" }}>
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Trophy size={18} className="text-white fill-white" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-amber-900/60">Progress</p>
-              {isHubLoading ? <Skeleton className="h-4 w-12 bg-white/40" /> : <p className="text-sm font-black text-white tabular-nums">{completedSlugs.length}/{totalLessons}</p>}
-            </div>
-          </div>
         </div>
-      </div>
+      </section>
 
       {/* XP Bar */}
-      <div className="p-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+      <div className="p-5 rounded-[30px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Overall Progress</p>
           {isHubLoading ? <Skeleton className="h-4 w-8" /> : <p className="text-xs font-black text-[hsl(var(--foreground))]">{totalLessons > 0 ? Math.round((completedSlugs.length / totalLessons) * 100) : 0}%</p>}

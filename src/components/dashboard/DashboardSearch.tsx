@@ -60,8 +60,9 @@ export function DashboardFilterButton({
         "rounded-full px-5 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition-all",
         active
           ? "bg-[hsl(var(--primary))] text-white shadow-lg shadow-[hsl(var(--primary)/0.25)]"
-          : "bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+          : "bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border)/0.5)] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--border))] shadow-sm"
       )}
+
     >
       {label}
     </button>

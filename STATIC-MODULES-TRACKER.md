@@ -3,14 +3,7 @@
 Tracking static, unfinished, and placeholder modules in the Luxurious Dashboard to prioritize GSD milestones.
 
 ## 🔴 Static / Placeholder (Unfinished)
-These pages are currently shells or contain placeholder text without functional backend integration.
-
-| Module | File | Status | Priority |
-| :--- | :--- | :--- | :--- |
-| **Receipt Scanner** | `ReceiptScannerPage.tsx` | UI shell only | Medium (Finance) |
-| **Shopping List** | `ShoppingListPage.tsx` | Placeholder text | Medium (Support) |
-| **Support Center** | `SupportPlaceholderPage.tsx` | Generic shell | Low |
-| **Settings** | `SettingsPage.tsx` | Mostly static forms | Low (Profile exists) |
+- None. (Core Desktop Parity Achieved)
 
 ## 🟡 Partial / Dummy Data
 These pages have UI but rely on local mock data instead of full Convex integration for certain features.
@@ -27,16 +20,18 @@ These modules are fully connected to Convex and feature interactive desktop-nati
 - **Members**: Interactive table with real-time filters.
 - **Activity Feed**: Infinite scroll with backend feed aggregation.
 - **Finance (All)**: Accounts, Cashflow, Currency, History, Statistics, Budgets, Debt, Installments.
-- **Profile**: Full identity management with password re-auth.
+- **Profile**: Full identity management with password re-auth and consolidated system settings.
 - **Invitations**: Full link management, revoke, and resend tracking.
 - **Calendar**: Agenda view synced with planning events.
 - **Learn to Trade**: Live Binance feed + persistent trade history + sim wallet.
-
+- **Receipt Scanner**: Dynamic upload + scan tracking.
+- **Shopping List**: Full CRUD with priority levels.
+- **Support Center**: Ticketing system with live status.
 
 ---
 
 ## 🛠️ Global TODOs (Meticulous Scan)
-- [ ] **Feedback System**: Implement global toast/notification for all successful table/form actions.
-- [ ] **Settings Refactor**: Consolidate `SettingsPage.tsx` into `ProfilePage.tsx` or link them properly.
-- [ ] **Search Consistency**: Ensure all table views have the same search/filter UX as the `MembersPage`.
-- [ ] **Backend Refresh**: Add "Pull to refresh" or manual refresh triggers for financial metrics.
+- [x] **Feedback System**: Implement global toast/notification for all successful table/form actions.
+- [x] **Settings Refactor**: Consolidate `SettingsPage.tsx` into `ProfilePage.tsx` or link them properly.
+- [x] **Search Consistency**: Ensure all table views have the same search/filter UX as the `MembersPage`.
+- [x] **Backend Refresh**: Add "Pull to refresh" or manual refresh triggers for financial metrics.

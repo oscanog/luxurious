@@ -244,6 +244,32 @@ export function ProfilePage() {
               {isUpdatingPassword ? "Updating" : "Update password"}
             </button>
           </SurfaceCard>
+
+          <SurfaceCard className="p-6 sm:p-7">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-500/12 text-violet-600 dark:text-violet-300">
+                <ShieldCheck size={18} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
+                  System
+                </p>
+                <h2 className="text-xl font-black text-[hsl(var(--foreground))]">Preferences</h2>
+              </div>
+            </div>
+
+            <dl className="mt-6 space-y-4">
+              <MetaRow label="Email Notifications">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">Coming Soon</span>
+              </MetaRow>
+              <MetaRow label="Two-Factor Auth">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">Coming Soon</span>
+              </MetaRow>
+              <MetaRow label="Audit logs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">Admin Only</span>
+              </MetaRow>
+            </dl>
+          </SurfaceCard>
         </div>
       </div>
     </div>

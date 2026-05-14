@@ -44,26 +44,27 @@
 
 /* ── Light Mode ────────────────────────────────────────────── */
 :root {
-  --background:           214 45% 98%;
-  --foreground:           222 47% 11%;
-  --card:                 0 0% 100%;
-  --card-foreground:      222 47% 11%;
+  --background:           210 20% 97%;   /* Soft gray-blue background */
+  --foreground:           222 47% 12%;   /* Deep navy, not pure black */
+  --card:                 0 0% 100%;     /* Clean white cards for contrast */
+  --card-foreground:      222 47% 12%;
   --primary:              221 83% 53%;
   --primary-foreground:   0 0% 100%;
   --secondary:            43 96% 48%;   /* Gold ✨ */
   --secondary-foreground: 0 0% 100%;
-  --secondary-muted:      43 96% 90%;
+  --secondary-muted:      43 96% 94%;
   --secondary-glow:       43 96% 60%;
   --accent:               216 100% 96%;
-  --accent-foreground:    222 47% 11%;
-  --muted:                215 44% 94%;
-  --muted-foreground:     216 23% 45%;
-  --border:               215 32% 90%;
-  --input:                215 32% 90%;
+  --accent-foreground:    222 47% 12%;
+  --muted:                210 16% 93%;
+  --muted-foreground:     216 18% 40%;
+  --border:               210 16% 88%;   /* Slightly darker for better definition */
+  --input:                210 16% 88%;
   --ring:                 221 83% 53%;
 
-  /* Org chart connector */
+
   --oc-connector: hsl(215 32% 75%);
+  --shadow-surface: 0 8px 30px -4px hsl(220 30% 10% / 0.03), 0 4px 12px -4px hsl(220 30% 10% / 0.03);
 }
 
 /* ── Dark Mode ─────────────────────────────────────────────── */
@@ -87,7 +88,9 @@
   --ring:                 221 83% 53%;
 
   --oc-connector: hsl(218 36% 35%);
+  --shadow-surface: 0 24px 80px -56px hsl(220 60% 20% / 0.42);
 }
+
 
 /* ── Base Reset ─────────────────────────────────────────────── */
 *, *::before, *::after {
