@@ -30,6 +30,7 @@ import { PromotionsPage } from "@/pages/dashboard/PromotionsPage";
 import { ReceiptScannerPage } from "@/pages/dashboard/ReceiptScannerPage";
 import { ShoppingListPage } from "@/pages/dashboard/ShoppingListPage";
 import { StatisticsPage } from "@/pages/dashboard/StatisticsPage";
+import { TradingSignalsPage } from "@/pages/dashboard/TradingSignalsPage";
 import {
   ThemeMode,
   applyThemeMode,
@@ -90,6 +91,7 @@ function AuthenticatedApp({
         <Route path="/members" element={<MembersPage />} />
         <Route path="/invitations" element={<Navigate to="/members" replace />} />
         <Route path="/activity-feed" element={<ActivityFeedPage />} />
+        <Route path="/trading-signals" element={<TradingSignalsPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/cashflow" element={<CashflowPage />} />
         <Route path="/currency" element={<CurrencyPage />} />

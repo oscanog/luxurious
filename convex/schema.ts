@@ -94,6 +94,7 @@ export default defineSchema({
     avatarRotationQuarterTurns: v.optional(v.number()),
     avatarScale: v.optional(v.number()),
     avatarStorageId: v.optional(v.id("_storage")),
+    tier: v.optional(v.union(v.literal("free"), v.literal("silver"), v.literal("gold"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
