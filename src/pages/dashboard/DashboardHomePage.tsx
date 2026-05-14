@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "convex/react";
-import { Star, UserRound, RefreshCcw, Plus } from "lucide-react";
+import { Star, UserRound, RefreshCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
@@ -139,6 +139,26 @@ export function DashboardHomePage() {
     void fetchQuote();
   }, []);
 
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (tz: string) => {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).format(now);
+  };
+
+  const phTime = formatTime("Asia/Manila");
+  const caTime = formatTime("America/Toronto");
+
   if (dashboard === undefined) {
     return <DashboardSkeleton />;
   }
@@ -148,10 +168,18 @@ export function DashboardHomePage() {
   return (
     <div className="mx-auto max-w-[1160px] space-y-6 p-4 sm:p-6 lg:p-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
-          <h2 className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--primary))]">Network Pulse</h2>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
+              PH: <span className="tabular-nums font-bold opacity-80">{phTime}</span>
+            </p>
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
+              CANADA: <span className="tabular-nums font-bold opacity-80">{caTime}</span>
+            </p>
+          </div>
         </div>
+
         <div className="flex items-center gap-3">
           <button 
             onClick={() => {
