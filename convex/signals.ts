@@ -158,26 +158,6 @@ export const listHistory = query({
   },
 });
 
-export const getStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const signals = await ctx.db.query("tradingSignals").collect();
-    
-    const active = signals.filter(s => s.status === "active");
-    const closed = signals.filter(s => s.status === "tp_hit" || s.status === "sl_hit");
-    const tp_hits = closed.filter(s => s.status === "tp_hit");
-    
-    const winRate = closed.length > 0 ? (tp_hits.length / closed.length) * 100 : 0;
-    const totalPips = closed.reduce((acc, s) => acc + (s.result ?? 0), 0);
-
-    return {
-      winRate: Math.round(winRate),
-      totalPips,
-      activeCount: active.length,
-    };
-  },
-});
-
 export const getFeatured = query({
   args: {},
   handler: async (ctx) => {
@@ -185,6 +165,6 @@ export const getFeatured = query({
       .query("tradingSignals")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.eq(q.field("isFeatured"), true))
-      .first();
+      .unique();
   },
 });

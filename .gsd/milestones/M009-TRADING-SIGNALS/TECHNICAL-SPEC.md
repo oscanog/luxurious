@@ -85,9 +85,10 @@
 
 | Section | Component Type | Why This Component |
 | :--- | :--- | :--- |
-| **Stats Overview** | `StatsGrid` (4 metric cards) | Quick KPI scan: Win Rate, Active Count, Monthly Pips, Featured signal |
-| **Create Signal** | `Inline Form Card` | Fast input. Symbol dropdown, entry/tp/sl numeric inputs, strategy select, tier radio. No modal — speed matters |
-| **Active Signals** | `Table` with row actions | Table = best for dense data + quick actions (TP Hit, SL Hit, Cancel, Edit). Sortable by date/symbol |
+| **Stats Overview** | `StatsGrid` | Quick KPI scan: Win Rate, Active Count, Monthly Pips, Featured signal |
+| **Activity Logs** | `Code Card Grid` | Clickable cards for tracking user performance per signal code |
+| **Tracking Table** | `Attendance Table` | Grid view of daily session participation (3pm, 6pm, etc.) |
+| **Create Signal** | `Inline Form Card` | Fast input. Symbol dropdown, entry/tp/sl numeric inputs, strategy select, tier radio. |
 | **Signal History** | `Table` with status pills | Filterable by status, date range, symbol. Color-coded result column (green/red) |
 | **Schedule Manager** | `Card Grid` (day-of-week cards) | Visual weekly calendar. Each day-card shows scheduled sessions. Toggle active/inactive |
 | **Milestone Editor** | `Ordered List Cards` | Drag-sortable tier cards showing progression path |
