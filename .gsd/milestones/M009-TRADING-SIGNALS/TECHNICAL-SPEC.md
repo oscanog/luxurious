@@ -84,7 +84,8 @@
 | Section | Component | Description |
 | :--- | :--- | :--- |
 | **Hero** | `DashboardPageHero` | Title + eyebrow badge |
-| **Signal Logs** | `StatTile` grid (full-width, `grid-cols-4`) | Signal code cards (e.g., "29", "30") with success/error/pending status. Same design as MembersPage StatTile |
+| **Signal Logs** | `StatTile` grid | Displays dynamic stats based on the selected date: Total Signals, Success (TP Hit), Failed (SL Hit), and Pending/Active signals. Fetched via `api.signals.getDailyStats`. |
+| **Toolbar** | Search & Date Picker | Features a search bar and a responsive, mobile-friendly HTML5 `<input type="date">` calendar selector to choose the target date for both the stats and the daily tracking table. |
 | **Tab Switcher** | Pill-style tab bar | Switches between two tables |
 | **Tab 1: Daily Tracking** | `SurfaceCard` table | Columns: User, 3 PM, 6 PM, 8 PM, 10 PM. ✅/❌ per cell. Also includes a Mail icon on hover that opens a `BeepUserDialog` to send custom email notifications via Convex Action (nodemailer + Gmail). Uses `usePaginatedQuery` and includes a search bar on the left. |
 | **Tab 2: Access & Promotions** | `SurfaceCard` table | Columns: User, Current Tier (free/silver/gold badge), Promoted Date, Promote dropdown. Uses `usePaginatedQuery` and includes a search bar on the left. |
