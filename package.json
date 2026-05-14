@@ -44,5 +44,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.9"
+  },
+  "overrides": {
+    "nodemailer": "^8.0.7"
   }
 }
