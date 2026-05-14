@@ -1,41 +1,56 @@
 # Requirements
 Capability contract.
 
-## 1. Auth & Security
+## 1. Product Parity
+- [x] Desktop default flow mirrors mobile shell and page hierarchy.
+- [x] Desktop labels stay familiar to mobile users.
+- [x] Desktop preserves mobile quick-access paths for Home, Org Chart, Alerts, and Profile.
+- [x] Desktop keeps badge semantics for unread notifications and active promotions.
+
+## 2. Auth & Session
 - [x] Login/logout (Convex Auth).
 - [x] Protected routes (Auth only).
 - [ ] Role-based access (RBAC).
+- [x] Post-login bootstrap ensures mobile profile-backed data exists for web user.
+- [x] Theme preference persists before and after login.
 
-## 2. Org Chart
+## 3. Dashboard Home
+- [x] Network-first signed-in landing page.
+- [x] Desktop home top bar, headline, owl hero card, and 2x2 stat grid match mobile hierarchy.
+- [ ] Backend health + refresh affordance.
+- [x] Hero summary, stats, org summary, and direct members cards.
+- [x] Quick links into org chart, feed, and profile.
+
+## 4. Network
 - [x] Visualize hierarchy.
-- [ ] **Full CRUD**: Add/Remove nodes on chart via modern UI.
-- [ ] **Dynamic Root**: Pivot focus on card click.
-- [ ] **Breadcrumbs**: Show navigation path back to root.
-- [x] **Member Sidebar**: Collapsible panel for quick user assignment.
-- [x] **Connection Dialog**: Dynamic manager selection from visible canvas.
-- [x] **Reconnect Handle**: One-click restoration of previous connections.
-- [x] **Connection Tracking**: Backend support to trace broken vs unused links.
-- [x] **Drag-drop**: Reorganize hierarchy via canvas interactions.
+- [ ] Member sidebar quick assignment.
+- [ ] Connection dialog from visible canvas.
+- [ ] Reconnect handle for broken link recovery.
+- [ ] Connection tracking support.
+- [ ] Drag-drop reorg interactions.
+- [ ] Dynamic root focus parity language.
+- [x] Members filters aligned with mobile statuses.
+- [x] Feed page with mark-all-read behavior.
 
-## 3. Member Management
-- [x] List members.
-- [ ] Search + Filter.
-- [ ] Update roles/perms.
-- [ ] Remove members.
+## 5. Profile + Engagement
+- [x] Dedicated profile page with identity fields, rank, avatar state, verification state.
+- [x] Promotions page with CTA links.
+- [x] Notification summary visible in shell.
+- [x] Password change flow with re-auth handling.
 
-## 4. Invitations
-- [x] List pending/accepted.
-- [ ] Send via email.
-- [ ] Resend/Revoke.
-- [ ] Batch support.
-
-## 5. UI/UX
+## 6. UI/UX
 - [x] Responsive layout.
+- [x] Light mode parity.
 - [x] Dark mode.
 - [x] Real-time updates.
-- [ ] Feedback on action.
+- [x] Desktop top navbar absorbs home sync controls and keeps user dropdown in-shell.
+- [x] Desktop shell brand card uses mobile-aligned solid blue field instead of desktop-only radial gradient treatment.
+- [ ] Feedback on actions across new pages.
+- [x] Sidebar groups match mobile taxonomy: Network, Finance, Support, Admin, Profile, Settings.
+- [x] Finance and planning pages exist for desktop parity routes.
+- [ ] Support placeholder utilities expanded beyond parity shells where product requires full behavior.
 
 ## Out of Scope
-- Mobile native.
 - Public landing page.
-- Financial integrations.
+- Desktop-only information architecture fork.
+- Removing advanced org-chart/admin capabilities that already work.

@@ -54,9 +54,9 @@ export function AdminPortalPage() {
           <div className="space-y-3">
             {[
               { title: "Academy Content Manager", desc: "Edit levels, lessons, and slugs.", path: "/admin/academy" },
-              { title: "User Directory", desc: "Manage roles and virtual balances.", path: "/members" },
+              { title: "User Directory", desc: "Manage roles and virtual balances.", path: "/admin/users" },
               { title: "Global Trade Monitor", desc: "View all live and past trades.", path: "/admin/trades" },
-              { title: "Risk Parameters", desc: "Configure leverage and fees.", path: "/settings" },
+              { title: "Profile + Security", desc: "Review profile, rank, and password workflow.", path: "/profile" },
             ].map((tool) => (
               <Link 
                 key={tool.title} 

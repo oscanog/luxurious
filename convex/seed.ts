@@ -1,5 +1,6 @@
-import { internalMutation, action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internalMutation, action, mutation, query } from "./_generated/server";
+import { internal, api } from "./_generated/api";
+import { Doc, Id } from "./_generated/dataModel";
 import { createAccount } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
@@ -14,6 +15,20 @@ const SEED_USERS = [
   { name: "Henry Cruz",      email: "henry@luxurious.trade",   role: "member" as const, balance: 30000 },
 ];
 
+const DEMO_HIERARCHY = [
+  { email: "clara@luxurious.trade", uplineEmail: "alice@luxurious.trade" },
+  { email: "david@luxurious.trade", uplineEmail: "alice@luxurious.trade" },
+  { email: "frank@luxurious.trade", uplineEmail: "alice@luxurious.trade" },
+  { email: "bob@luxurious.trade", uplineEmail: "clara@luxurious.trade" },
+  { email: "grace@luxurious.trade", uplineEmail: "david@luxurious.trade" },
+  { email: "henry@luxurious.trade", uplineEmail: "frank@luxurious.trade" },
+] as const;
+
+const DEMO_ROOT_EMAILS = [
+  "alice@luxurious.trade",
+  "eva@luxurious.trade",
+] as const;
+
 export const seedUsers = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -24,7 +39,7 @@ export const seedUsers = internalMutation({
       const existing = await ctx.db
         .query("users")
         .withIndex("email", (q) => q.eq("email", u.email))
-        .unique();
+        .first();
 
       if (existing) { skipped++; continue; }
 
@@ -81,17 +96,109 @@ export const ensureSeedUser = internalMutation({
   },
 });
 
+export const seedDemoHierarchy = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const emails = new Set<string>();
+    for (const rootEmail of DEMO_ROOT_EMAILS) {
+      emails.add(rootEmail);
+    }
+    for (const link of DEMO_HIERARCHY) {
+      emails.add(link.email);
+      emails.add(link.uplineEmail);
+    }
+
+    const usersByEmail = new Map<string, { _id: Id<"users">; uplineId?: Id<"users"> | null }>();
+    for (const email of emails) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", email))
+        .first();
+      if (user) {
+        usersByEmail.set(email, {
+          _id: user._id,
+          uplineId: user.uplineId ?? null,
+        });
+      }
+    }
+
+    const missing = Array.from(emails).filter((email) => !usersByEmail.has(email));
+    if (missing.length > 0) {
+      return { patched: 0, missing };
+    }
+
+    let patched = 0;
+
+    for (const rootEmail of DEMO_ROOT_EMAILS) {
+      const root = usersByEmail.get(rootEmail);
+      if (!root) {
+        continue;
+      }
+      if (root.uplineId !== null) {
+        await ctx.db.patch("users", root._id, {
+          uplineId: null,
+          lastUplineId: root.uplineId ?? undefined,
+        });
+        patched += 1;
+      }
+    }
+
+    for (const link of DEMO_HIERARCHY) {
+      const user = usersByEmail.get(link.email);
+      const upline = usersByEmail.get(link.uplineEmail);
+      if (!user || !upline) {
+        continue;
+      }
+      if (user.uplineId !== upline._id) {
+        await ctx.db.patch("users", user._id, {
+          uplineId: upline._id,
+          lastUplineId: user.uplineId ?? undefined,
+        });
+        patched += 1;
+      }
+    }
+
+    return { patched, missing: [] as string[] };
+  },
+});
+
+export const patchSeedUser = internalMutation({
+  args: {
+    email: v.string(),
+    role: v.union(v.literal("admin"), v.literal("member")),
+    balance: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) return;
+
+    // Patch role if missing
+    if (!user.role) {
+      await ctx.db.patch("users", user._id, { role: args.role });
+    }
+
+    // Ensure wallet exists
+    const wallet = await ctx.db
+      .query("wallets")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!wallet) {
+      await ctx.db.insert("wallets", {
+        userId: user._id,
+        balance: args.balance,
+      });
+    }
+  },
+});
+
 export const seedUsersWithPasswords = action({
   args: {},
   handler: async (ctx) => {
     for (const u of SEED_USERS) {
-      await ctx.runMutation(internal.seed.ensureSeedUser, {
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        balance: u.balance,
-      });
-
+      // 1. Create auth account (this also creates the user row)
       try {
         await createAccount(ctx, {
           provider: "password",
@@ -104,11 +211,83 @@ export const seedUsersWithPasswords = action({
             email: u.email,
             role: u.role,
           },
-          shouldLinkViaEmail: true,
+          shouldLinkViaEmail: false,
         });
       } catch {
-        // Already exists or link error
+        // Already exists
       }
+
+      // 2. Patch role + wallet onto the auth-created user
+      await ctx.runMutation(internal.seed.patchSeedUser, {
+        email: u.email,
+        role: u.role,
+        balance: u.balance,
+      });
     }
+  },
+});
+
+export const clearAllUsers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Clear auth tables first (they reference users)
+    const authAccounts = await ctx.db.query("authAccounts").collect();
+    for (const row of authAccounts) {
+      await ctx.db.delete(row._id);
+    }
+    const authSessions = await ctx.db.query("authSessions").collect();
+    for (const row of authSessions) {
+      await ctx.db.delete(row._id);
+    }
+    const authRefreshTokens = await ctx.db.query("authRefreshTokens").collect();
+    for (const row of authRefreshTokens) {
+      await ctx.db.delete(row._id);
+    }
+    const authVerificationCodes = await ctx.db.query("authVerificationCodes").collect();
+    for (const row of authVerificationCodes) {
+      await ctx.db.delete(row._id);
+    }
+    const authVerifiers = await ctx.db.query("authVerifiers").collect();
+    for (const row of authVerifiers) {
+      await ctx.db.delete(row._id);
+    }
+    const authRateLimits = await ctx.db.query("authRateLimits").collect();
+    for (const row of authRateLimits) {
+      await ctx.db.delete(row._id);
+    }
+    // Clear app tables
+    const users = await ctx.db.query("users").collect();
+    for (const user of users) {
+      await ctx.db.delete(user._id);
+    }
+    const wallets = await ctx.db.query("wallets").collect();
+    for (const wallet of wallets) {
+      await ctx.db.delete(wallet._id);
+    }
+    const profiles = await ctx.db.query("mobileProfiles").collect();
+    for (const profile of profiles) {
+      await ctx.db.delete(profile._id);
+    }
+    const network = await ctx.db.query("networkMembers").collect();
+    for (const member of network) {
+      await ctx.db.delete(member._id);
+    }
+    return users.length;
+  },
+});
+
+export const seedAll = action({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.runMutation(internal.seed.clearAllUsers, {});
+    await ctx.runAction(api.seed.seedUsersWithPasswords, {});
+    await ctx.runMutation(internal.seed.seedDemoHierarchy, {});
+  },
+});
+
+export const listAllUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").collect();
   },
 });

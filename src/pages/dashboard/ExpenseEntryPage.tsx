@@ -1,0 +1,1 @@
+export { ExpenseEntryPage } from "./IncomeEntryPage";

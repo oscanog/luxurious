@@ -1,27 +1,38 @@
 import { useAuthActions } from "@convex-dev/auth/react";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { ThemeMode } from "@/lib/theme";
 
-export function LoginPage() {
+export function LoginPage({
+  themeMode,
+  onToggleTheme,
+}: {
+  themeMode: ThemeMode;
+  onToggleTheme: () => void;
+}) {
   const { signIn } = useAuthActions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
     setLoading(true);
+
     const formData = new FormData();
     formData.set("email", email);
     formData.set("password", password);
     formData.set("flow", "signIn");
+
     try {
       await signIn("password", formData);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
-      setError(msg);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid credentials. Please try again.";
+      setError(message);
       toast.error("Sign-in failed");
     } finally {
       setLoading(false);
@@ -29,10 +40,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--background))] relative overflow-hidden">
-      <Toaster position="top-right" />
-
-      {/* Background decoration */}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[hsl(var(--background))]">
       <div
         className="absolute inset-0 opacity-30 pointer-events-none"
         style={{
@@ -41,14 +49,19 @@ export function LoginPage() {
         }}
       />
 
-      {/* Card */}
-      <div
-        className="relative z-10 w-full max-w-[420px] mx-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-10 shadow-[0_20px_50px_-38px_hsl(215_44%_70%)]"
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.86)] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[hsl(var(--foreground))] backdrop-blur"
       >
-        {/* Logo / Brand */}
-        <div className="flex flex-col items-center mb-8">
+        {themeMode === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+        {themeMode === "dark" ? "Light Mode" : "Dark Mode"}
+      </button>
+
+      <div className="relative z-10 mx-4 w-full max-w-[420px] rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-10 shadow-[0_20px_50px_-38px_hsl(215_44%_70%)]">
+        <div className="mb-8 flex flex-col items-center">
           <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center mb-4 relative overflow-hidden"
+            className="relative mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl"
             style={{ background: "#2563eb" }}
           >
             <div
@@ -58,24 +71,22 @@ export function LoginPage() {
                 backgroundSize: "12px 12px",
               }}
             />
-            <span className="relative z-10 text-white font-extrabold text-xl tracking-tight">L</span>
+            <span className="relative z-10 text-xl font-extrabold tracking-tight text-white">L</span>
           </div>
           <h1 className="text-[28px] font-extrabold tracking-tight text-[hsl(var(--foreground))]">
             Luxurious
           </h1>
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
-            Admin access only — sign in to continue
+          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+            Mobile-familiar desktop workspace
           </p>
         </div>
 
-        {/* Gold divider */}
         <div
-          className="h-px mb-8"
+          className="mb-8 h-px"
           style={{ background: "linear-gradient(to right, transparent, hsl(43 96% 48% / 0.6), transparent)" }}
         />
 
-        {/* Form */}
-        <form onSubmit={(e) => { void handleSubmit(e); }} className="flex flex-col gap-4">
+        <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="email"
@@ -89,9 +100,9 @@ export function LoginPage() {
               autoComplete="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder="admin@luxurious.trade"
-              className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none transition-all focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
+              className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
             />
           </div>
 
@@ -108,9 +119,9 @@ export function LoginPage() {
               autoComplete="current-password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] outline-none transition-all focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
+              className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
             />
           </div>
 
@@ -123,7 +134,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               background: loading
                 ? "hsl(43 96% 48%)"
@@ -131,13 +142,12 @@ export function LoginPage() {
               boxShadow: loading ? "none" : "0 4px 20px hsl(43 96% 48% / 0.35)",
             }}
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        {/* Footer note */}
         <p className="mt-6 text-center text-xs text-[hsl(var(--muted-foreground))]">
-          No account? Contact your system administrator.
+          Same account. Same network flow. Bigger screen.
         </p>
       </div>
     </div>

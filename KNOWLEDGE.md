@@ -7,7 +7,8 @@ Patterns + rules.
 - **Action for Effects**: Third-party API? Use `action`.
 
 ## UI/UX
-- **Dark Mode**: Deep palette only. Background dark.
+- **Parity Source**: Mobile repo drives shell, labels, and route priority.
+- **Theme**: Light + dark both first-class. Persist choice.
 - **Icons**: Lucide always.
 - **Vite Alias**: `@/` for `src/`.
 

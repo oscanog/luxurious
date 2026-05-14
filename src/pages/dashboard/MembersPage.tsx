@@ -1,159 +1,162 @@
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Shield, Coins, Search } from "lucide-react";
 import { useState } from "react";
-import toast from "react-hot-toast";
-import { Skeleton } from "../../components/ui/Skeleton";
+import { useQuery } from "convex/react";
+import { Search, Users } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
+import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
+import { Skeleton } from "@/components/ui/Skeleton";
+
+type MemberStatus = "all" | "joined" | "invited" | "pending";
+
+const FILTERS: Array<{ value: MemberStatus; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "joined", label: "Joined" },
+  { value: "invited", label: "Invited" },
+  { value: "pending", label: "Pending" },
+];
 
 export function MembersPage() {
-  const users = useQuery(api.admin.getUsers);
-  const setAdminStatus = useMutation(api.admin.setAdminStatus);
-  const resetBalance = useMutation(api.admin.resetBalance);
-  
+  const [status, setStatus] = useState<MemberStatus>("all");
   const [search, setSearch] = useState("");
 
-  const isLoading = users === undefined;
-  const userList = users ?? [];
-
-  const filteredUsers = userList.filter(u => 
-    u.email?.toLowerCase().includes(search.toLowerCase()) || 
-    u.name?.toLowerCase().includes(search.toLowerCase())
+  const dashboard = useQuery(api.network.getDashboard);
+  const members = useQuery(
+    api.network.listMembers,
+    status === "all" ? {} : { status },
   );
 
-  async function handleToggleAdmin(userId: any, currentStatus: boolean) {
-    try {
-      await setAdminStatus({ userId, status: !currentStatus });
-      toast.success("Permissions updated");
-    } catch { toast.error("Failed to update permissions"); }
-  }
-
-  async function handleResetBalance(userId: any) {
-    const amount = prompt("Enter new virtual balance ($):", "10000");
-    if (amount === null) return;
-    try {
-      await resetBalance({ userId, amount: parseFloat(amount) });
-      toast.success("Balance reset");
-    } catch { toast.error("Failed to reset balance"); }
-  }
+  const filteredMembers = (members ?? []).filter((member) => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) {
+      return true;
+    }
+    return (
+      member.name.toLowerCase().includes(needle) ||
+      member.roleTitle.toLowerCase().includes(needle)
+    );
+  });
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[hsl(var(--foreground))]">User Directory</h1>
-          <p className="text-[hsl(var(--muted-foreground))] mt-1">Manage platform members, roles, and balances.</p>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <SurfaceCard className="relative overflow-hidden p-6 sm:p-8">
+        <div
+          className="absolute inset-0 opacity-90"
+          style={{
+            background:
+              "radial-gradient(circle at top left, hsl(221 83% 53% / 0.18), transparent 32%), radial-gradient(circle at bottom right, hsl(43 96% 48% / 0.16), transparent 28%)",
+          }}
+        />
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
+              Network
+            </p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">
+              Members follow mobile meanings again.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] sm:text-base">
+              Joined, invited, and pending all live here. Admin directory moved back under admin.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 lg:w-[420px]">
+            <MetricTile label="Joined" value={dashboard?.stats.joinedCount} />
+            <MetricTile label="Invited" value={dashboard?.stats.invitedCount} />
+            <MetricTile label="Pending" value={dashboard?.stats.pendingCount} />
+          </div>
         </div>
-        <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] transition-colors group-focus-within:text-[hsl(var(--primary))]" size={16} />
-          <input 
-            type="text" 
-            placeholder="Search email or name..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-4 py-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl text-sm font-medium outline-none focus:border-[hsl(var(--primary))]" 
+      </SurfaceCard>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              onClick={() => setStatus(filter.value)}
+              className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] transition-colors ${
+                status === filter.value
+                  ? "bg-[hsl(var(--primary))] text-white"
+                  : "bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        <label className="relative block w-full lg:w-[320px]">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]"
+            size={16}
           />
-        </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search member or role"
+            className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-10 pr-4 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
+          />
+        </label>
       </div>
 
-      <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-[hsl(var(--muted)/0.3)] border-b border-[hsl(var(--border))]">
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">User</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">Role</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] text-right">Virtual Balance</th>
-              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[hsl(var(--border))]">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="w-10 h-10 rounded-xl" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-48" />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-6 w-20 rounded-lg" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end">
-                      <Skeleton className="h-5 w-24" />
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="w-8 h-8 rounded-lg" />
-                      <Skeleton className="w-8 h-8 rounded-lg" />
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              filteredUsers.map((u) => (
-                <tr key={u._id} className="hover:bg-[hsl(var(--muted)/0.1)] transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-sm">
-                        {u.name?.[0] ?? u.email?.[0] ?? "?"}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-[hsl(var(--foreground))]">{u.name || "Anonymous"}</p>
-                        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                      u.role === "admin" ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-500"
-                    }`}>
-                      <Shield size={10} />
-                      {u.role === "admin" ? "Admin" : "Member"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <p className="text-sm font-extrabold text-[hsl(var(--foreground))] tabular-nums">
-                      ${(u.balance ?? 0).toLocaleString()}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={() => { void handleResetBalance(u._id); }}
-                        className="p-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:border-[hsl(var(--primary)/0.5)] transition-all"
-                        title="Reset Balance"
-                      >
-                        <Coins size={14} />
-                      </button>
-                      <button 
-                        onClick={() => { void handleToggleAdmin(u._id, u.role === "admin"); }}
-                        className={`p-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] transition-all ${
-                          u.role === "admin" ? "text-red-500 hover:bg-red-500/5" : "text-[hsl(var(--muted-foreground))] hover:text-red-500"
-                        }`}
-                        title={u.role === "admin" ? "Revoke Admin" : "Make Admin"}
-                      >
-                        <Shield size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-            {!isLoading && filteredUsers.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-[hsl(var(--muted-foreground))] text-sm">
-                  No users found matching your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {members === undefined ? (
+        <div className="grid gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 rounded-[28px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {filteredMembers.map((member) => (
+            <SurfaceCard key={member.id} className="p-5 sm:p-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+                  <Users size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate text-lg font-black text-[hsl(var(--foreground))]">{member.name}</h2>
+                    {member.isViewer && (
+                      <span className="rounded-full bg-[hsl(var(--secondary)/0.14)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
+                        You
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{member.roleTitle}</p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${
+                    member.status === "joined"
+                      ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
+                      : member.status === "pending"
+                        ? "bg-amber-500/12 text-amber-600 dark:text-amber-300"
+                        : "bg-violet-500/12 text-violet-600 dark:text-violet-300"
+                  }`}
+                >
+                  {member.status}
+                </span>
+              </div>
+            </SurfaceCard>
+          ))}
+          {filteredMembers.length === 0 && (
+            <SurfaceCard className="p-8 xl:col-span-2">
+              <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
+                No members matched current filter.
+              </p>
+            </SurfaceCard>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: number | undefined }) {
+  return (
+    <SurfaceCard className="rounded-[24px] bg-[hsl(var(--background)/0.82)] p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-black text-[hsl(var(--foreground))] tabular-nums">{value ?? "..."}</p>
+    </SurfaceCard>
   );
 }

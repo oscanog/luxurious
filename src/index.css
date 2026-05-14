@@ -96,7 +96,8 @@
 }
 
 html {
-  min-width: 1180px;
+  min-width: 320px;
+  background: hsl(var(--background));
 }
 
 body {

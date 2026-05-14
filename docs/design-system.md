@@ -68,13 +68,12 @@ Font features: cv02, cv03, cv04, cv11
 
 | Element | Size / Weight | Usage |
 | :--- | :--- | :--- |
-| **H1 Title** | `34px / extrabold` | Page titles |
-| **Large Stat** | `30px / extrabold` | Dashboard metrics |
-| **H2 Sub-header** | `text-lg / semibold` | Section headers |
-| **Body Large** | `text-lg / normal` | Intro paragraphs |
-| **Body Base** | `text-base / normal` | Default UI text |
-| **UI Small** | `text-sm / normal` | Cards, labels, buttons |
-| **UI Tiny** | `text-xs / normal` | Badges, timestamps |
+| **Hero Headline** | `32px mobile / 44px desktop / bold` | `Build the network.` landing headline |
+| **Hero Name** | `24px / bold` | Viewer name inside owl hero |
+| **Large Stat** | `40px / bold` | Home stat tiles |
+| **Section Header** | `22px / bold` | Org chart and members cards |
+| **Body Base** | `14px / normal` | Default UI text |
+| **Body Small** | `12px / normal` | Helper copy, timestamps, status rows |
 | **Labels** | `11px / extrabold / uppercase / tracking-[0.14em]` | Section labels |
 | **Sidebar Labels** | `10px / bold / uppercase / tracking-[0.18em]` | Nav group titles |
 | **Version Badge** | `10px / bold` | Version text |
@@ -117,6 +116,13 @@ Font features: cv02, cv03, cv04, cv11
 - Pattern: `radial-gradient(circle, white 1px, transparent 1px)` at 16px size, 20% opacity
 - Text: White, secondary info in `blue-100`
 - Logo: Monogram or icon in white
+
+### Dashboard Hero Card
+
+- Background: `#F5F8FF -> #DDE9FF` in light, `#26459E -> #1E3A8A` in dark
+- Shape: `34px` radius, `22px / 18px / 18px / 0` padding pattern
+- Summary panel: white in light, deep navy overlay in dark
+- Mascot: owl art required on home hero for parity with mobile
 
 ---
 

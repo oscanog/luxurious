@@ -41,14 +41,14 @@ export function MemberSidebar({
 
   const handleConfirmConnection = () => {
     if (!selectedMember || !targetManagerId) return;
-    const userId = selectedMember._id as Id<"users">;
+    const userId = selectedMember._id;
     void (async () => {
       try {
         await setUpline({ userId, uplineId: targetManagerId as Id<"users"> });
         toast.success(`${selectedMember.name} connected to ${visibleMembers.find(m => m.id === targetManagerId)?.name}`);
         setSelectedMember(null);
         onSuccess?.();
-      } catch (_err) {
+      } catch {
         toast.error("Failed to connect member");
       }
     })();

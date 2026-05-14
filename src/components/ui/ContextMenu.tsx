@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, ReactNode } from "react";
+import { useEffect, useRef, useState, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 export interface ContextMenuItem {
@@ -85,28 +85,4 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     </div>,
     document.body
   );
-}
-
-// Hook for using context menu
-export function useContextMenu() {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent | MouseEvent, items: ContextMenuItem[]) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY, items });
-  }, []);
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
-
-  const ContextMenuComponent = contextMenu ? (
-    <ContextMenu 
-      x={contextMenu.x} 
-      y={contextMenu.y} 
-      items={contextMenu.items} 
-      onClose={closeContextMenu} 
-    />
-  ) : null;
-
-  return { handleContextMenu, ContextMenuComponent, closeContextMenu };
 }

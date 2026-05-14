@@ -46,7 +46,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         try {
           await removeUpline({ userId: member.id });
           toast.success("Member removed");
-        } catch (_err) {
+        } catch {
           toast.error("Failed to remove member");
         }
       })();
@@ -60,7 +60,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         try {
           await setUpline({ userId: member.id, uplineId: member.lastUplineId as Id<"users"> });
           toast.success(`Reconnected to previous manager`);
-        } catch (_err) {
+        } catch {
           toast.error("Failed to reconnect");
         }
       })();
