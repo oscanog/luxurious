@@ -1,6 +1,6 @@
 # M009: Trading Signals Module — Technical Specification
 
-**Objective:** Full-featured trading signal command center. Admin manages signals, schedules, milestones. Users consume signals, track performance, unlock tiers.
+**Objective:** Signal command center with **Schedule-First** focus. Downlines must easily track session times (e.g., 3pm, 8pm) to prepare for signal drops.
 
 ---
 

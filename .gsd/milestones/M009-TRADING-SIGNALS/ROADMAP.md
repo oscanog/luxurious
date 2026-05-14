@@ -2,7 +2,7 @@
 
 **Status:** `[in-progress]`
 **Start Date:** 2026-05-14
-**Objective:** Build premium trading signal command center. Admin creates/manages signals, schedules, milestones. Users consume signals filtered by tier, track performance, unlock progression.
+**Objective:** Build premium trading signal center with focus on **Schedule Visibility**. Downlines must see exactly when signals drop (e.g., 3pm, 8pm) to maximize participation.
 
 **Spec:** `TECHNICAL-SPEC.md`
 
@@ -31,36 +31,36 @@
 - [x] T04: Add `/trading-signals` to sidebar nav + `NavPath` type + `PATH_LABELS`.
 
 ### Slice S02: Admin CRUD Mutations
-**Status:** `[not-started]`
-- [ ] T01: `signals.create` — validate entry/tp/sl, compute riskReward, set status=pending.
-- [ ] T02: `signals.update` — partial update, admin-only guard.
-- [ ] T03: `signals.updateStatus` — mark TP hit / SL hit / Cancel, set `result` + `closedAt`.
-- [ ] T04: `signals.toggleFeatured` — unset previous featured, set new.
-- [ ] T05: `schedules.create` / `schedules.update` / `schedules.toggleActive`.
-- [ ] T06: `milestones.create` / `milestones.update`.
+**Status:** `[completed]`
+- [x] T01: `signals.create` — validate entry/tp/sl, compute riskReward, set status=pending.
+- [x] T02: `signals.update` — partial update, admin-only guard.
+- [x] T03: `signals.updateStatus` — mark TP hit / SL hit / Cancel, set `result` + `closedAt`.
+- [x] T04: `signals.toggleFeatured` — unset previous featured, set new.
+- [x] T05: `schedules.create` / `schedules.update` / `schedules.toggleActive`.
+- [x] T06: `milestones.create` / `milestones.update`.
 
 ### Slice S03: Queries
-**Status:** `[not-started]`
-- [ ] T01: `signals.listActive` — filter by status=active, respect tier for non-admin.
-- [ ] T02: `signals.listHistory` — past signals with result, paginated.
-- [ ] T03: `signals.getStats` — compute win rate, monthly pips, active count.
-- [ ] T04: `signals.getFeatured` — current featured signal.
-- [ ] T05: `schedules.list` — active schedules sorted by dayOfWeek + time.
-- [ ] T06: `milestones.list` — sorted by sortOrder.
+**Status:** `[completed]`
+- [x] T01: `signals.listActive` — filter by status=active, respect tier for non-admin.
+- [x] T02: `signals.listHistory` — past signals with result, paginated.
+- [x] T03: `signals.getStats` — compute win rate, monthly pips, active count.
+- [x] T04: `signals.getFeatured` — current featured signal.
+- [x] T05: `schedules.list` — active schedules sorted by dayOfWeek + time.
+- [x] T06: `milestones.list` — sorted by sortOrder.
 
 ### Slice S04: Admin Page — Stats + Signal Management
-**Status:** `[not-started]`
-- [ ] T01: Create `TradingSignalsPage.tsx` with admin/user role detection.
-- [ ] T02: Admin Stats Grid — 4 metric cards (Win Rate, Active, Monthly Pips, Featured).
-- [ ] T03: Inline Signal Creation Form — symbol input, entry/tp1/tp2/tp3/sl numerics, strategy select, tier radio, notes textarea.
-- [ ] T04: Active Signals Table — sortable columns, row actions (Hit TP, Hit SL, Cancel, Edit).
-- [ ] T05: Signal History Table — filterable by status/date/symbol, color-coded result column.
+**Status:** `[completed]`
+- [x] T01: Create `TradingSignalsPage.tsx` with admin/user role detection.
+- [x] T02: Admin Stats Grid — 4 metric cards (Win Rate, Active, Monthly Pips, Featured).
+- [x] T03: Inline Signal Creation Form — symbol input, entry/tp1/tp2/tp3/sl numerics, strategy select, tier radio, notes textarea.
+- [x] T04: Active Signals Table — sortable columns, row actions (Hit TP, Hit SL, Cancel, Edit).
+- [x] T05: Signal History Table — filterable by status/date/symbol, color-coded result column.
 
 ### Slice S05: Admin Page — Schedules + Milestones
-**Status:** `[not-started]`
-- [ ] T01: Schedule Manager — day-of-week card grid, session badges, add/edit/toggle.
+**Status:** `[completed]`
+- [x] T01: Schedule Manager — day-of-week card grid, session badges, add/edit/toggle.
 - [ ] T02: Milestone Editor — ordered cards showing tier progression path, add/edit.
-- [ ] T03: Wire route in `App.tsx`.
+- [x] T03: Wire route in `App.tsx`.
 
 ### Slice S06: User Page — Live Signals + Featured
 **Status:** `[not-started]`

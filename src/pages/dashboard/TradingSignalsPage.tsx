@@ -10,6 +10,8 @@ import {
   Star,
   Target,
   Play,
+  Calendar,
+  ChevronRight,
   X
 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
@@ -143,6 +145,36 @@ function AdminSignalsView() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Admin Schedule Manager */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Calendar size={20} className="text-[hsl(var(--primary))]" />
+            Session Schedule Manager
+          </h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ScheduleSlot day="Monday - Friday" time="3:00 PM" session="London Open" />
+          <ScheduleSlot day="Monday - Friday" time="8:00 PM" session="NY Session" />
+          <div className="flex items-center justify-center rounded-[28px] border border-dashed border-[hsl(var(--border))] p-6 text-[hsl(var(--muted-foreground))]">
+            <Plus size={20} className="mr-2" />
+            <span className="text-sm font-bold uppercase tracking-wider">Add Slot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScheduleSlot({ day, time, session }: any) {
+  return (
+    <div className="rounded-[28px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--card))] p-5 shadow-sm">
+      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[hsl(var(--muted-foreground))]">{day}</p>
+      <p className="mt-1 text-xl font-black text-[hsl(var(--foreground))]">{time}</p>
+      <div className="mt-3 inline-flex rounded-full bg-[hsl(var(--primary)/0.1)] px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[hsl(var(--primary))]">
+        {session}
       </div>
     </div>
   );
@@ -422,6 +454,21 @@ function UserSignalsView() {
         <StatCard label="Active Signals" value={activeSignals?.length ?? 0} icon={Play} color="text-blue-500" />
       </div>
 
+      {/* Session Drops Schedule - Boss Request */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
+            <Clock size={20} className="text-[hsl(var(--primary))]" />
+            Today's Signal Drops
+          </h2>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">UTC+8 TIMEZONE</span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SessionCard time="3:00 PM" label="London Session Drop" description="Focus on GBP/EUR pairs" />
+          <SessionCard time="8:00 PM" label="New York Session Drop" description="Focus on USD/GOLD pairs" />
+        </div>
+      </div>
+
       {featured && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 px-1">
@@ -554,6 +601,22 @@ function LevelDisplay({ label, value, isSuccess, isError }: any) {
       <p className={cn("font-mono text-lg font-black", isSuccess ? "text-green-300" : isError ? "text-red-300" : "text-white")}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function SessionCard({ time, label, description }: any) {
+  return (
+    <div className="flex items-center gap-6 rounded-[32px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--card))] p-6 shadow-sm transition-all hover:border-[hsl(var(--primary)/0.2)]">
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]">
+        <Clock size={32} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-2xl font-black text-[hsl(var(--foreground))]">{time}</p>
+        <p className="font-bold text-sm text-[hsl(var(--foreground))]">{label}</p>
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">{description}</p>
+      </div>
+      <ChevronRight size={24} className="text-[hsl(var(--muted-foreground))] opacity-20" />
     </div>
   );
 }
