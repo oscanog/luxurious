@@ -328,4 +328,21 @@ export default defineSchema({
     sortOrder: v.number(),
     isActive: v.boolean(),
   }).index("by_sortOrder", ["sortOrder"]),
+
+  signalParticipation: defineTable({
+    signalId: v.id("tradingSignals"),
+    userId: v.id("users"),
+    status: v.union(v.literal("success"), v.literal("error")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_signal", ["signalId"])
+    .index("by_user", ["userId"]),
+
+  sessionAttendance: defineTable({
+    date: v.string(), // YYYY-MM-DD
+    userId: v.id("users"),
+    sessionTime: v.string(), // "3pm", "6pm", etc.
+    attended: v.boolean(),
+  }).index("by_date_and_user", ["date", "userId"])
+    .index("by_userId", ["userId"]),
 });

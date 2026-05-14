@@ -22,6 +22,7 @@ import type * as mobileHelpers from "../mobileHelpers.js";
 import type * as network from "../network.js";
 import type * as networkMembers from "../networkMembers.js";
 import type * as notifications from "../notifications.js";
+import type * as participation from "../participation.js";
 import type * as planning from "../planning.js";
 import type * as profile from "../profile.js";
 import type * as receipts from "../receipts.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   network: typeof network;
   networkMembers: typeof networkMembers;
   notifications: typeof notifications;
+  participation: typeof participation;
   planning: typeof planning;
   profile: typeof profile;
   receipts: typeof receipts;

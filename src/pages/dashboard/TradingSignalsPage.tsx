@@ -9,8 +9,8 @@ import {
   Plus, 
   Star,
   Target,
+  ShieldAlert,
   Play,
-  Calendar,
   ChevronRight,
   X
 } from "lucide-react";
@@ -89,6 +89,55 @@ function AdminSignalsView() {
 
       {isCreating && <SignalForm onCancel={() => setIsCreating(false)} />}
 
+      {/* NEW: User Attendance Tracking Table */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <ShieldAlert size={20} className="text-yellow-500" />
+            User Session Tracking
+          </h2>
+          <div className="flex gap-2">
+             <span className="rounded-lg bg-[hsl(var(--muted))] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider">{new Date().toLocaleDateString()}</span>
+          </div>
+        </div>
+        
+        <div className="overflow-hidden rounded-[32px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--card))] shadow-sm">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border)/0.5)] bg-[hsl(var(--muted)/0.3)] text-[10px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+                <th className="px-6 py-4">User</th>
+                <th className="px-6 py-4 text-center">3 PM</th>
+                <th className="px-6 py-4 text-center">6 PM</th>
+                <th className="px-6 py-4 text-center">8 PM</th>
+                <th className="px-6 py-4 text-center">10 PM</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
+              <AttendanceRow name="User 1" attendance={{ "3pm": true, "6pm": false, "8pm": false, "10pm": false }} />
+              <AttendanceRow name="User 2" attendance={{ "3pm": true, "6pm": true, "8pm": false, "10pm": false }} />
+              <AttendanceRow name="User 3" attendance={{ "3pm": false, "6pm": false, "8pm": false, "10pm": false }} />
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* NEW: Signal Code Logs */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <TrendingUp size={20} className="text-[hsl(var(--primary))]" />
+            Signal Activity Logs
+          </h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <SignalCodeCard code="29" status="success" count={12} />
+          <SignalCodeCard code="30" status="error" count={5} />
+          <SignalCodeCard code="31" status="success" count={18} />
+          <SignalCodeCard code="32" status="pending" count={0} />
+        </div>
+      </div>
+
       {/* Main Tables */}
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
@@ -147,36 +196,53 @@ function AdminSignalsView() {
         </div>
       </div>
 
-      {/* Admin Schedule Manager */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Calendar size={20} className="text-[hsl(var(--primary))]" />
-            Session Schedule Manager
-          </h2>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <ScheduleSlot day="Monday - Friday" time="3:00 PM" session="London Open" />
-          <ScheduleSlot day="Monday - Friday" time="8:00 PM" session="NY Session" />
-          <div className="flex items-center justify-center rounded-[28px] border border-dashed border-[hsl(var(--border))] p-6 text-[hsl(var(--muted-foreground))]">
-            <Plus size={20} className="mr-2" />
-            <span className="text-sm font-bold uppercase tracking-wider">Add Slot</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
 
-function ScheduleSlot({ day, time, session }: any) {
+function AttendanceRow({ name, attendance }: any) {
   return (
-    <div className="rounded-[28px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--card))] p-5 shadow-sm">
-      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[hsl(var(--muted-foreground))]">{day}</p>
-      <p className="mt-1 text-xl font-black text-[hsl(var(--foreground))]">{time}</p>
-      <div className="mt-3 inline-flex rounded-full bg-[hsl(var(--primary)/0.1)] px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[hsl(var(--primary))]">
-        {session}
+    <tr className="group transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
+            {name.charAt(0)}
+          </div>
+          <span className="font-bold text-sm">{name}</span>
+        </div>
+      </td>
+      {["3pm", "6pm", "8pm", "10pm"].map((time) => (
+        <td key={time} className="px-6 py-4 text-center">
+          <div className="flex justify-center">
+            {attendance[time] ? (
+              <CheckCircle2 size={18} className="text-green-500" />
+            ) : (
+              <XCircle size={18} className="text-[hsl(var(--muted-foreground)/0.3)]" />
+            )}
+          </div>
+        </td>
+      ))}
+      <td className="px-6 py-4 text-right">
+        <button className="p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] rounded-lg">
+          <Plus size={16} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function SignalCodeCard({ code, status, count }: any) {
+  return (
+    <button className="group flex flex-col items-center justify-center rounded-[28px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--card))] p-6 shadow-sm transition-all hover:border-[hsl(var(--primary)/0.3)] hover:scale-[1.02]">
+      <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] mb-1">Code</span>
+      <span className="text-3xl font-black text-[hsl(var(--foreground))] mb-3">{code}</span>
+      <div className={cn("inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider", 
+        status === "success" ? "bg-green-500/10 text-green-500" : 
+        status === "error" ? "bg-red-500/10 text-red-500" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"
+      )}>
+        {status === "success" ? `${count} Success` : status === "error" ? `${count} Error` : "Pending"}
       </div>
-    </div>
+    </button>
   );
 }
 
