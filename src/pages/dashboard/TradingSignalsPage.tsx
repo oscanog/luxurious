@@ -54,7 +54,7 @@ function AdminSignalsView() {
   const [activeTab, setActiveTab] = useState<TabKey>("daily");
   const [search, setSearch] = useState("");
   const [selectedDate, setSelectedDate] = useState(getLocalToday());
-  const stats = useQuery(api.signals.getDailyStats, { date: selectedDate });
+  const stats = useQuery(api.participation.getDailyStats, { date: selectedDate });
 
   return (
     <div className="space-y-10">
@@ -67,10 +67,10 @@ function AdminSignalsView() {
 
       {/* Signal Performance Logs — full width */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SignalCodeCard code="Total Signals" status="pending" count={stats?.total ?? 0} />
-        <SignalCodeCard code="Success (TP)" status="success" count={stats?.success ?? 0} />
-        <SignalCodeCard code="Failed (SL)" status="error" count={stats?.failed ?? 0} />
-        <SignalCodeCard code="Pending/Active" status="pending" count={stats?.pending ?? 0} />
+        <StatCard title="Total Users" status="pending" value={stats?.totalUsers ?? 0} />
+        <StatCard title="Success (Checked)" status="success" value={stats?.success ?? 0} />
+        <StatCard title="Pending (Unchecked)" status="pending" value={stats?.pending ?? 0} />
+        <StatCard title="Failed (Error)" status="error" value={stats?.error ?? 0} />
       </div>
 
       {/* Toolbar: Search (Left) & Tabs (Right) */}
@@ -434,22 +434,17 @@ function AccessPromotionTable({ search }: { search: string }) {
 
 
 
-function SignalCodeCard({ code, status, count }: { code: string; status: string; count: number }) {
+function StatCard({ title, value, status }: { title: string; value: number | string; status: "success" | "error" | "pending" | "default" }) {
   const accent = status === "success"
     ? "text-green-500"
     : status === "error"
       ? "text-red-500"
       : "text-[hsl(var(--foreground))]";
-  const label = status === "success"
-    ? `${count} Success`
-    : status === "error"
-      ? `${count} Error`
-      : "Pending";
-
+      
   return (
     <SurfaceCard className="rounded-[30px] p-[18px]">
-      <p className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
-      <p className={`mt-3 text-[40px] leading-none font-bold tabular-nums ${accent}`}>{code}</p>
+      <p className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{title}</p>
+      <p className={`mt-3 text-[40px] leading-none font-bold tabular-nums ${accent}`}>{value}</p>
     </SurfaceCard>
   );
 }

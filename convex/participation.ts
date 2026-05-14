@@ -166,43 +166,29 @@ export const getDailyStats = query({
   handler: async (ctx, args) => {
     await checkAdmin(ctx);
     
-    // In Convex, querying without an index when we want a simple filter is fine for small scale,
-    // but ideally we'd use an index. Let's just collect and filter if 'by_date' index doesn't exist, 
-    // or use q.eq("date", args.date). I'll use filter since we don't have 'by_date' index on sessionAttendance.
     const records = await ctx.db
       .query("sessionAttendance")
       .filter((q) => q.eq(q.field("date"), args.date))
       .collect();
       
-    let totalChecks = 0;
-    const sessionCounts: Record<string, number> = { "3pm": 0, "6pm": 0, "8pm": 0, "10pm": 0 };
-    const uniqueUsers = new Set<string>();
+    let success = 0;
     
     for (const r of records) {
       if (r.attended) {
-        totalChecks++;
-        sessionCounts[r.sessionTime] = (sessionCounts[r.sessionTime] || 0) + 1;
-        uniqueUsers.add(r.userId as string);
-      }
-    }
-    
-    let topSession = "N/A";
-    let maxChecks = 0;
-    for (const [session, count] of Object.entries(sessionCounts)) {
-      if (count > maxChecks) {
-        maxChecks = count;
-        topSession = session.toUpperCase();
+        success++;
       }
     }
     
     const users = await ctx.db.query("users").collect();
     const totalUsers = users.length;
+    // 4 sessions per user (3pm, 6pm, 8pm, 10pm)
+    const pending = (totalUsers * 4) - success;
     
     return {
-      activeUsers: uniqueUsers.size,
       totalUsers,
-      totalChecks,
-      topSession,
+      success,
+      pending,
+      error: 0, // Since un-checked is considered pending
     };
   }
 });
