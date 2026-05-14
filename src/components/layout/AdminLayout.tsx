@@ -535,7 +535,7 @@ export function AdminLayout({
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen((current) => !current)}
-                  className="flex items-center gap-3 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1.5 pl-1.5 pr-3 text-left shadow-sm transition-all hover:bg-[hsl(var(--muted))] active:scale-95"
+                  className="flex items-center gap-3 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-1.5 lg:pr-3 text-left shadow-sm transition-all hover:bg-[hsl(var(--muted))] active:scale-95"
                   aria-haspopup="menu"
                   aria-expanded={profileMenuOpen}
                 >

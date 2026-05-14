@@ -105,7 +105,20 @@ function DashboardSkeleton() {
 
 export function DashboardHomePage() {
   const dashboard = useQuery(api.network.getDashboard);
-  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
+  const [quote, setQuote] = useState<{ text: string; author: string } | null>(() => {
+    const CACHE_KEY = "luxxurie_daily_quote";
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        const { quote, date } = JSON.parse(cached);
+        const today = new Date().toISOString().split('T')[0];
+        if (date === today) return quote;
+      } catch (e) {
+        localStorage.removeItem(CACHE_KEY);
+      }
+    }
+    return null;
+  });
   const [isNetworkDialogOpen, setIsNetworkDialogOpen] = useState(false);
   const [initialNetworkTab, setInitialNetworkTab] = useState<"joined" | "invited" | "pending" | "to-invite">("joined");
 
@@ -120,21 +133,10 @@ export function DashboardHomePage() {
   );
 
   useEffect(() => {
+    if (quote) return;
+
     async function fetchQuote() {
       const CACHE_KEY = "luxxurie_daily_quote";
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        try {
-          const { quote, expiry } = JSON.parse(cached);
-          if (Date.now() < expiry) {
-            setQuote(quote);
-            return;
-          }
-        } catch (e) {
-          localStorage.removeItem(CACHE_KEY);
-        }
-      }
-
       try {
         const res = await fetch("https://api.allorigins.win/raw?url=https://zenquotes.io/api/random");
         const data = await res.json();
@@ -143,7 +145,7 @@ export function DashboardHomePage() {
           setQuote(newQuote);
           localStorage.setItem(CACHE_KEY, JSON.stringify({
             quote: newQuote,
-            expiry: Date.now() + 24 * 60 * 60 * 1000 // 24h
+            date: new Date().toISOString().split('T')[0]
           }));
         }
       } catch (e) {
@@ -151,7 +153,7 @@ export function DashboardHomePage() {
       }
     }
     void fetchQuote();
-  }, []);
+  }, [quote]);
 
   const [now, setNow] = useState(new Date());
 
@@ -182,19 +184,39 @@ export function DashboardHomePage() {
   return (
     <div className="mx-auto max-w-[1160px] space-y-6 p-4 sm:p-6 lg:p-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
-              PH: <span className="tabular-nums font-bold opacity-80">{phTime}</span>
-            </p>
-            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
-              CANADA: <span className="tabular-nums font-bold opacity-80">{caTime}</span>
-            </p>
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <div className="flex flex-col gap-1">
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
+                PH: <span className="tabular-nums font-bold opacity-80">{phTime}</span>
+              </p>
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
+                CANADA: <span className="tabular-nums font-bold opacity-80">{caTime}</span>
+              </p>
+            </div>
           </div>
+
+          <button 
+            onClick={() => {
+              toast.success("Metrics synced", {
+                style: {
+                  borderRadius: '16px',
+                  background: 'hsl(var(--card))',
+                  color: 'hsl(var(--foreground))',
+                  border: '1px solid hsl(var(--border))',
+                  fontWeight: 'bold',
+                  fontSize: '13px'
+                }
+              });
+            }}
+            className="flex sm:hidden h-10 w-10 items-center justify-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-all hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] active:scale-95 shadow-sm"
+          >
+            <RefreshCcw size={18} />
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <button 
             onClick={() => {
               toast.success("Metrics synced", {
@@ -213,7 +235,6 @@ export function DashboardHomePage() {
             <RefreshCcw size={18} />
           </button>
         </div>
-
       </div>
 
       <section className="overflow-hidden rounded-[34px] border border-[hsl(210_40%_90%)] bg-[linear-gradient(135deg,hsl(210_40%_99%),hsl(210_40%_96%))] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">

@@ -54,7 +54,8 @@ export function MembersPage() {
 
 
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="Total" value={(dashboard?.stats.joinedCount ?? 0) + (dashboard?.stats.invitedCount ?? 0) + (dashboard?.stats.pendingCount ?? 0)} accentClassName="text-[hsl(var(--primary))]" />
         <StatTile label="Joined" value={dashboard?.stats.joinedCount} accentClassName="text-[hsl(var(--secondary))]" />
         <StatTile label="Invited" value={dashboard?.stats.invitedCount} accentClassName="text-[hsl(var(--foreground))]" />
         <StatTile label="Pending" value={dashboard?.stats.pendingCount} accentClassName="text-[hsl(var(--foreground))]" />
