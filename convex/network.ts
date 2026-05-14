@@ -106,6 +106,10 @@ function buildOverview(members: NetworkMember[]) {
       status: member.status,
       isViewer: member.isViewer,
       parentMemberId: member.parentMemberId ?? null,
+      bonchatId: member.bonchatId,
+      bonchatUsername: member.bonchatUsername,
+      yepbitId: member.yepbitId,
+      yepbitUsername: member.yepbitUsername,
     })),
     tree: treeRoots,
   };

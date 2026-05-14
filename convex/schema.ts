@@ -204,6 +204,10 @@ export default defineSchema({
     isViewer: v.boolean(),
     sortOrder: v.number(),
     joinedAt: v.optional(v.number()),
+    bonchatId: v.optional(v.string()),
+    bonchatUsername: v.optional(v.string()),
+    yepbitId: v.optional(v.string()),
+    yepbitUsername: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

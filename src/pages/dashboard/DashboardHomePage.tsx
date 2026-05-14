@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "convex/react";
-import { Star, UserRound, RefreshCcw } from "lucide-react";
+import { Star, UserRound, RefreshCcw, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
@@ -8,26 +8,38 @@ import owlFrontLeft from "@/assets/brand/owl-front-left.png";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 
+import { NetworkDialog } from "@/components/dashboard/NetworkDialog";
+
 const HERO_STATS = [
-  { key: "joinedCount", label: "Joined", accentClassName: "text-[hsl(var(--secondary))]" },
-  { key: "invitedCount", label: "Invited", accentClassName: "text-[hsl(var(--foreground))]" },
-  { key: "toInviteCount", label: "To Invite", accentClassName: "text-[hsl(var(--secondary))]" },
-  { key: "pendingCount", label: "Pending", accentClassName: "text-[hsl(var(--foreground))]" },
+  { key: "joinedCount", label: "Joined", tab: "joined", accentClassName: "text-[hsl(var(--secondary))]" },
+  { key: "invitedCount", label: "Invited", tab: "invited", accentClassName: "text-[hsl(var(--foreground))]" },
+  { key: "toInviteCount", label: "To Invite", tab: "to-invite", accentClassName: "text-[hsl(var(--secondary))]" },
+  { key: "pendingCount", label: "Pending", tab: "pending", accentClassName: "text-[hsl(var(--foreground))]" },
 ] as const;
 
 function StatTile({
   label,
   value,
   accentClassName,
+  onClick,
 }: {
   label: string;
   value: number;
   accentClassName: string;
+  onClick?: () => void;
 }) {
   return (
-    <SurfaceCard className="rounded-[30px] p-[18px]">
+    <SurfaceCard 
+      onClick={onClick}
+      className={`group relative rounded-[30px] p-[18px] transition-all hover:scale-[1.02] active:scale-[0.98] ${onClick ? "cursor-pointer" : ""}`}
+    >
       <p className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
       <p className={`mt-3 text-[40px] leading-none font-bold tabular-nums ${accentClassName}`}>{value}</p>
+      {onClick && (
+        <div className="absolute bottom-4 right-4 flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] opacity-0 transition-all group-hover:opacity-100">
+          <ArrowRight size={14} />
+        </div>
+      )}
     </SurfaceCard>
   );
 }
@@ -94,6 +106,8 @@ function DashboardSkeleton() {
 export function DashboardHomePage() {
   const dashboard = useQuery(api.network.getDashboard);
   const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
+  const [isNetworkDialogOpen, setIsNetworkDialogOpen] = useState(false);
+  const [initialNetworkTab, setInitialNetworkTab] = useState<"joined" | "invited" | "pending" | "to-invite">("joined");
 
   const dateLabel = useMemo(
     () =>
@@ -237,6 +251,10 @@ export function DashboardHomePage() {
             label={item.label}
             value={dashboard.stats[item.key]}
             accentClassName={item.accentClassName}
+            onClick={() => {
+              setInitialNetworkTab(item.tab as any);
+              setIsNetworkDialogOpen(true);
+            }}
           />
         ))}
       </div>
@@ -310,7 +328,14 @@ export function DashboardHomePage() {
           </div>
         </SurfaceCard>
       </div>
+      <NetworkDialog 
+        isOpen={isNetworkDialogOpen} 
+        onClose={() => setIsNetworkDialogOpen(false)} 
+        members={dashboard.members as any}
+        initialTab={initialNetworkTab}
+      />
     </div>
   );
 }
+
 
