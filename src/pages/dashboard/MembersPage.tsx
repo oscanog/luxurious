@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
-import { Search, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { DashboardSearch, DashboardFilterGroup, DashboardFilterButton } from "@/components/dashboard/DashboardSearch";
 
 type MemberStatus = "all" | "joined" | "invited" | "pending";
 
@@ -57,37 +58,26 @@ export function MembersPage() {
         <StatTile label="Pending" value={dashboard?.stats.pendingCount} accentClassName="text-[hsl(var(--foreground))]" />
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              onClick={() => setStatus(filter.value)}
-              className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.14em] transition-colors ${
-                status === filter.value
-                  ? "bg-[hsl(var(--primary))] text-white"
-                  : "bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
 
-        <label className="relative block w-full lg:w-[320px]">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]"
-            size={16}
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search member or role"
-            className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-10 pr-4 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
-          />
-        </label>
+
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <DashboardFilterGroup>
+          {FILTERS.map((filter) => (
+            <DashboardFilterButton
+              key={filter.value}
+              label={filter.label}
+              active={status === filter.value}
+              onClick={() => setStatus(filter.value)}
+            />
+          ))}
+        </DashboardFilterGroup>
+
+        <DashboardSearch 
+          value={search} 
+          onChange={setSearch} 
+          placeholder="Search member or role" 
+        />
       </div>
 
       {members === undefined ? (

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { ArrowDownLeft, ArrowUpRight, Clock3 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -13,7 +15,8 @@ function formatCurrency(amount: number) {
 }
 
 export function HistoryPage() {
-  const items = useQuery(api.transactions.listHistory, { limit: 40 });
+  const [search, setSearch] = useState("");
+  const items = useQuery(api.transactions.listHistory, { limit: 100 });
 
   if (items === undefined) {
     return (
@@ -24,6 +27,16 @@ export function HistoryPage() {
       </div>
     );
   }
+
+  const filteredItems = items.filter((item) => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      item.title.toLowerCase().includes(needle) ||
+      item.accountName.toLowerCase().includes(needle) ||
+      item.category.toLowerCase().includes(needle)
+    );
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -43,6 +56,15 @@ export function HistoryPage() {
           </div>
         </div>
       </section>
+      
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div />
+        <DashboardSearch 
+          value={search} 
+          onChange={setSearch} 
+          placeholder="Search transactions..." 
+        />
+      </div>
 
       <SurfaceCard className="overflow-x-auto">
         <table className="w-full text-left text-sm">
@@ -55,7 +77,7 @@ export function HistoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[hsl(var(--border))]">
-            {items.map((item) => {
+            {filteredItems.map((item) => {
               const isIncome = item.kind === "income";
               return (
                 <tr key={item.id} className="transition-colors hover:bg-[hsl(var(--muted))]">

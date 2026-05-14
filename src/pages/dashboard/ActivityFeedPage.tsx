@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
 
 function formatRelativeTime(timestamp: number) {
   const diffMinutes = Math.max(1, Math.round((Date.now() - timestamp) / 60000));
@@ -64,7 +65,19 @@ export function ActivityFeedPage() {
     );
   }
 
-  const visibleItems = feed.items.slice(0, limit);
+  const [search, setSearch] = useState("");
+
+  const filteredItems = (feed?.items ?? []).filter((item) => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      item.title.toLowerCase().includes(needle) ||
+      item.body.toLowerCase().includes(needle) ||
+      item.source.toLowerCase().includes(needle)
+    );
+  });
+
+  const visibleItems = filteredItems.slice(0, limit);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -101,6 +114,15 @@ export function ActivityFeedPage() {
             <ChevronRight size={20} />
           </Link>
         </SurfaceCard>
+      </div>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div />
+        <DashboardSearch 
+          value={search} 
+          onChange={setSearch} 
+          placeholder="Search events or sources" 
+        />
       </div>
 
       <SurfaceCard className="overflow-x-auto">

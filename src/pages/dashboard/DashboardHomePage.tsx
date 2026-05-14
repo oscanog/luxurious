@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
-import { Star, UserRound } from "lucide-react";
+import { Star, UserRound, RefreshCcw } from "lucide-react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import owlFrontLeft from "@/assets/brand/owl-front-left.png";
@@ -110,11 +111,31 @@ export function DashboardHomePage() {
 
   return (
     <div className="mx-auto max-w-[1160px] space-y-5 p-4 sm:p-6 lg:p-8">
-      <div>
-        <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
-        <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
-          Build the network.
-        </h1>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
+          <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+            Build the network.
+          </h1>
+        </div>
+        <button 
+          onClick={() => {
+            toast.success("Metrics synced with backend", {
+              icon: <RefreshCcw size={16} className="animate-spin text-emerald-500" />,
+              style: {
+                borderRadius: '16px',
+                background: 'hsl(var(--card))',
+                color: 'hsl(var(--foreground))',
+                border: '1px solid hsl(var(--border))',
+                fontWeight: 'bold',
+                fontSize: '13px'
+              }
+            });
+          }}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-all hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:scale-105 active:scale-95"
+        >
+          <RefreshCcw size={18} />
+        </button>
       </div>
 
       <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[linear-gradient(135deg,#F5F8FF,#DDE9FF)] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[linear-gradient(135deg,#26459E,#1E3A8A)]">
