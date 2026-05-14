@@ -37,33 +37,25 @@ export function MembersPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <SurfaceCard className="relative overflow-hidden p-6 sm:p-8">
-        <div
-          className="absolute inset-0 opacity-90"
-          style={{
-            background:
-              "radial-gradient(circle at top left, hsl(221 83% 53% / 0.18), transparent 32%), radial-gradient(circle at bottom right, hsl(43 96% 48% / 0.16), transparent 28%)",
-          }}
-        />
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
-              Network
-            </p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">
-              Members follow mobile meanings again.
+      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+        <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+          <div className="flex-1 pb-[18px]">
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">Network</p>
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+              Directory
             </h1>
-            <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] sm:text-base">
-              Joined, invited, and pending all live here. Admin directory moved back under admin.
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-xl">
+              Joined, invited, and pending members. Admin directory moved back under admin.
             </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:w-[420px]">
-            <MetricTile label="Joined" value={dashboard?.stats.joinedCount} />
-            <MetricTile label="Invited" value={dashboard?.stats.invitedCount} />
-            <MetricTile label="Pending" value={dashboard?.stats.pendingCount} />
           </div>
         </div>
-      </SurfaceCard>
+      </section>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <StatTile label="Joined" value={dashboard?.stats.joinedCount} accentClassName="text-[hsl(var(--secondary))]" />
+        <StatTile label="Invited" value={dashboard?.stats.invitedCount} accentClassName="text-[hsl(var(--foreground))]" />
+        <StatTile label="Pending" value={dashboard?.stats.pendingCount} accentClassName="text-[hsl(var(--foreground))]" />
+      </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
@@ -105,58 +97,84 @@ export function MembersPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {filteredMembers.map((member) => (
-            <SurfaceCard key={member.id} className="p-5 sm:p-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
-                  <Users size={20} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-lg font-black text-[hsl(var(--foreground))]">{member.name}</h2>
-                    {member.isViewer && (
-                      <span className="rounded-full bg-[hsl(var(--secondary)/0.14)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
-                        You
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{member.roleTitle}</p>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${
-                    member.status === "joined"
-                      ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
-                      : member.status === "pending"
-                        ? "bg-amber-500/12 text-amber-600 dark:text-amber-300"
-                        : "bg-violet-500/12 text-violet-600 dark:text-violet-300"
-                  }`}
+        <SurfaceCard className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[hsl(var(--border))]">
+              {filteredMembers.map((member) => (
+                <tr
+                  key={member.id}
+                  className="transition-colors hover:bg-[hsl(var(--muted))]"
                 >
-                  {member.status}
-                </span>
-              </div>
-            </SurfaceCard>
-          ))}
-          {filteredMembers.length === 0 && (
-            <SurfaceCard className="p-8 xl:col-span-2">
-              <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
-                No members matched current filter.
-              </p>
-            </SurfaceCard>
-          )}
-        </div>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+                        <Users size={16} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[hsl(var(--foreground))]">
+                          {member.name}
+                        </span>
+                        {member.isViewer && (
+                          <span className="mt-1 w-max rounded-full bg-[hsl(var(--secondary)/0.14)] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
+                            You
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-[hsl(var(--muted-foreground))]">
+                    {member.roleTitle}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${
+                        member.status === "joined"
+                          ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
+                          : member.status === "pending"
+                            ? "bg-amber-500/12 text-amber-600 dark:text-amber-300"
+                            : "bg-violet-500/12 text-violet-600 dark:text-violet-300"
+                      }`}
+                    >
+                      {member.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {filteredMembers.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-8 text-center text-[hsl(var(--muted-foreground))]">
+                    No members matched current filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </SurfaceCard>
       )}
     </div>
   );
 }
 
-function MetricTile({ label, value }: { label: string; value: number | undefined }) {
+function StatTile({
+  label,
+  value,
+  accentClassName,
+}: {
+  label: string;
+  value: number | undefined;
+  accentClassName: string;
+}) {
   return (
-    <SurfaceCard className="rounded-[24px] bg-[hsl(var(--background)/0.82)] p-4">
-      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-black text-[hsl(var(--foreground))] tabular-nums">{value ?? "..."}</p>
+    <SurfaceCard className="rounded-[30px] p-[18px]">
+      <p className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
+      <p className={`mt-3 text-[40px] leading-none font-bold tabular-nums ${accentClassName}`}>{value ?? "..."}</p>
     </SurfaceCard>
   );
 }

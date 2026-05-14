@@ -90,7 +90,7 @@ async function buildFeedData(ctx: MobileCtx) {
     .query("financialTransactions")
     .withIndex("by_profileId_and_occurredAt", (q) => q.eq("profileId", profile._id))
     .order("desc")
-    .take(8);
+    .take(50);
   const devices = await ctx.db
     .query("mobileDeviceTokens")
     .withIndex("by_profileId_and_updatedAt", (q) => q.eq("profileId", profile._id))
@@ -119,7 +119,7 @@ async function buildFeedData(ctx: MobileCtx) {
   const joinedMembers = members
     .filter((member) => !member.isViewer && member.status === "joined" && member.joinedAt != null)
     .sort((a, b) => (b.joinedAt ?? 0) - (a.joinedAt ?? 0))
-    .slice(0, 6);
+    .slice(0, 20);
   for (const member of joinedMembers) {
     events.push({
       id: `joined:${member._id}`,
@@ -134,7 +134,7 @@ async function buildFeedData(ctx: MobileCtx) {
 
   const pipelineMembers = members
     .filter((member) => !member.isViewer && member.status !== "joined")
-    .slice(0, 4);
+    .slice(0, 20);
   for (const member of pipelineMembers) {
     const isPending = member.status === "pending";
     events.push({
@@ -205,7 +205,7 @@ async function buildFeedData(ctx: MobileCtx) {
 
   const sortedEvents = events
     .sort((a, b) => b.occurredAt - a.occurredAt)
-    .slice(0, 20);
+    .slice(0, 100);
   const lastReadAt = state?.lastReadAt ?? 0;
   const unreadCount = sortedEvents.filter((event) => event.occurredAt > lastReadAt).length;
   const latestOccurredAt = sortedEvents[0]?.occurredAt ?? lastReadAt;
