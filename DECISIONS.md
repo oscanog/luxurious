@@ -33,3 +33,11 @@ Architectural and design decisions for Luxurious.
 - **Interactive Tool Catalog**: All org chart power tools (connect, disconnect, reconnect, drag, search) documented in `INTERACTIVE-TOOLS.md`.
 - **Auth Guard Redirect**: Invalid or expired Convex auth tokens auto-redirect to login page. No flash of protected content.
 - **Verification Required**: Every interactive tool must be tested end-to-end against seed data before marking complete.
+
+## 2026-05-15: Data Density & Module Integration
+
+- **Table-First Desktop UX**: List views across Finance, Members, and Activity Feed standardized on **HTML Tables** instead of cards to optimize information density for desktop monitors.
+- **Infinite Scroll for High-Volume Feeds**: Implemented `IntersectionObserver` based infinite scroll in Activity Feed to support deep-log traversal without performance degradation.
+- **Sidebar Accordion Grouping**: Grouped 12+ finance/analytics routes into logical sidebar accordions (Banking, Ledger, Planning, Analytics) to maintain scannability.
+- **Convex-Backed Secondary Modules**: Initiated migration of static placeholders (Calendar, Invitations, Trade Simulation) to full Convex integration to ensure real-time data parity.
+

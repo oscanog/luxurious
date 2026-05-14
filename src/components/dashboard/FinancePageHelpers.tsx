@@ -8,6 +8,7 @@ const HERO_TONES = {
   primary: "bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]",
   success: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300",
   warning: "bg-amber-500/12 text-amber-600 dark:text-amber-300",
+  danger: "bg-red-500/12 text-red-600 dark:text-red-300",
   neutral: "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]",
 } as const;
 

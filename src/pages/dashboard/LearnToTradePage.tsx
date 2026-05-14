@@ -1,4 +1,4 @@
-import { TrendingUp, PlayCircle, BookOpen, BarChart3, ArrowUpRight, Wallet } from "lucide-react";
+import { TrendingUp, BarChart3, ArrowUpRight, Wallet, PlayCircle, BookOpen } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { TradingChart } from "../../components/dashboard/TradingChart";
@@ -14,7 +14,10 @@ export function LearnToTradePage() {
 
   const wallet = useQuery(api.simulation.getWallet);
   const openTrades = useQuery(api.simulation.getOpenTrades);
+  const tradeHistory = useQuery(api.simulation.getTradeHistory);
+  
   const executeTrade = useMutation(api.simulation.openTrade);
+  const exitTrade = useMutation(api.simulation.closeTrade);
 
   // 1. History Fetch (Binance REST)
   useEffect(() => {
@@ -74,6 +77,15 @@ export function LearnToTradePage() {
     }
   }
 
+  async function handleCloseTrade(tradeId: any) {
+    try {
+      await exitTrade({ tradeId, exitPrice: currentPrice });
+      toast.success("Trade closed successfully");
+    } catch {
+      toast.error("Failed to close trade");
+    }
+  }
+
   return (
     <div className="p-6 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -130,6 +142,54 @@ export function LearnToTradePage() {
             )}
           </div>
 
+          <div className="space-y-4">
+            <h3 className="text-sm font-extrabold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">Recent History</h3>
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden shadow-sm">
+              {!tradeHistory || tradeHistory.length === 0 ? (
+                <div className="p-12 text-center text-[hsl(var(--muted-foreground))]">
+                  <BarChart3 size={32} className="mx-auto mb-2 opacity-20" />
+                  <p className="text-sm font-bold">No trade history yet.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[hsl(var(--muted)/0.3)]">
+                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Symbol</th>
+                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Side</th>
+                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Entry/Exit</th>
+                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Amount</th>
+                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--muted-foreground))] text-right">PnL</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[hsl(var(--border))]">
+                    {tradeHistory.map((h) => {
+                      const pnl = h.side === "long" ? (h.exitPrice! - h.entryPrice) : (h.entryPrice - h.exitPrice!);
+                      const pnlPercent = (pnl / h.entryPrice) * 100;
+                      return (
+                        <tr key={h._id} className="hover:bg-[hsl(var(--muted)/0.2)] transition-colors">
+                          <td className="px-6 py-4 text-xs font-bold text-[hsl(var(--foreground))]">{h.symbol}</td>
+                          <td className="px-6 py-4">
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${h.side === 'long' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                              {h.side}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="text-xs font-bold text-[hsl(var(--foreground))]">${h.entryPrice.toLocaleString()}</p>
+                            <p className="text-[10px] text-[hsl(var(--muted-foreground))]">${h.exitPrice?.toLocaleString()}</p>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-bold text-[hsl(var(--foreground))]">${h.amount.toLocaleString()}</td>
+                          <td className={`px-6 py-4 text-xs font-black text-right tabular-nums ${pnl >= 0 ? 'text-[hsl(152_69%_42%)]' : 'text-[hsl(0_84%_61%)]'}`}>
+                            {pnl >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+          
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-extrabold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">Trading Academy</h3>
@@ -235,19 +295,22 @@ export function LearnToTradePage() {
                 </div>
               ) : (
                 openTrades.map((trade) => {
-                  const pnl = trade.type === "buy" ? currentPrice - trade.entryPrice : trade.entryPrice - currentPrice;
+                  const pnl = trade.side === "long" ? currentPrice - trade.entryPrice : trade.entryPrice - currentPrice;
                   const pnlPercent = (pnl / trade.entryPrice) * 100;
                   const isProfit = pnl >= 0;
                   
                   return (
                     <div key={trade._id} className="p-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] group transition-all hover:border-[hsl(var(--primary)/0.3)]">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${trade.type === 'buy' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                          {trade.type}
+                        <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${trade.side === 'long' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                          {trade.side}
                         </span>
-                        <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] tabular-nums">
-                          ${trade.entryPrice.toLocaleString()}
-                        </span>
+                        <button 
+                          onClick={() => { void handleCloseTrade(trade._id); }}
+                          className="text-[10px] font-bold text-red-500 hover:underline"
+                        >
+                          CLOSE
+                        </button>
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-[hsl(var(--foreground))]">${trade.amount.toLocaleString()}</p>

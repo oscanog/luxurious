@@ -211,4 +211,60 @@ export default defineSchema({
     .index("by_profileId_and_parentMemberId", ["profileId", "parentMemberId"])
     .index("by_profileId_and_status", ["profileId", "status"])
     .index("by_profileId_and_isViewer", ["profileId", "isViewer"]),
+
+  invitations: defineTable({
+    uplineId: v.id("users"),
+    email: v.string(),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired")),
+    sentAt: v.number(),
+    code: v.string(), // Unique invitation code
+  })
+    .index("by_upline", ["uplineId"])
+    .index("by_email", ["email"])
+    .index("by_code", ["code"]),
+
+  events: defineTable({
+    profileId: v.id("mobileProfiles"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    date: v.string(), // ISO date string
+    category: v.union(v.literal("financial"), v.literal("personal"), v.literal("network")),
+    isDone: v.boolean(),
+  })
+    .index("by_profileId", ["profileId"])
+    .index("by_profileId_and_date", ["profileId", "date"]),
+
+  receipts: defineTable({
+    profileId: v.id("mobileProfiles"),
+    storageId: v.id("_storage"),
+    vendor: v.optional(v.string()),
+    totalAmount: v.optional(v.number()),
+    date: v.optional(v.string()),
+    category: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
+  })
+    .index("by_profileId", ["profileId"])
+    .index("by_status", ["status"]),
+
+  shoppingItems: defineTable({
+    profileId: v.id("mobileProfiles"),
+    name: v.string(),
+    quantity: v.string(), // e.g. "2 pcs", "1 kg"
+    category: v.string(), // e.g. "Office", "Home", "Tech"
+    isChecked: v.boolean(),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+  })
+    .index("by_profileId", ["profileId"])
+    .index("by_profileId_and_category", ["profileId", "category"]),
+
+  tickets: defineTable({
+    profileId: v.id("mobileProfiles"),
+    subject: v.string(),
+    message: v.string(),
+    status: v.union(v.literal("open"), v.literal("resolved"), v.literal("closed")),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    createdAt: v.number(),
+  })
+    .index("by_profileId", ["profileId"])
+    .index("by_status", ["status"]),
 });

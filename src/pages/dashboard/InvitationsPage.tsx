@@ -1,22 +1,22 @@
+import { useMutation, useQuery } from "convex/react";
+import toast from "react-hot-toast";
+import { api } from "../../../convex/_generated/api";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useState } from "react";
-import { Mail, Plus, Copy, Trash2, Clock, CheckCircle, X, RotateCcw, AlertTriangle } from "lucide-react";
+import { 
+  Clock, 
+  CheckCircle, 
+  X, 
+  AlertTriangle, 
+  Plus, 
+  Mail, 
+  Copy, 
+  RotateCcw, 
+  Trash2 
+} from "lucide-react";
 
 type InviteStatus = "pending" | "accepted" | "expired";
 
-interface Invite {
-  id: string;
-  email: string;
-  status: InviteStatus;
-  sentAt: string;
-  link: string;
-}
-
-const DUMMY_INVITES: Invite[] = [
-  { id: "inv-1", email: "marcos.reyes@gmail.com", status: "pending", sentAt: "2026-04-28", link: "https://luxurious.trade/invite/abc123" },
-  { id: "inv-2", email: "lucia.gomez@yahoo.com", status: "accepted", sentAt: "2026-04-20", link: "https://luxurious.trade/invite/def456" },
-  { id: "inv-3", email: "pedro.santos@gmail.com", status: "expired", sentAt: "2026-04-01", link: "https://luxurious.trade/invite/ghi789" },
-  { id: "inv-4", email: "carla.navarro@outlook.com", status: "pending", sentAt: "2026-04-29", link: "https://luxurious.trade/invite/jkl012" },
-];
 
 const STATUS_STYLES: Record<InviteStatus, { bg: string; text: string; icon: React.ElementType; label: string }> = {
   pending: { bg: "hsl(37 92% 50% / 0.12)", text: "hsl(37 92% 40%)", icon: Clock, label: "Pending" },
@@ -51,11 +51,11 @@ function RevokeDialog({ onClose, onConfirm, email }: { onClose: () => void; onCo
   );
 }
 
-function InviteModal({ onClose, onSend }: { onClose: () => void; onSend: (email: string) => void }) {
+function InviteModal({ onClose, onSend, isSending }: { onClose: () => void; onSend: (email: string) => void; isSending: boolean }) {
   const [email, setEmail] = useState("");
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || isSending) return;
     onSend(email.trim());
   }
   return (
@@ -77,18 +77,18 @@ function InviteModal({ onClose, onSend }: { onClose: () => void; onSend: (email:
               Email Address
             </label>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="member@email.com" autoFocus
-              className="w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)] transition-all" />
+              placeholder="member@email.com" autoFocus disabled={isSending}
+              className="w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)] transition-all disabled:opacity-50" />
           </div>
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] transition-colors">
+            <button type="button" onClick={onClose} disabled={isSending}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] transition-colors disabled:opacity-50">
               Cancel
             </button>
-            <button type="submit"
-              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-all hover:opacity-90"
+            <button type="submit" disabled={isSending}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
               style={{ background: "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))", boxShadow: "0 4px 16px hsl(43 96% 48% / 0.3)" }}>
-              Send Invite
+              {isSending ? "Sending..." : "Send Invite"}
             </button>
           </div>
         </form>
@@ -98,22 +98,28 @@ function InviteModal({ onClose, onSend }: { onClose: () => void; onSend: (email:
 }
 
 export function InvitationsPage() {
-  const [invites, setInvites] = useState<Invite[]>(DUMMY_INVITES);
+  const invites = useQuery(api.invitations.list);
+  const sendInvite = useMutation(api.invitations.create);
+  const revokeInvite = useMutation(api.invitations.revoke);
+  const resendInvite = useMutation(api.invitations.resend);
+
   const [showModal, setShowModal] = useState(false);
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
-  function handleSend(email: string) {
-    const newInvite: Invite = {
-      id: `inv-${Date.now()}`,
-      email,
-      status: "pending",
-      sentAt: new Date().toISOString().slice(0, 10),
-      link: `https://luxurious.trade/invite/${Math.random().toString(36).slice(2, 8)}`,
-    };
-    setInvites((prev) => [newInvite, ...prev]);
-    setShowModal(false);
+  async function handleSend(email: string) {
+    setIsSending(true);
+    try {
+      await sendInvite({ email });
+      toast.success("Invitation sent");
+      setShowModal(false);
+    } catch {
+      toast.error("Failed to send invitation");
+    } finally {
+      setIsSending(false);
+    }
   }
 
   function handleCopy(link: string, id: string) {
@@ -122,30 +128,59 @@ export function InvitationsPage() {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  function handleResend(id: string) {
+  async function handleResend(id: any) {
     setResending(id);
-    setTimeout(() => {
+    try {
+      await resendInvite({ id });
+      toast.success("Invitation resent");
+    } catch {
+      toast.error("Failed to resend");
+    } finally {
       setResending(null);
-    }, 1500);
-  }
-
-  function handleConfirmRevoke() {
-    if (revokeId) {
-      setInvites((prev) => prev.filter((inv) => inv.id !== revokeId));
-      setRevokeId(null);
     }
   }
 
-  const counts = { pending: invites.filter((i) => i.status === "pending").length, accepted: invites.filter((i) => i.status === "accepted").length, expired: invites.filter((i) => i.status === "expired").length };
+  async function handleConfirmRevoke() {
+    if (revokeId) {
+      try {
+        await revokeInvite({ id: revokeId as any });
+        toast.success("Invitation revoked");
+      } catch {
+        toast.error("Failed to revoke");
+      } finally {
+        setRevokeId(null);
+      }
+    }
+  }
+
+  if (invites === undefined) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-12 w-48" />
+        <div className="flex gap-3">
+          <Skeleton className="h-10 w-24 rounded-xl" />
+          <Skeleton className="h-10 w-24 rounded-xl" />
+          <Skeleton className="h-10 w-24 rounded-xl" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  const counts = {
+    pending: invites.filter((i) => i.status === "pending").length,
+    accepted: invites.filter((i) => i.status === "accepted").length,
+    expired: invites.filter((i) => i.status === "expired").length,
+  };
 
   return (
     <div className="p-6 space-y-5">
-      {showModal && <InviteModal onClose={() => setShowModal(false)} onSend={handleSend} />}
+      {showModal && <InviteModal onClose={() => setShowModal(false)} onSend={(e) => { void handleSend(e); }} isSending={isSending} />}
       {revokeId && (
         <RevokeDialog 
-          email={invites.find(i => i.id === revokeId)?.email ?? ""} 
+          email={invites.find(i => i._id === revokeId)?.email ?? ""} 
           onClose={() => setRevokeId(null)} 
-          onConfirm={handleConfirmRevoke} 
+          onConfirm={() => { void handleConfirmRevoke(); }} 
         />
       )}
 
@@ -190,8 +225,9 @@ export function InvitationsPage() {
         {invites.map((inv) => {
           const st = STATUS_STYLES[inv.status];
           const Icon = st.icon;
+          const inviteLink = `https://luxurious.trade/join/${inv.code}`;
           return (
-            <div key={inv.id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-[hsl(var(--muted)/0.2)] transition-colors group">
+            <div key={inv._id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-[hsl(var(--muted)/0.2)] transition-colors group">
               <div className="hidden sm:flex w-10 h-10 rounded-xl items-center justify-center shrink-0 border border-transparent group-hover:border-[hsl(var(--border))] transition-all" style={{ background: st.bg }}>
                 <Mail size={16} style={{ color: st.text }} />
               </div>
@@ -203,28 +239,28 @@ export function InvitationsPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className="text-[10px] sm:text-xs text-[hsl(var(--muted-foreground))] truncate font-mono bg-[hsl(var(--muted)/0.5)] px-1.5 py-0.5 rounded">{inv.link}</p>
+                  <p className="text-[10px] sm:text-xs text-[hsl(var(--muted-foreground))] truncate font-mono bg-[hsl(var(--muted)/0.5)] px-1.5 py-0.5 rounded">{inviteLink}</p>
                 </div>
               </div>
               
               <div className="hidden lg:flex flex-col items-end gap-1 shrink-0 w-28 pr-4 border-r border-[hsl(var(--border))] mr-2">
                 <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-tight">Sent Date</span>
-                <span className="text-xs font-semibold text-[hsl(var(--foreground))]">{inv.sentAt}</span>
+                <span className="text-xs font-semibold text-[hsl(var(--foreground))]">{new Date(inv.sentAt).toLocaleDateString()}</span>
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={() => handleCopy(inv.link, inv.id)} title="Copy link"
+                <button onClick={() => handleCopy(inviteLink, inv._id)} title="Copy link"
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-all active:scale-90">
-                  {copied === inv.id ? <CheckCircle size={15} style={{ color: "hsl(152 69% 42%)" }} /> : <Copy size={15} />}
+                  {copied === inv._id ? <CheckCircle size={15} style={{ color: "hsl(152 69% 42%)" }} /> : <Copy size={15} />}
                 </button>
                 {inv.status !== "accepted" && (
-                  <button onClick={() => handleResend(inv.id)} title="Resend link"
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-all active:scale-90">
-                    <RotateCcw size={15} className={resending === inv.id ? "animate-spin text-[hsl(var(--primary))]" : ""} />
+                  <button onClick={() => { void handleResend(inv._id); }} title="Resend link"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-all active:scale-90">
+                    <RotateCcw size={15} className={resending === inv._id ? "animate-spin text-[hsl(var(--primary))]" : ""} />
                   </button>
                 )}
                 {inv.status === "pending" && (
-                  <button onClick={() => setRevokeId(inv.id)} title="Revoke"
+                  <button onClick={() => setRevokeId(inv._id)} title="Revoke"
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90">
                     <Trash2 size={15} />
                   </button>

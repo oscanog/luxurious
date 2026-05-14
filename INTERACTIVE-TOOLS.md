@@ -45,6 +45,33 @@ Desktop org chart power tools for managing network hierarchy.
   - **Reset View**: Re-centers and fits the entire org tree into view using `fitView`.
   - **Open/Close Member Sidebar**: Toggles the right-side member assignment panel.
 
+## Dashboard Power Tools
+
+Advanced data management tools for the main dashboard views.
+
+### 1. Unified Table Views
+- **Scope**: Accounts, Currency, History, Installments, Cashflow, Members, Activity Feed.
+- **Purpose**: Higher information density for desktop users.
+- **Features**: Row hover states, tabular-nums for financial alignment, sticky headers where applicable.
+
+### 2. Infinite Scroll Activity Feed
+- **Scope**: `ActivityFeedPage.tsx`.
+- **Purpose**: Manage high-volume event logs without performance degradation.
+- **Trigger**: `IntersectionObserver` on the last table row.
+- **Pagination**: Increments by 10 items per scroll event.
+
+### 3. Hierarchical Sidebar Accordions
+- **Scope**: Sidebar (Finance section).
+- **Purpose**: Simplify navigation by grouping 10+ finance items into logical buckets.
+- **Groups**: Banking & Assets, Ledger & Activity, Financial Planning, Analytics.
+- **State**: Persistent auto-expansion based on active child route.
+
+### 4. Simulation Trade Engine
+- **Scope**: `LearnToTradePage.tsx`.
+- **Purpose**: Risk-free market practice.
+- **Features**: Live Binance price feed (WebSockets), simulated wallet, open position tracking.
+
+
 ## Auth Guard
 
 - Invalid/expired tokens redirect to login page automatically

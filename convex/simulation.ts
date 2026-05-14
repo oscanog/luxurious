@@ -103,3 +103,63 @@ export const getOpenTrades = query({
       .collect();
   },
 });
+
+export const closeTrade = mutation({
+  args: {
+    tradeId: v.id("trades"),
+    exitPrice: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const trade = await ctx.db.get("trades", args.tradeId);
+    if (!trade || trade.userId !== userId || trade.status !== "open") {
+      throw new Error("Trade not found or already closed");
+    }
+
+    const wallet = await ctx.db
+      .query("wallets")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!wallet) throw new Error("Wallet not found");
+
+    // Calculate PnL
+    const priceDiff = trade.side === "long" 
+      ? args.exitPrice - trade.entryPrice 
+      : trade.entryPrice - args.exitPrice;
+    
+    const pnlPercent = priceDiff / trade.entryPrice;
+    const pnlAmount = trade.amount * pnlPercent;
+    const returnAmount = trade.amount + pnlAmount;
+
+    // Update trade
+    await ctx.db.patch("trades", args.tradeId, {
+      status: "closed",
+      exitPrice: args.exitPrice,
+      closedAt: Date.now(),
+    });
+
+    // Update wallet
+    await ctx.db.patch("wallets", wallet._id, {
+      balance: wallet.balance + returnAmount,
+    });
+
+    return { pnlAmount, returnAmount };
+  },
+});
+
+export const getTradeHistory = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    return await ctx.db
+      .query("trades")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("status"), "closed"))
+      .order("desc")
+      .take(50);
+  },
+});

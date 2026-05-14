@@ -48,11 +48,15 @@ Capability contract.
 - [x] Dark mode.
 - [x] Real-time updates.
 - [x] Desktop top navbar absorbs home sync controls and keeps user dropdown in-shell.
-- [x] Desktop shell brand card uses mobile-aligned solid blue field instead of desktop-only radial gradient treatment.
+- [x] Desktop shell brand card and headers use solid blue theme (`#1E3A8A`) for premium visual parity.
+- [x] Transition list views to **Table components** across Finance, Members, and Activity Feed for optimized desktop density.
+- [x] Implement **Infinite Scroll** for Activity Feed with pagination logic (min. 10 items).
+- [x] Sidebar navigation uses **Accordion-style grouping** for Finance modules (Banking, Ledger, Planning, Analytics).
 - [ ] Feedback on actions across new pages.
 - [x] Sidebar groups match mobile taxonomy: Network, Finance, Support, Admin, Profile, Settings.
 - [x] Finance and planning pages exist for desktop parity routes.
-- [ ] Support placeholder utilities expanded beyond parity shells where product requires full behavior.
+- [x] Support placeholder utilities expanded beyond parity shells where product requires full behavior.
+- [x] Documented static vs dynamic modules in `STATIC-MODULES-TRACKER.md`.
 
 ## Out of Scope
 - Public landing page.

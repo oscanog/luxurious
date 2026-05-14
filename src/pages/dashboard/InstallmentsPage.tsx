@@ -10,7 +10,7 @@ import {
   DashboardPageShell,
   DashboardProgressBar,
   DashboardSectionTitle,
-  ToneBadge,
+
   formatCurrency,
   formatDate,
   formatPercent,

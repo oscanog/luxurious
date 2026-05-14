@@ -74,18 +74,42 @@ const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
   { path: "/activity-feed", label: "Activity Feed", icon: Bell },
 ];
 
-const FINANCE_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
-  { path: "/accounts", label: "Accounts", icon: Landmark },
-  { path: "/cashflow", label: "Cashflow", icon: TrendingUp },
-  { path: "/currency", label: "Currency", icon: CircleDollarSign },
-  { path: "/budgets", label: "Budgets", icon: PieChart },
-  { path: "/debt-tracker", label: "Debt Tracker", icon: CreditCard },
-  { path: "/installments", label: "Installments", icon: Wallet },
-  { path: "/income", label: "Income", icon: TrendingDown },
-  { path: "/expense", label: "Expense", icon: ReceiptText },
-  { path: "/history", label: "History", icon: History },
-  { path: "/statistics", label: "Statistics", icon: Sigma },
-];
+const FINANCE_GROUPS = [
+  {
+    label: "Banking & Assets",
+    icon: Landmark,
+    items: [
+      { path: "/accounts", label: "Accounts", icon: Landmark },
+      { path: "/currency", label: "Currency", icon: CircleDollarSign },
+    ],
+  },
+  {
+    label: "Ledger & Activity",
+    icon: History,
+    items: [
+      { path: "/cashflow", label: "Cashflow", icon: TrendingUp },
+      { path: "/income", label: "Income", icon: TrendingDown },
+      { path: "/expense", label: "Expense", icon: ReceiptText },
+      { path: "/history", label: "History", icon: History },
+    ],
+  },
+  {
+    label: "Financial Planning",
+    icon: PieChart,
+    items: [
+      { path: "/budgets", label: "Budgets", icon: PieChart },
+      { path: "/debt-tracker", label: "Debt Tracker", icon: CreditCard },
+      { path: "/installments", label: "Installments", icon: Wallet },
+    ],
+  },
+  {
+    label: "Analytics",
+    icon: Sigma,
+    items: [
+      { path: "/statistics", label: "Statistics", icon: Sigma },
+    ],
+  },
+] as const;
 
 const SUPPORT_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
   { path: "/receipt-scanner", label: "Receipt Scanner", icon: FileScan },
@@ -174,16 +198,84 @@ function SidebarLink({
   );
 }
 
+function SidebarAccordion({
+  label,
+  icon: Icon,
+  items,
+  collapsed,
+  onSelect,
+}: {
+  label: string;
+  icon: React.ElementType;
+  items: ReadonlyArray<{ path: NavPath; label: string; icon: React.ElementType }>;
+  collapsed: boolean;
+  onSelect: () => void;
+}) {
+  const location = useLocation();
+  const isAnyActive = items.some((item) => location.pathname === item.path);
+  const [isOpen, setIsOpen] = useState(isAnyActive);
+
+  // If collapsed, don't show accordion behavior, just show the icon?
+  // Actually, sidebar usually handles this by showing a tooltip or just expanding.
+  // We'll keep it simple: if collapsed, the accordion is effectively disabled/closed.
+  
+  if (collapsed) {
+    return (
+      <div className="space-y-1">
+        {items.map((item) => (
+          <SidebarLink key={item.path} collapsed={collapsed} item={item} onSelect={onSelect} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all",
+          isAnyActive
+            ? "text-[hsl(var(--foreground))]"
+            : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
+        )}
+      >
+        <Icon size={18} className="shrink-0" />
+        <span className="flex-1 truncate text-left">{label}</span>
+        <ChevronDown
+          size={14}
+          className={cn("shrink-0 transition-transform duration-200", isOpen ? "rotate-180" : "")}
+        />
+      </button>
+      
+      {isOpen && (
+        <div className="ml-4 space-y-1 border-l border-[hsl(var(--border))] pl-2 animate-in slide-in-from-top-1 duration-200">
+          {items.map((item) => (
+            <SidebarLink
+              key={item.path}
+              collapsed={collapsed}
+              item={item}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SidebarSection({
   title,
   items,
+  financeGroups,
   collapsed,
   onSelect,
   notificationCount,
   promotionCount,
 }: {
   title: string;
-  items: Array<{ path: NavPath; label: string; icon: React.ElementType }>;
+  items?: Array<{ path: NavPath; label: string; icon: React.ElementType }>;
+  financeGroups?: typeof FINANCE_GROUPS;
   collapsed: boolean;
   onSelect: () => void;
   notificationCount?: number;
@@ -197,21 +289,34 @@ function SidebarSection({
         </p>
       )}
       <div className="space-y-1">
-        {items.map((item) => (
-          <SidebarLink
-            key={item.path}
-            collapsed={collapsed}
-            item={item}
-            onSelect={onSelect}
-            badgeCount={
-              item.path === "/activity-feed"
-                ? notificationCount
-                : item.path === "/promotions"
-                  ? promotionCount
-                  : undefined
-            }
-          />
-        ))}
+        {financeGroups ? (
+          financeGroups.map((group) => (
+            <SidebarAccordion
+              key={group.label}
+              label={group.label}
+              icon={group.icon}
+              items={group.items}
+              collapsed={collapsed}
+              onSelect={onSelect}
+            />
+          ))
+        ) : (
+          items?.map((item) => (
+            <SidebarLink
+              key={item.path}
+              collapsed={collapsed}
+              item={item}
+              onSelect={onSelect}
+              badgeCount={
+                item.path === "/activity-feed"
+                  ? notificationCount
+                  : item.path === "/promotions"
+                    ? promotionCount
+                    : undefined
+              }
+            />
+          ))
+        )}
       </div>
     </div>
   );
@@ -328,7 +433,7 @@ export function AdminLayout({
               />
               <SidebarSection
                 title="Finance"
-                items={FINANCE_ITEMS}
+                financeGroups={FINANCE_GROUPS}
                 collapsed={collapsed}
                 onSelect={() => setMobileMenuOpen(false)}
               />

@@ -1,6 +1,6 @@
 # Milestone M006: Desktop Mobile Parity
 
-**Status:** `[active]`
+**Status:** `[complete]`
 **Start Date:** 2026-05-14
 **Objective:** Rebuild desktop information architecture and core UX so mobile users see same pages, sidebar groups, badges, theme behavior, and primary flows when they switch to web.
 
@@ -54,7 +54,7 @@
 - [x] T03: Keep admin-only routes available without polluting member-first shell.
 
 ### Slice S05: Secondary Surface Backlog
-**Status:** `[in-progress]`
+**Status:** `[complete]`
 - [x] T01: Map finance/support pages needed for parity.
 - [x] T02: Decide which mobile mock/support pages stay placeholders on desktop.
-- [ ] T03: Document deferred parity gaps after first shipping slice.
+- [x] T03: Document deferred parity gaps after first shipping slice.

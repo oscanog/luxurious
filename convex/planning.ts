@@ -100,3 +100,15 @@ export const getInstallments = query({
     return overview.installments;
   },
 });
+
+export const getEvents = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    return await ctx.db
+      .query("events")
+      .withIndex("by_profileId", (q) => q.eq("profileId", profile._id))
+      .order("desc")
+      .collect();
+  },
+});
