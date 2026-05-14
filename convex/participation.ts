@@ -77,7 +77,6 @@ export const getDailyAttendance = query({
       .withIndex("by_date_and_user", (q) => q.eq("date", args.date))
       .collect();
     
-    // Get all users to build the full table
     const users = await ctx.db.query("users").collect();
     
     return users.map(user => {
@@ -93,5 +92,37 @@ export const getDailyAttendance = query({
         }
       };
     });
+  },
+});
+
+export const listUserTiers = query({
+  handler: async (ctx) => {
+    const profiles = await ctx.db.query("mobileProfiles").collect();
+    return await Promise.all(
+      profiles.map(async (p) => {
+        const user = p.userId ? await ctx.db.get(p.userId) : null;
+        return {
+          profileId: p._id,
+          userId: p.userId,
+          userName: user?.name ?? "Unknown",
+          tier: (p as any).tier ?? "free",
+          promotedAt: (p as any).promotedAt ?? null,
+        };
+      })
+    );
+  },
+});
+
+export const promoteUserTier = mutation({
+  args: {
+    profileId: v.id("mobileProfiles"),
+    tier: v.union(v.literal("free"), v.literal("silver"), v.literal("gold")),
+  },
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    await ctx.db.patch(args.profileId, {
+      tier: args.tier,
+      promotedAt: Date.now(),
+    } as any);
   },
 });

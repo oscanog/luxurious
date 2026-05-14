@@ -28,124 +28,88 @@
 | `closedAt` | `optional(number)` | When signal resolved |
 | `createdAt` | `number` | Timestamp |
 
-### `signalSchedules` Table
+### `signalParticipation` Table
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `title` | `string` | "London Open", "NY Session", "Asia Sweep" |
-| `session` | `london \| new_york \| asia \| custom` | Trading session |
-| `dayOfWeek` | `number` | 0=Sun ... 6=Sat |
-| `time` | `string` | "08:00" (UTC) |
-| `timezone` | `string` | Display TZ: "UTC", "Asia/Manila", etc. |
-| `analystName` | `string` | Scheduled expert |
-| `isActive` | `boolean` | Toggle on/off |
+| `signalId` | `id(tradingSignals)` | Which signal was traded |
+| `userId` | `id(users)` | Who traded it |
+| `status` | `success \| error` | Outcome |
+| `notes` | `optional(string)` | Trade notes |
 | `createdAt` | `number` | Timestamp |
 
-### `signalMilestones` Table
+### `sessionAttendance` Table
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `title` | `string` | "Bronze Trader", "Silver Analyst", "Gold Strategist" |
-| `description` | `string` | What user needs to do |
-| `tier` | `free \| silver \| gold` | Tier this milestone unlocks |
-| `requiredSignals` | `number` | Signals needed to have followed |
-| `requiredWinRate` | `optional(number)` | Min win rate % |
-| `sortOrder` | `number` | Display order |
-| `isActive` | `boolean` | Toggle |
+| `date` | `string` | YYYY-MM-DD |
+| `userId` | `id(users)` | Who attended |
+| `sessionTime` | `string` | "3pm", "6pm", "8pm", "10pm" |
+| `attended` | `boolean` | Did they trade? |
+
+### `mobileProfiles.tier` Field
+| Value | Signals Visible | Features |
+| :--- | :--- | :--- |
+| `free` | Max 2 active signals | Basic schedule view |
+| `silver` | Max 5 active signals | Full access |
+| `gold` | Unlimited | All features + analyst notes |
 
 ---
 
-## 2. Backend Mutations & Queries
+## 2. Backend API
 
-### Admin Mutations
-| Function | Args | Description |
-| :--- | :--- | :--- |
-| `signals.create` | Full signal fields | Create new signal |
-| `signals.update` | `id` + partial fields | Edit active signal |
-| `signals.updateStatus` | `id`, `status`, `result?` | Mark TP hit / SL hit / Cancel |
-| `signals.toggleFeatured` | `id` | Set/unset "Last Promoted" |
-| `schedules.create` | Schedule fields | Add schedule slot |
-| `schedules.update` | `id` + partial | Edit schedule |
-| `schedules.toggleActive` | `id` | Enable/disable |
-| `milestones.create` | Milestone fields | Define new milestone |
+### Mutations (Admin Only)
+| Function | Description |
+| :--- | :--- |
+| `signals.create` | Create new signal with auto riskReward |
+| `signals.update` | Partial update on active signal |
+| `signals.updateStatus` | Mark TP hit / SL hit / Cancel |
+| `signals.toggleFeatured` | Set/unset featured signal |
+| `participation.recordParticipation` | Record user success/error per signal |
+| `participation.toggleAttendance` | Toggle user session attendance (3pm/6pm/etc.) |
 
-### Queries (Both Roles)
-| Function | Access | Description |
-| :--- | :--- | :--- |
-| `signals.listActive` | All | Live signals (filtered by user tier) |
-| `signals.listHistory` | All | Past signals with results |
-| `signals.getStats` | All | Win rate, total pips, active count |
-| `signals.getFeatured` | All | Current "Last Promoted" signal |
-| `schedules.list` | All | Active schedules |
-| `milestones.list` | All | Tier progression milestones |
+### Queries
+| Function | Description |
+| :--- | :--- |
+| `signals.listActive` | Live signals (tier-filtered for non-admin) |
+| `signals.listHistory` | Closed signals |
+| `signals.getFeatured` | Current featured signal |
+| `participation.getParticipationForSignal` | User list per signal code |
+| `participation.getDailyAttendance` | Full attendance grid for a date |
 
 ---
 
 ## 3. Page Architecture: `TradingSignalsPage.tsx`
 
-### Admin View — Sections & Components
+### Admin View Layout (Top → Bottom)
 
-| Section | Component Type | Why This Component |
+| Section | Component | Description |
 | :--- | :--- | :--- |
-| **Stats Overview** | `StatsGrid` | Quick KPI scan: Win Rate, Active Count, Monthly Pips, Featured signal |
-| **Activity Logs** | `Code Card Grid` | Clickable cards for tracking user performance per signal code |
-| **Tracking Table** | `Attendance Table` | Grid view of daily session participation (3pm, 6pm, etc.) |
-| **Create Signal** | `Inline Form Card` | Fast input. Symbol dropdown, entry/tp/sl numeric inputs, strategy select, tier radio. |
-| **Signal History** | `Table` with status pills | Filterable by status, date range, symbol. Color-coded result column (green/red) |
-| **Schedule Manager** | `Card Grid` (day-of-week cards) | Visual weekly calendar. Each day-card shows scheduled sessions. Toggle active/inactive |
-| **Milestone Editor** | `Ordered List Cards` | Drag-sortable tier cards showing progression path |
+| **Hero** | `DashboardPageHero` | Title + eyebrow badge |
+| **Signal Logs** | `StatTile` grid (full-width, `grid-cols-4`) | Signal code cards (e.g., "29", "30") with success/error/pending status. Same design as MembersPage StatTile |
+| **Tab Switcher** | Pill-style tab bar | Switches between two tables |
+| **Tab 1: Daily Tracking** | `SurfaceCard` table | Columns: User, 3 PM, 6 PM, 8 PM, 10 PM, Actions. ✅/❌ per cell |
+| **Tab 2: Access & Promotions** | `SurfaceCard` table | Columns: User, Current Tier (free/silver/gold badge), Promoted Date, Actions |
 
-### User View — Sections & Components
+### User View Layout (Top → Bottom)
 
-| Section | Component Type | Why This Component |
+| Section | Component | Description |
 | :--- | :--- | :--- |
-| **Featured Signal** | `Hero Card` (full-width) | Maximum visibility for "Signal of the Week". Large BUY/SELL badge, entry/tp/sl, copy buttons |
-| **Live Signals** | `Signal Cards` (grid) | Each card = one signal. Color-coded green (BUY) / red (SELL). Copy-to-clipboard for each level. Pulsing LIVE indicator |
-| **My Stats** | `StatsGrid` (3 cards) | Win Rate, Signals Followed, Current Tier |
-| **Schedule** | `Timeline` (vertical) | When next signals drop. Countdown timer to next session. Session labels (London/NY/Asia) |
-| **How to Get More Signals** | `Milestone Progress Cards` | Vertical stepper showing tier progression. Current tier highlighted. Requirements for next tier |
-| **Signal History** | `Compact Table` | Past signals user followed. Result column with P&L |
+| **Header** | Title + subtitle | "Trading Signals" |
+| **Session Drops** | `SessionCard` grid | Today's signal drop times (3pm, 8pm) with session labels |
+| **Featured** | `FeaturedSignalCard` | Hero card for Signal of the Week |
+| **Live Alerts** | `UserSignalCard` grid | Active signals with copy-to-clipboard |
 
 ---
 
-## 4. Access Control
+## 4. Implementation Status
 
-| Tier | Signals Visible | Features |
+| Slice | Scope | Status |
 | :--- | :--- | :--- |
-| **Free** | Max 2 active signals | Basic stats, schedule view |
-| **Silver** | Max 5 active signals | Full stats, milestone tracking |
-| **Gold** | Unlimited | All features + analyst notes |
-
-Admin: Full CRUD on all signals, schedules, milestones. Can override tier restrictions.
-
----
-
-## 5. UI/UX Design Tokens
-
-- **BUY Signal**: Green gradient `#22C55E` → `#16A34A`, white text
-- **SELL Signal**: Red gradient `#EF4444` → `#DC2626`, white text
-- **LIVE Pill**: Pulsing green dot + "LIVE" text
-- **Featured Badge**: Gold gradient matching brand secondary
-- **Tier Badges**: Free=Gray, Silver=`#94A3B8`, Gold=`#D4AF37`
-
----
-
-## 6. Mobile Parity Requirements
-
-- Push notification on new signal (tier-filtered)
-- Real-time Convex subscriptions for live status updates
-- Copy-to-clipboard for entry/tp/sl levels
-- Countdown timer to next scheduled session
-- Milestone progress synced across platforms
-
----
-
-## 7. Implementation Slices
-
-| Slice | Scope | Priority |
-| :--- | :--- | :--- |
-| S01 | Schema + Admin CRUD mutations + basic queries | P0 |
-| S02 | Admin page: Stats + Create Form + Active Table | P0 |
-| S03 | Admin page: History Table + Schedule Manager | P1 |
-| S04 | User page: Featured + Live Cards + Stats | P1 |
-| S05 | User page: Schedule Timeline + Milestones | P2 |
-| S06 | Tier access control + filtering | P2 |
-| S07 | Mobile parity + push notifications | P3 |
+| S01 | Schema + indexes + codegen | ✅ Done |
+| S02 | Admin CRUD mutations | ✅ Done |
+| S03 | Queries (listActive, getFeatured, participation) | ✅ Done |
+| S04 | Admin UI — Hero + Signal Logs + Tab Switcher + Tables | ✅ Done |
+| S05 | User UI — Session Drops + Featured + Live Alerts | ✅ Done |
+| S06 | **Wire real data to Daily Tracking table** | 🔲 Next |
+| S07 | **Wire real data to Access & Promotions table** | 🔲 Next |
+| S08 | Admin inline CRUD actions (promote tier, toggle attendance) | 🔲 Planned |
+| S09 | Mobile parity + push notifications | 🔲 Planned |

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { 
   Zap, 
   TrendingUp, 
@@ -5,11 +6,11 @@ import {
   Clock, 
   CheckCircle2, 
   XCircle, 
-  Plus, 
   Star,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,16 @@ export function TradingSignalsPage() {
   );
 }
 
+const TABS = [
+  { key: "daily", label: "Daily Tracking" },
+  { key: "access", label: "Access & Promotions" },
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
+
 function AdminSignalsView() {
+  const [activeTab, setActiveTab] = useState<TabKey>("daily");
+
   return (
     <div className="space-y-10">
       <DashboardPageHero
@@ -39,13 +49,10 @@ function AdminSignalsView() {
         icon={Zap}
       />
 
-      {/* 2. Signal Activity Logs */}
+      {/* Signal Performance Logs — full width */}
       <div className="space-y-6">
-        <DashboardSectionTitle 
-          eyebrow="Activity"
-          title="Signal Performance Logs"
-        />
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <DashboardSectionTitle eyebrow="Activity" title="Signal Performance Logs" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <SignalCodeCard code="29" status="success" count={12} />
           <SignalCodeCard code="30" status="error" count={5} />
           <SignalCodeCard code="31" status="success" count={18} />
@@ -53,77 +60,177 @@ function AdminSignalsView() {
         </div>
       </div>
 
-      {/* 3. User Attendance Tracking Table */}
+      {/* Tab Switcher */}
       <div className="space-y-6">
-        <DashboardSectionTitle 
-          eyebrow="Tracking"
-          title="User Session Attendance"
-        />
-        <SurfaceCard className="overflow-hidden p-0">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-[hsl(var(--border)/0.5)] bg-[hsl(var(--muted)/0.3)] text-[10px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4 text-center">3 PM</th>
-                <th className="px-6 py-4 text-center">6 PM</th>
-                <th className="px-6 py-4 text-center">8 PM</th>
-                <th className="px-6 py-4 text-center">10 PM</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
-              <AttendanceRow name="User 1" attendance={{ "3pm": true, "6pm": false, "8pm": false, "10pm": false }} />
-              <AttendanceRow name="User 2" attendance={{ "3pm": true, "6pm": true, "8pm": false, "10pm": false }} />
-              <AttendanceRow name="User 3" attendance={{ "3pm": false, "6pm": false, "8pm": false, "10pm": false }} />
-            </tbody>
-          </table>
-        </SurfaceCard>
+        <div className="flex items-center gap-1 rounded-2xl bg-[hsl(var(--muted)/0.4)] p-1 w-fit">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "rounded-xl px-5 py-2.5 text-[12px] font-black uppercase tracking-[0.12em] transition-all",
+                activeTab === tab.key
+                  ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "daily" ? <DailyTrackingTable /> : <AccessPromotionTable />}
       </div>
     </div>
   );
 }
 
-function AttendanceRow({ name, attendance }: any) {
+/* ── Tab 1: Daily Tracking ── */
+const SESSION_TIMES = ["3pm", "6pm", "8pm", "10pm"] as const;
+
+function DailyTrackingTable() {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = useQuery(api.participation.getDailyAttendance, { date: today });
+  const toggle = useMutation(api.participation.toggleAttendance);
+
   return (
-    <tr className="group transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
-            {name.charAt(0)}
-          </div>
-          <span className="font-bold text-sm">{name}</span>
-        </div>
-      </td>
-      {["3pm", "6pm", "8pm", "10pm"].map((time) => (
-        <td key={time} className="px-6 py-4 text-center">
-          <div className="flex justify-center">
-            {attendance[time] ? (
-              <CheckCircle2 size={18} className="text-green-500" />
-            ) : (
-              <XCircle size={18} className="text-[hsl(var(--muted-foreground)/0.3)]" />
+    <div className="space-y-4">
+      <DashboardSectionTitle eyebrow="Tracking" title="Daily Session Attendance" description="Who traded successfully per session today." />
+      <SurfaceCard className="overflow-hidden p-0">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-[hsl(var(--border)/0.5)] bg-[hsl(var(--muted)/0.3)] text-[10px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+              <th className="px-6 py-4">User</th>
+              <th className="px-6 py-4 text-center">3 PM</th>
+              <th className="px-6 py-4 text-center">6 PM</th>
+              <th className="px-6 py-4 text-center">8 PM</th>
+              <th className="px-6 py-4 text-center">10 PM</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
+            {rows === undefined && (
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading...</td></tr>
             )}
-          </div>
-        </td>
-      ))}
-      <td className="px-6 py-4 text-right">
-        <button className="p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] rounded-lg">
-          <Plus size={16} />
-        </button>
-      </td>
-    </tr>
+            {rows?.length === 0 && (
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No users found.</td></tr>
+            )}
+            {rows?.map((row) => (
+              <tr key={String(row.userId)} className="transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
+                      {row.userName.charAt(0)}
+                    </div>
+                    <span className="font-bold text-sm">{row.userName}</span>
+                  </div>
+                </td>
+                {SESSION_TIMES.map((time) => (
+                  <td key={time} className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => toggle({ userId: row.userId as any, date: today, sessionTime: time, attended: !row.sessions[time] })}
+                      className="flex justify-center mx-auto"
+                    >
+                      {row.sessions[time]
+                        ? <CheckCircle2 size={20} className="text-green-500" />
+                        : <XCircle size={20} className="text-[hsl(var(--muted-foreground)/0.3)] hover:text-[hsl(var(--muted-foreground))]" />}
+                    </button>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SurfaceCard>
+    </div>
   );
 }
 
-function SignalCodeCard({ code, status, count }: any) {
+/* ── Tab 2: Access & Promotions ── */
+const TIER_OPTIONS = ["free", "silver", "gold"] as const;
+
+function AccessPromotionTable() {
+  const rows = useQuery(api.participation.listUserTiers);
+  const promote = useMutation(api.participation.promoteUserTier);
+
   return (
-    <SurfaceCard className="group flex flex-col items-center justify-center p-6 transition-all hover:scale-[1.02]">
-      <span className="text-3xl font-black text-[hsl(var(--foreground))] mb-3">{code}</span>
-      <div className={cn("inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider", 
-        status === "success" ? "bg-green-500/10 text-green-500" : 
-        status === "error" ? "bg-red-500/10 text-red-500" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"
-      )}>
-        {status === "success" ? `${count} Success` : status === "error" ? `${count} Error` : "Pending"}
-      </div>
+    <div className="space-y-4">
+      <DashboardSectionTitle eyebrow="Access" title="Signal Tier Access" description="Promote users to unlock more signals." />
+      <SurfaceCard className="overflow-hidden p-0">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-[hsl(var(--border)/0.5)] bg-[hsl(var(--muted)/0.3)] text-[10px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+              <th className="px-6 py-4">User</th>
+              <th className="px-6 py-4">Current Tier</th>
+              <th className="px-6 py-4">Promoted Date</th>
+              <th className="px-6 py-4 text-right">Promote</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
+            {rows === undefined && (
+              <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading...</td></tr>
+            )}
+            {rows?.map((row) => {
+              const tierColor = row.tier === "gold"
+                ? "text-yellow-500 bg-yellow-500/10"
+                : row.tier === "silver"
+                  ? "text-blue-400 bg-blue-400/10"
+                  : "text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))]";
+              return (
+                <tr key={String(row.profileId)} className="transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
+                        {row.userName.charAt(0)}
+                      </div>
+                      <span className="font-bold text-sm">{row.userName}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", tierColor)}>
+                      <Shield size={12} />
+                      {row.tier}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-[hsl(var(--muted-foreground))]">
+                    {row.promotedAt ? new Date(row.promotedAt).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <select
+                      value={row.tier}
+                      onChange={(e) => promote({ profileId: row.profileId as any, tier: e.target.value as any })}
+                      className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
+                    >
+                      {TIER_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </SurfaceCard>
+    </div>
+  );
+}
+
+
+
+function SignalCodeCard({ code, status, count }: { code: string; status: string; count: number }) {
+  const accent = status === "success"
+    ? "text-green-500"
+    : status === "error"
+      ? "text-red-500"
+      : "text-[hsl(var(--foreground))]";
+  const label = status === "success"
+    ? `${count} Success`
+    : status === "error"
+      ? `${count} Error`
+      : "Pending";
+
+  return (
+    <SurfaceCard className="rounded-[30px] p-[18px]">
+      <p className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
+      <p className={`mt-3 text-[40px] leading-none font-bold tabular-nums ${accent}`}>{code}</p>
     </SurfaceCard>
   );
 }
