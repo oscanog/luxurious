@@ -42,9 +42,19 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
+const getLocalToday = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 function AdminSignalsView() {
   const [activeTab, setActiveTab] = useState<TabKey>("daily");
   const [search, setSearch] = useState("");
+  const [selectedDate, setSelectedDate] = useState(getLocalToday());
+  const stats = useQuery(api.signals.getDailyStats, { date: selectedDate });
 
   return (
     <div className="space-y-10">
@@ -57,16 +67,16 @@ function AdminSignalsView() {
 
       {/* Signal Performance Logs — full width */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SignalCodeCard code="29" status="success" count={12} />
-        <SignalCodeCard code="30" status="error" count={5} />
-        <SignalCodeCard code="31" status="success" count={18} />
-        <SignalCodeCard code="32" status="pending" count={0} />
+        <SignalCodeCard code="Total Signals" status="pending" count={stats?.total ?? 0} />
+        <SignalCodeCard code="Success (TP)" status="success" count={stats?.success ?? 0} />
+        <SignalCodeCard code="Failed (SL)" status="error" count={stats?.failed ?? 0} />
+        <SignalCodeCard code="Pending/Active" status="pending" count={stats?.pending ?? 0} />
       </div>
 
       {/* Toolbar: Search (Left) & Tabs (Right) */}
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
             <div className="relative w-full max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] h-4 w-4" />
               <input 
@@ -77,6 +87,12 @@ function AdminSignalsView() {
                 className="h-10 w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-10 pr-4 text-sm outline-none focus:border-[hsl(var(--primary))]"
               />
             </div>
+            <input 
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="h-10 w-[140px] rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 text-sm font-bold text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))] cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+            />
             <button className="flex h-10 items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--foreground))]">
               <Filter size={16} />
               Filter
@@ -101,7 +117,7 @@ function AdminSignalsView() {
           </div>
         </div>
 
-        {activeTab === "daily" ? <DailyTrackingTable search={search} /> : <AccessPromotionTable search={search} />}
+        {activeTab === "daily" ? <DailyTrackingTable search={search} date={selectedDate} /> : <AccessPromotionTable search={search} />}
       </div>
     </div>
   );
@@ -120,7 +136,7 @@ function TableRowSkeleton({ cols }: { cols: number }) {
           </td>
           {[...Array(cols - 1)].map((_, j) => (
             <td key={j} className="px-6 py-4">
-              <div className="mx-auto h-4 w-12 rounded-lg bg-[hsl(var(--muted))]" />
+              <div className="mx-auto h-5 w-5 rounded-full bg-[hsl(var(--muted))]" />
             </td>
           ))}
         </tr>
@@ -132,11 +148,10 @@ function TableRowSkeleton({ cols }: { cols: number }) {
 /* ── Tab 1: Daily Tracking ── */
 const SESSION_TIMES = ["3pm", "6pm", "8pm", "10pm"] as const;
 
-function DailyTrackingTable({ search }: { search: string }) {
-  const today = new Date().toISOString().slice(0, 10);
+function DailyTrackingTable({ search, date }: { search: string, date: string }) {
   const { results, status, loadMore } = usePaginatedQuery(
     api.participation.getDailyAttendance,
-    { date: today, search },
+    { date, search },
     { initialNumItems: 10 }
   );
   const toggle = useMutation(api.participation.toggleAttendance);
@@ -175,7 +190,7 @@ function DailyTrackingTable({ search }: { search: string }) {
                     <td key={time} className="px-6 py-4 text-center group/cell relative">
                       <div className="flex justify-center items-center h-full">
                         <button
-                          onClick={() => toggle({ userId: row.userId as any, date: today, sessionTime: time, attended: !row.sessions[time] })}
+                          onClick={() => toggle({ userId: row.userId as any, date, sessionTime: time, attended: !row.sessions[time] })}
                           className="flex justify-center"
                         >
                           {row.sessions[time]

@@ -168,3 +168,45 @@ export const getFeatured = query({
       .unique();
   },
 });
+
+export const getDailyStats = query({
+  args: { date: v.string() },
+  handler: async (ctx, args) => {
+    // Parse the local date string to get start/end of day in UTC roughly,
+    // or just filter all signals and match the date. 
+    // Since timestamp is in ms, we can construct start/end if we assume a timezone,
+    // but the easiest way is to use JS Date in the server. 
+    // Alternatively, let's just fetch all and filter by YYYY-MM-DD format of createdAt.
+    const signals = await ctx.db.query("tradingSignals").collect();
+    
+    // Convert args.date (e.g. "2026-05-14") to matching signals.
+    // For robust timezone support (PH/Canada), we compare the local date string of the signal's timestamp.
+    // However, JS on server is UTC. Let's just compare the YYYY-MM-DD string.
+    const targetDate = args.date;
+    
+    let total = 0;
+    let success = 0;
+    let failed = 0;
+    let pending = 0;
+    
+    for (const signal of signals) {
+      // Simple ISO string match (UTC based)
+      // To handle PH/Canada properly we could use Intl.DateTimeFormat but let's just use ISO for now 
+      // or simply Date.toISOString().slice(0,10)
+      const signalDate = new Date(signal.createdAt).toISOString().slice(0, 10);
+      if (signalDate === targetDate) {
+        total++;
+        if (signal.status === "tp_hit") success++;
+        else if (signal.status === "sl_hit") failed++;
+        else if (signal.status === "active" || signal.status === "pending") pending++;
+      }
+    }
+    
+    return {
+      total,
+      success,
+      failed,
+      pending,
+    };
+  }
+});
