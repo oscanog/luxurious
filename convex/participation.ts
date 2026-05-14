@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getMobileProfileForViewerOrThrow } from "./mobileHelpers";
+import { paginationOptsValidator } from "convex/server";
 
 const checkAdmin = async (ctx: any) => {
   const profile = await getMobileProfileForViewerOrThrow(ctx);
@@ -34,7 +35,6 @@ export const getParticipationForSignal = query({
       .withIndex("by_signal", (q) => q.eq("signalId", args.signalId))
       .collect();
     
-    // Join with user names
     const withUsers = await Promise.all(
       records.map(async (r) => {
         const user = await ctx.db.get(r.userId);
@@ -70,37 +70,66 @@ export const toggleAttendance = mutation({
 });
 
 export const getDailyAttendance = query({
-  args: { date: v.string() },
+  args: { 
+    date: v.string(),
+    paginationOpts: paginationOptsValidator,
+    search: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    const attendance = await ctx.db
-      .query("sessionAttendance")
-      .withIndex("by_date_and_user", (q) => q.eq("date", args.date))
-      .collect();
+    let usersQuery = ctx.db.query("users");
     
-    const users = await ctx.db.query("users").collect();
+    // Simple search filter if provided
+    const users = await usersQuery.paginate(args.paginationOpts);
     
-    return users.map(user => {
-      const userAttendance = attendance.filter(a => a.userId === user._id);
-      return {
-        userId: user._id,
-        userName: user.name ?? "Unknown",
-        sessions: {
-          "3pm": userAttendance.find(a => a.sessionTime === "3pm")?.attended ?? false,
-          "6pm": userAttendance.find(a => a.sessionTime === "6pm")?.attended ?? false,
-          "8pm": userAttendance.find(a => a.sessionTime === "8pm")?.attended ?? false,
-          "10pm": userAttendance.find(a => a.sessionTime === "10pm")?.attended ?? false,
+    const page = await Promise.all(
+      users.page.map(async (user) => {
+        // Filter by name manually since we don't have a search index on users here
+        if (args.search && !user.name?.toLowerCase().includes(args.search.toLowerCase())) {
+          return null;
         }
-      };
-    });
+
+        const attendance = await ctx.db
+          .query("sessionAttendance")
+          .withIndex("by_date_and_user", (q) => q.eq("date", args.date).eq("userId", user._id))
+          .collect();
+
+        return {
+          userId: user._id,
+          userName: user.name ?? "Unknown",
+          email: user.email,
+          sessions: {
+            "3pm": attendance.find(a => a.sessionTime === "3pm")?.attended ?? false,
+            "6pm": attendance.find(a => a.sessionTime === "6pm")?.attended ?? false,
+            "8pm": attendance.find(a => a.sessionTime === "8pm")?.attended ?? false,
+            "10pm": attendance.find(a => a.sessionTime === "10pm")?.attended ?? false,
+          }
+        };
+      })
+    );
+
+    return {
+      ...users,
+      page: page.filter(p => p !== null) as any,
+    };
   },
 });
 
 export const listUserTiers = query({
-  handler: async (ctx) => {
-    const profiles = await ctx.db.query("mobileProfiles").collect();
-    return await Promise.all(
-      profiles.map(async (p) => {
+  args: { 
+    paginationOpts: paginationOptsValidator,
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const profiles = await ctx.db.query("mobileProfiles").paginate(args.paginationOpts);
+    
+    const page = await Promise.all(
+      profiles.page.map(async (p) => {
         const user = p.userId ? await ctx.db.get(p.userId) : null;
+        
+        if (args.search && !user?.name?.toLowerCase().includes(args.search.toLowerCase())) {
+          return null;
+        }
+
         return {
           profileId: p._id,
           userId: p.userId,
@@ -110,6 +139,11 @@ export const listUserTiers = query({
         };
       })
     );
+
+    return {
+      ...profiles,
+      page: page.filter(p => p !== null) as any,
+    };
   },
 });
 

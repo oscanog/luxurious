@@ -8,13 +8,18 @@ import {
   XCircle, 
   Star,
   ChevronRight,
-  Shield
+  Shield,
+  Search,
+  Filter,
+  Mail,
+  Clipboard,
+  Check
 } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, usePaginatedQuery, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { DashboardPageHero, DashboardSectionTitle } from "@/components/dashboard/FinancePageHelpers";
+import { DashboardPageHero } from "@/components/dashboard/FinancePageHelpers";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 
 export function TradingSignalsPage() {
@@ -39,6 +44,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 function AdminSignalsView() {
   const [activeTab, setActiveTab] = useState<TabKey>("daily");
+  const [search, setSearch] = useState("");
 
   return (
     <div className="space-y-10">
@@ -50,52 +56,94 @@ function AdminSignalsView() {
       />
 
       {/* Signal Performance Logs — full width */}
-      <div className="space-y-6">
-        <DashboardSectionTitle eyebrow="Activity" title="Signal Performance Logs" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <SignalCodeCard code="29" status="success" count={12} />
-          <SignalCodeCard code="30" status="error" count={5} />
-          <SignalCodeCard code="31" status="success" count={18} />
-          <SignalCodeCard code="32" status="pending" count={0} />
-        </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <SignalCodeCard code="29" status="success" count={12} />
+        <SignalCodeCard code="30" status="error" count={5} />
+        <SignalCodeCard code="31" status="success" count={18} />
+        <SignalCodeCard code="32" status="pending" count={0} />
       </div>
 
-      {/* Tab Switcher */}
+      {/* Toolbar: Search (Left) & Tabs (Right) */}
       <div className="space-y-6">
-        <div className="flex items-center gap-1 rounded-2xl bg-[hsl(var(--muted)/0.4)] p-1 w-fit">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "rounded-xl px-5 py-2.5 text-[12px] font-black uppercase tracking-[0.12em] transition-all",
-                activeTab === tab.key
-                  ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
-                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
-              )}
-            >
-              {tab.label}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] h-4 w-4" />
+              <input 
+                type="text"
+                placeholder="Search users..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-10 pr-4 text-sm outline-none focus:border-[hsl(var(--primary))]"
+              />
+            </div>
+            <button className="flex h-10 items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--foreground))]">
+              <Filter size={16} />
+              Filter
             </button>
-          ))}
+          </div>
+
+          <div className="flex items-center gap-1 rounded-2xl bg-[hsl(var(--muted)/0.4)] p-1 w-fit">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "rounded-xl px-5 py-2.5 text-[12px] font-black uppercase tracking-[0.12em] transition-all",
+                  activeTab === tab.key
+                    ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
+                    : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {activeTab === "daily" ? <DailyTrackingTable /> : <AccessPromotionTable />}
+        {activeTab === "daily" ? <DailyTrackingTable search={search} /> : <AccessPromotionTable search={search} />}
       </div>
     </div>
+  );
+}
+
+function TableRowSkeleton({ cols }: { cols: number }) {
+  return (
+    <>
+      {[...Array(5)].map((_, i) => (
+        <tr key={i} className="animate-pulse">
+          <td className="px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-[hsl(var(--muted))]" />
+              <div className="h-4 w-24 rounded-lg bg-[hsl(var(--muted))]" />
+            </div>
+          </td>
+          {[...Array(cols - 1)].map((_, j) => (
+            <td key={j} className="px-6 py-4">
+              <div className="mx-auto h-4 w-12 rounded-lg bg-[hsl(var(--muted))]" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }
 
 /* ── Tab 1: Daily Tracking ── */
 const SESSION_TIMES = ["3pm", "6pm", "8pm", "10pm"] as const;
 
-function DailyTrackingTable() {
+function DailyTrackingTable({ search }: { search: string }) {
   const today = new Date().toISOString().slice(0, 10);
-  const rows = useQuery(api.participation.getDailyAttendance, { date: today });
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.participation.getDailyAttendance,
+    { date: today, search },
+    { initialNumItems: 10 }
+  );
   const toggle = useMutation(api.participation.toggleAttendance);
+  const [beepData, setBeepData] = useState<{ user: any; sessionTime: string } | null>(null);
 
   return (
     <div className="space-y-4">
-      <DashboardSectionTitle eyebrow="Tracking" title="Daily Session Attendance" description="Who traded successfully per session today." />
       <SurfaceCard className="overflow-hidden p-0">
         <table className="w-full text-left">
           <thead>
@@ -108,39 +156,174 @@ function DailyTrackingTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
-            {rows === undefined && (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading...</td></tr>
-            )}
-            {rows?.length === 0 && (
+            {status === "LoadingFirstPage" ? (
+              <TableRowSkeleton cols={5} />
+            ) : results.length === 0 ? (
               <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No users found.</td></tr>
-            )}
-            {rows?.map((row) => (
-              <tr key={String(row.userId)} className="transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
-                      {row.userName.charAt(0)}
+            ) : (
+              results.map((row) => (
+                <tr key={String(row.userId)} className="transition-colors hover:bg-[hsl(var(--muted)/0.2)] group/row">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
+                        {row.userName.charAt(0)}
+                      </div>
+                      <span className="font-bold text-sm">{row.userName}</span>
                     </div>
-                    <span className="font-bold text-sm">{row.userName}</span>
-                  </div>
-                </td>
-                {SESSION_TIMES.map((time) => (
-                  <td key={time} className="px-6 py-4 text-center">
-                    <button
-                      onClick={() => toggle({ userId: row.userId as any, date: today, sessionTime: time, attended: !row.sessions[time] })}
-                      className="flex justify-center mx-auto"
-                    >
-                      {row.sessions[time]
-                        ? <CheckCircle2 size={20} className="text-green-500" />
-                        : <XCircle size={20} className="text-[hsl(var(--muted-foreground)/0.3)] hover:text-[hsl(var(--muted-foreground))]" />}
-                    </button>
                   </td>
-                ))}
-              </tr>
-            ))}
+                  {SESSION_TIMES.map((time) => (
+                    <td key={time} className="px-6 py-4 text-center group/cell relative">
+                      <div className="flex justify-center items-center h-full">
+                        <button
+                          onClick={() => toggle({ userId: row.userId as any, date: today, sessionTime: time, attended: !row.sessions[time] })}
+                          className="flex justify-center"
+                        >
+                          {row.sessions[time]
+                            ? <CheckCircle2 size={20} className="text-green-500" />
+                            : <XCircle size={20} className="text-[hsl(var(--muted-foreground)/0.3)] hover:text-[hsl(var(--muted-foreground))]" />}
+                        </button>
+                        <button 
+                          onClick={() => setBeepData({ user: row, sessionTime: time })}
+                          className="absolute right-2 opacity-0 group-hover/cell:opacity-100 transition-opacity p-1.5 bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] rounded-lg hover:bg-[hsl(var(--primary)/0.2)]"
+                          title="Beep user"
+                        >
+                          <Mail size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+        
+        {status === "LoadingMore" && (
+          <div className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading more...</div>
+        )}
+        
+        {status === "CanLoadMore" && (
+          <div className="p-4 border-t border-[hsl(var(--border)/0.5)] flex justify-center">
+            <button 
+              onClick={() => loadMore(10)}
+              className="text-xs font-black uppercase tracking-widest text-[hsl(var(--primary))] hover:underline"
+            >
+              Load More Users
+            </button>
+          </div>
+        )}
       </SurfaceCard>
+
+      {beepData && (
+        <BeepUserDialog 
+          user={beepData.user} 
+          sessionTime={beepData.sessionTime} 
+          onClose={() => setBeepData(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+function BeepUserDialog({ user, sessionTime, onClose }: { user: any, sessionTime: string, onClose: () => void }) {
+  const sendEmail = useAction(api.email.sendEmail);
+  const [message, setMessage] = useState(`Just a message for beeping ${user.userName} about the ${sessionTime} session.`);
+  const [signalCode, setSignalCode] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isPasted, setIsPasted] = useState(false);
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setSignalCode(text);
+      setIsPasted(true);
+      setTimeout(() => setIsPasted(false), 1500); // Reset icon after 1.5s
+    } catch (err) {
+      toast.error("Failed to read clipboard");
+    }
+  };
+
+  const handleSend = async () => {
+    if (!user.email) {
+      toast.error(`${user.userName} does not have an email address.`);
+      return;
+    }
+    
+    setIsSending(true);
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: `Notification for ${sessionTime} Trading Session`,
+        text: message,
+        signalCode: signalCode.trim() !== "" ? signalCode : undefined,
+      });
+      toast.success(`Message sent to ${user.userName}`);
+      onClose();
+    } catch (error: any) {
+      toast.error(`Failed to send message: ${error.message}`);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+      <div className="w-full max-w-md rounded-[24px] bg-[hsl(var(--background))] p-6 shadow-2xl border border-[hsl(var(--border))] animate-in zoom-in-95">
+        <h3 className="mb-2 text-xl font-black tracking-tight text-[hsl(var(--foreground))]">
+          Beep {user.userName}
+        </h3>
+        <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
+          Send an email notification regarding the {sessionTime} session.
+        </p>
+        
+        <div className="mb-4">
+          <textarea 
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full h-32 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] p-3 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
+            placeholder="Type your message here..."
+          />
+        </div>
+
+        <div className="mb-6 relative">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+            Optional Signal Code
+          </label>
+          <div className="relative">
+            <input 
+              type="text"
+              value={signalCode}
+              onChange={(e) => setSignalCode(e.target.value)}
+              className="h-10 w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-4 pr-10 text-sm font-mono outline-none focus:border-[hsl(var(--primary))]"
+              placeholder="e.g. 1A2B3C"
+            />
+            <button 
+              onClick={handlePaste}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] rounded-lg transition-colors"
+              title="Paste from clipboard"
+            >
+              {isPasted ? <Check size={16} className="text-green-500" /> : <Clipboard size={16} />}
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-3">
+          <button 
+            onClick={onClose}
+            className="rounded-xl px-4 py-2 text-sm font-bold text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
+            disabled={isSending}
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSend}
+            disabled={isSending}
+            className="flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-4 py-2 text-sm font-bold text-white hover:bg-[hsl(var(--primary)/0.9)] disabled:opacity-50"
+          >
+            {isSending ? "Sending..." : "Send Email"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -148,13 +331,16 @@ function DailyTrackingTable() {
 /* ── Tab 2: Access & Promotions ── */
 const TIER_OPTIONS = ["free", "silver", "gold"] as const;
 
-function AccessPromotionTable() {
-  const rows = useQuery(api.participation.listUserTiers);
+function AccessPromotionTable({ search }: { search: string }) {
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.participation.listUserTiers,
+    { search },
+    { initialNumItems: 10 }
+  );
   const promote = useMutation(api.participation.promoteUserTier);
 
   return (
     <div className="space-y-4">
-      <DashboardSectionTitle eyebrow="Access" title="Signal Tier Access" description="Promote users to unlock more signals." />
       <SurfaceCard className="overflow-hidden p-0">
         <table className="w-full text-left">
           <thead>
@@ -166,48 +352,66 @@ function AccessPromotionTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
-            {rows === undefined && (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading...</td></tr>
-            )}
-            {rows?.map((row) => {
-              const tierColor = row.tier === "gold"
-                ? "text-yellow-500 bg-yellow-500/10"
-                : row.tier === "silver"
-                  ? "text-blue-400 bg-blue-400/10"
-                  : "text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))]";
-              return (
-                <tr key={String(row.profileId)} className="transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
-                        {row.userName.charAt(0)}
+            {status === "LoadingFirstPage" ? (
+              <TableRowSkeleton cols={4} />
+            ) : results.length === 0 ? (
+              <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No users found.</td></tr>
+            ) : (
+              results.map((row) => {
+                const tierColor = row.tier === "gold"
+                  ? "text-yellow-500 bg-yellow-500/10"
+                  : row.tier === "silver"
+                    ? "text-blue-400 bg-blue-400/10"
+                    : "text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))]";
+                return (
+                  <tr key={String(row.profileId)} className="transition-colors hover:bg-[hsl(var(--muted)/0.2)]">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[10px] font-black text-[hsl(var(--primary))] uppercase">
+                          {row.userName.charAt(0)}
+                        </div>
+                        <span className="font-bold text-sm">{row.userName}</span>
                       </div>
-                      <span className="font-bold text-sm">{row.userName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", tierColor)}>
-                      <Shield size={12} />
-                      {row.tier}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-[hsl(var(--muted-foreground))]">
-                    {row.promotedAt ? new Date(row.promotedAt).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <select
-                      value={row.tier}
-                      onChange={(e) => promote({ profileId: row.profileId as any, tier: e.target.value as any })}
-                      className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
-                    >
-                      {TIER_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", tierColor)}>
+                        <Shield size={12} />
+                        {row.tier}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[hsl(var(--muted-foreground))]">
+                      {row.promotedAt ? new Date(row.promotedAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <select
+                        value={row.tier}
+                        onChange={(e) => promote({ profileId: row.profileId as any, tier: e.target.value as any })}
+                        className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
+                      >
+                        {TIER_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
+
+        {status === "LoadingMore" && (
+          <div className="px-6 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading more...</div>
+        )}
+        
+        {status === "CanLoadMore" && (
+          <div className="p-4 border-t border-[hsl(var(--border)/0.5)] flex justify-center">
+            <button 
+              onClick={() => loadMore(10)}
+              className="text-xs font-black uppercase tracking-widest text-[hsl(var(--primary))] hover:underline"
+            >
+              Load More Users
+            </button>
+          </div>
+        )}
       </SurfaceCard>
     </div>
   );

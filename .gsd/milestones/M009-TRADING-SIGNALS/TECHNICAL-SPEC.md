@@ -86,8 +86,8 @@
 | **Hero** | `DashboardPageHero` | Title + eyebrow badge |
 | **Signal Logs** | `StatTile` grid (full-width, `grid-cols-4`) | Signal code cards (e.g., "29", "30") with success/error/pending status. Same design as MembersPage StatTile |
 | **Tab Switcher** | Pill-style tab bar | Switches between two tables |
-| **Tab 1: Daily Tracking** | `SurfaceCard` table | Columns: User, 3 PM, 6 PM, 8 PM, 10 PM, Actions. ✅/❌ per cell |
-| **Tab 2: Access & Promotions** | `SurfaceCard` table | Columns: User, Current Tier (free/silver/gold badge), Promoted Date, Actions |
+| **Tab 1: Daily Tracking** | `SurfaceCard` table | Columns: User, 3 PM, 6 PM, 8 PM, 10 PM. ✅/❌ per cell. Also includes a Mail icon on hover that opens a `BeepUserDialog` to send custom email notifications via Convex Action (nodemailer + Gmail). Uses `usePaginatedQuery` and includes a search bar on the left. |
+| **Tab 2: Access & Promotions** | `SurfaceCard` table | Columns: User, Current Tier (free/silver/gold badge), Promoted Date, Promote dropdown. Uses `usePaginatedQuery` and includes a search bar on the left. |
 
 ### User View Layout (Top → Bottom)
 
