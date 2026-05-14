@@ -86,62 +86,51 @@ export function ProfilePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <SurfaceCard className="overflow-hidden">
-        <div
-          className="p-6 sm:p-8"
-          style={{
-            background:
-              "radial-gradient(circle at top left, hsl(43 96% 48% / 0.18), transparent 26%), radial-gradient(circle at bottom right, hsl(221 83% 53% / 0.18), transparent 32%)",
-          }}
-        >
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="rounded-[30px] border border-[hsl(var(--border))] bg-[hsl(var(--background)/0.86)] p-1">
-                <div className="flex h-24 w-24 items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] text-2xl font-black text-white">
-                  {initials}
-                </div>
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--secondary)/0.14)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
-                    <Sparkles size={13} />
-                    {profile.rank.name}
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary)/0.12)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--primary))]">
-                    Frame {profile.avatar.frame}
-                  </span>
-                </div>
-                <h1 className="mt-4 text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">
-                  {profile.displayName}
-                </h1>
-                <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{profile.email}</p>
-                <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-                  {profile.joinedDownlineCount} joined downlines • {profile.rank.rangeLabel}
-                </p>
+      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+        <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-center md:justify-between md:gap-4 md:pr-[18px]">
+          <div className="flex items-center gap-6 pb-[18px]">
+            <div className="rounded-[30px] border border-white/20 bg-white/10 p-1 shadow-xl">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[26px] bg-[hsl(var(--primary))] text-2xl font-black text-white">
+                {initials}
               </div>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:w-[360px]">
-              <SurfaceCard className="rounded-[24px] bg-[hsl(var(--background)/0.82)] p-4">
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-                  Email Verify
-                </p>
-                <p className="mt-2 text-lg font-black text-[hsl(var(--foreground))]">
-                  {profile.verification.emailVerified ? "Verified" : "Pending"}
-                </p>
-              </SurfaceCard>
-              <SurfaceCard className="rounded-[24px] bg-[hsl(var(--background)/0.82)] p-4">
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-                  Phone Cert
-                </p>
-                <p className="mt-2 text-lg font-black text-[hsl(var(--foreground))]">
-                  {profile.verification.phoneCertified ? "Certified" : "Pending"}
-                </p>
-              </SurfaceCard>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/14 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white">
+                  <Sparkles size={13} />
+                  {profile.rank.name}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/14 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white">
+                  Frame {profile.avatar.frame}
+                </span>
+              </div>
+              <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-white">
+                {profile.displayName}
+              </h1>
+              <p className="mt-1 text-sm font-medium text-blue-100/80">{profile.email}</p>
             </div>
           </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:mb-[18px] lg:w-[360px]">
+            <SurfaceCard className="rounded-[24px] bg-white/10 border-white/10 p-4 shadow-none backdrop-blur-md">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">
+                Email Verify
+              </p>
+              <p className="mt-2 text-lg font-black text-white">
+                {profile.verification.emailVerified ? "Verified" : "Pending"}
+              </p>
+            </SurfaceCard>
+            <SurfaceCard className="rounded-[24px] bg-white/10 border-white/10 p-4 shadow-none backdrop-blur-md">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">
+                Phone Cert
+              </p>
+              <p className="mt-2 text-lg font-black text-white">
+                {profile.verification.phoneCertified ? "Certified" : "Pending"}
+              </p>
+            </SurfaceCard>
+          </div>
         </div>
-      </SurfaceCard>
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <SurfaceCard className="p-6 sm:p-7">

@@ -11,22 +11,21 @@ export function PageIntro({
   description: string;
 }) {
   return (
-    <SurfaceCard className="relative overflow-hidden p-6 sm:p-8">
-      <div
-        className="absolute inset-0 opacity-90"
-        style={{
-          background:
-            "radial-gradient(circle at top left, hsl(221 83% 53% / 0.18), transparent 30%), radial-gradient(circle at top right, hsl(43 96% 48% / 0.16), transparent 28%)",
-        }}
-      />
-      <div className="relative z-10 max-w-3xl">
-        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
-          {eyebrow}
-        </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">{title}</h1>
-        <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] sm:text-base">{description}</p>
+    <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+      <div className="flex flex-col gap-6 px-[22px] py-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+        <div className="flex-1">
+          <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">
+            {eyebrow}
+          </p>
+          <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+            {title}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-2xl">
+            {description}
+          </p>
+        </div>
       </div>
-    </SurfaceCard>
+    </section>
   );
 }
 

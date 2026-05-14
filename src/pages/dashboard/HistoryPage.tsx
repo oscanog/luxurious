@@ -27,56 +27,68 @@ export function HistoryPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <SurfaceCard className="p-6 sm:p-8">
-        <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))]">
-          <Clock3 size={18} />
-          <span className="text-[11px] font-black uppercase tracking-[0.18em]">History</span>
+      <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+        <div className="flex flex-col gap-6 px-[22px] py-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))] mb-2">
+              <Clock3 size={16} />
+              <span className="text-[11px] font-black uppercase tracking-[0.18em]">History</span>
+            </div>
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+              Activity log.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-2xl">
+              Promotions route here when momentum needs proof. Same underlying mobile transaction history.
+            </p>
+          </div>
         </div>
-        <h1 className="mt-4 text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">
-          Finance activity log.
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))] sm:text-base">
-          Promotions route here when momentum needs proof. Same underlying mobile transaction history.
-        </p>
-      </SurfaceCard>
+      </section>
 
-      <div className="space-y-4">
-        {items.map((item) => {
-          const isIncome = item.kind === "income";
-          return (
-            <SurfaceCard key={item.id} className="p-5 sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                      isIncome
-                        ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
-                        : "bg-amber-500/12 text-amber-600 dark:text-amber-300"
-                    }`}
-                  >
-                    {isIncome ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-[hsl(var(--foreground))]">{item.title}</p>
-                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                      {item.accountName} • {item.category}
-                    </p>
-                  </div>
-                </div>
-                <div className="sm:text-right">
-                  <p className="text-lg font-black text-[hsl(var(--foreground))]">
+      <SurfaceCard className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-[hsl(var(--border))] text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+              <th className="px-6 py-4">Transaction</th>
+              <th className="px-6 py-4">Details</th>
+              <th className="px-6 py-4 text-right">Amount</th>
+              <th className="px-6 py-4 text-right">Time</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[hsl(var(--border))]">
+            {items.map((item) => {
+              const isIncome = item.kind === "income";
+              return (
+                <tr key={item.id} className="transition-colors hover:bg-[hsl(var(--muted))]">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                          isIncome
+                            ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
+                            : "bg-amber-500/12 text-amber-600 dark:text-amber-300"
+                        }`}
+                      >
+                        {isIncome ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                      </div>
+                      <span className="font-bold text-[hsl(var(--foreground))]">{item.title}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-[hsl(var(--muted-foreground))]">
+                    {item.accountName} • {item.category}
+                  </td>
+                  <td className={`px-6 py-4 text-right font-black tabular-nums ${isIncome ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300"}`}>
                     {isIncome ? "+" : "-"}
                     {formatCurrency(item.amount)}
-                  </p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {new Date(item.occurredAt).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </SurfaceCard>
-          );
-        })}
-      </div>
+                  </td>
+                  <td className="px-6 py-4 text-right text-[hsl(var(--muted-foreground))] tabular-nums whitespace-nowrap">
+                    {new Date(item.occurredAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </SurfaceCard>
     </div>
   );
 }

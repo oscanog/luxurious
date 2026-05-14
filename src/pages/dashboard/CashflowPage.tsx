@@ -93,30 +93,35 @@ export function CashflowPage() {
                 title="Rollup list"
                 description="Useful when chart impression is not enough."
               />
-              <div className="mt-5 space-y-3">
-                {cashflow.monthly.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-black text-[hsl(var(--foreground))]">{item.label}</p>
-                        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                          Net {formatCurrency(item.inflow - item.outflow)}
-                        </p>
-                      </div>
-                      <div className="space-y-1 text-right">
-                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-300">
-                          + {formatCurrency(item.inflow)}
-                        </p>
-                        <p className="text-sm font-bold text-amber-600 dark:text-amber-300">
-                          - {formatCurrency(item.outflow)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[hsl(var(--border))] text-[11px] font-black uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]">
+                      <th className="px-4 py-3">Month</th>
+                      <th className="px-4 py-3 text-right">In/Out</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[hsl(var(--border))]">
+                    {cashflow.monthly.map((item) => (
+                      <tr key={item.label} className="transition-colors hover:bg-[hsl(var(--muted))]">
+                        <td className="px-4 py-4">
+                          <p className="text-sm font-black text-[hsl(var(--foreground))]">{item.label}</p>
+                          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))] tabular-nums">
+                            Net {formatCurrency(item.inflow - item.outflow)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 text-right space-y-1">
+                          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-300 tabular-nums">
+                            + {formatCurrency(item.inflow)}
+                          </p>
+                          <p className="text-sm font-bold text-amber-600 dark:text-amber-300 tabular-nums">
+                            - {formatCurrency(item.outflow)}
+                          </p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </SurfaceCard>
 

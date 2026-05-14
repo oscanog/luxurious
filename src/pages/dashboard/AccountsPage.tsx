@@ -26,29 +26,41 @@ export function AccountsPage() {
         description="Desktop view of the same mobile-backed account list, balances, and institutions."
       />
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        {accounts.map((account) => (
-          <SurfaceCard key={account.id} className="p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
-                  {account.type === "credit" ? <Wallet size={18} /> : <Landmark size={18} />}
-                </div>
-                <div>
-                  <p className="text-lg font-black text-[hsl(var(--foreground))]">{account.name}</p>
-                  <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                    {account.bank} • {account.type}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-[hsl(var(--foreground))]">{formatUsd(account.balance)}</p>
-                <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">{account.currencyCode}</p>
-              </div>
-            </div>
-          </SurfaceCard>
-        ))}
-      </div>
+      <SurfaceCard className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-[hsl(var(--border))] text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+              <th className="px-6 py-4">Account</th>
+              <th className="px-6 py-4">Institution</th>
+              <th className="px-6 py-4 text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[hsl(var(--border))]">
+            {accounts.map((account) => (
+              <tr key={account.id} className="transition-colors hover:bg-[hsl(var(--muted))]">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+                      {account.type === "credit" ? <Wallet size={16} /> : <Landmark size={16} />}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-[hsl(var(--foreground))]">{account.name}</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.1em] text-[hsl(var(--muted-foreground))]">{account.type}</span>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-[hsl(var(--muted-foreground))]">
+                  {account.bank}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <p className="text-lg font-black text-[hsl(var(--foreground))] tabular-nums">{formatUsd(account.balance)}</p>
+                  <p className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))]">{account.currencyCode}</p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SurfaceCard>
     </div>
   );
 }

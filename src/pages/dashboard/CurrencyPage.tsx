@@ -44,36 +44,45 @@ export function CurrencyPage() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="grid gap-4 md:grid-cols-2">
-          {currencies.map((currency) => {
-            const usageCount = accountCountByCode[currency.code] ?? 0;
-            return (
-              <SurfaceCard key={currency.code} className="p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-black text-[hsl(var(--foreground))]">{currency.code}</p>
-                    <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{currency.name}</p>
-                  </div>
-                  <ToneBadge tone={usageCount > 0 ? "success" : "neutral"}>
-                    {usageCount > 0 ? `${usageCount} account` : "Unused"}
-                  </ToneBadge>
-                </div>
-
-                <div className="mt-6 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-                      Rate vs USD
-                    </p>
-                    <p className="mt-2 text-3xl font-black text-[hsl(var(--foreground))]">{currency.rate}</p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
-                    <BadgeDollarSign size={18} />
-                  </div>
-                </div>
-              </SurfaceCard>
-            );
-          })}
-        </div>
+        <SurfaceCard className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+                <th className="px-6 py-4">Currency</th>
+                <th className="px-6 py-4">Rate vs USD</th>
+                <th className="px-6 py-4">Usage</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[hsl(var(--border))]">
+              {currencies.map((currency) => {
+                const usageCount = accountCountByCode[currency.code] ?? 0;
+                return (
+                  <tr key={currency.code} className="transition-colors hover:bg-[hsl(var(--muted))]">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+                          <BadgeDollarSign size={16} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-[hsl(var(--foreground))]">{currency.code}</span>
+                          <span className="text-[10px] font-black uppercase tracking-[0.1em] text-[hsl(var(--muted-foreground))]">{currency.name}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-black text-[hsl(var(--foreground))] tabular-nums">
+                      {currency.rate}
+                    </td>
+                    <td className="px-6 py-4">
+                      <ToneBadge tone={usageCount > 0 ? "success" : "neutral"}>
+                        {usageCount > 0 ? `${usageCount} account` : "Unused"}
+                      </ToneBadge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </SurfaceCard>
 
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">

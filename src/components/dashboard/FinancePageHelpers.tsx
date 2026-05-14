@@ -44,67 +44,59 @@ export function DashboardPageHero({
   metrics?: Array<{ label: string; value: React.ReactNode; tone?: keyof typeof HERO_TONES }>;
 }) {
   return (
-    <SurfaceCard className="overflow-hidden">
-      <div
-        className="p-6 sm:p-8"
-        style={{
-          background:
-            "radial-gradient(circle at top left, hsl(221 83% 53% / 0.22), transparent 28%), radial-gradient(circle at bottom right, hsl(43 96% 48% / 0.18), transparent 28%)",
-        }}
-      >
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary)/0.12)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--primary))]">
-                <Icon size={13} />
-                {eyebrow}
+    <section className="overflow-hidden rounded-[34px] border border-[#BCD2FA] bg-[#F5F8FF] dark:border-[rgb(37_99_235_/_0.42)] dark:bg-[#1E3A8A]">
+      <div className="flex flex-col gap-6 px-[22px] pt-[18px] md:flex-row md:items-end md:justify-between md:gap-4 md:pr-[18px]">
+        <div className="flex-1 pb-[18px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--background)/0.6)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--foreground))]">
+              <Icon size={13} />
+              {eyebrow}
+            </span>
+            {badges.map((badge) => (
+              <span
+                key={badge.label}
+                className={cn(
+                  "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]",
+                  HERO_TONES[badge.tone ?? "neutral"],
+                )}
+              >
+                {badge.label}
               </span>
-              {badges.map((badge) => (
-                <span
-                  key={badge.label}
+            ))}
+          </div>
+          <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] sm:text-[44px]">
+            {title}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-[hsl(var(--foreground))] sm:text-base max-w-2xl">
+            {description}
+          </p>
+        </div>
+
+        {metrics.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:mb-[18px] xl:min-w-[420px] xl:grid-cols-3">
+            {metrics.map((metric) => (
+              <SurfaceCard key={metric.label} className="rounded-[24px] bg-[hsl(var(--background)/0.82)] p-4 shadow-none">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+                  {metric.label}
+                </p>
+                <p
                   className={cn(
-                    "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]",
-                    HERO_TONES[badge.tone ?? "neutral"],
+                    "mt-2 text-2xl font-black tabular-nums",
+                    metric.tone === "success"
+                      ? "text-emerald-600 dark:text-emerald-300"
+                      : metric.tone === "warning"
+                        ? "text-amber-600 dark:text-amber-300"
+                        : "text-[hsl(var(--foreground))]",
                   )}
                 >
-                  {badge.label}
-                </span>
-              ))}
-            </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-[hsl(var(--foreground))] sm:text-4xl">
-              {title}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))] sm:text-base">
-              {description}
-            </p>
+                  {metric.value}
+                </p>
+              </SurfaceCard>
+            ))}
           </div>
-
-          {metrics.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[420px] xl:grid-cols-3">
-              {metrics.map((metric) => (
-                <SurfaceCard key={metric.label} className="rounded-[24px] bg-[hsl(var(--background)/0.82)] p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-                    {metric.label}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-2 text-2xl font-black",
-                      metric.tone === "success"
-                        ? "text-emerald-600 dark:text-emerald-300"
-                        : metric.tone === "warning"
-                          ? "text-amber-600 dark:text-amber-300"
-                          : "text-[hsl(var(--foreground))]",
-                    )}
-                  >
-                    {metric.value}
-                  </p>
-                </SurfaceCard>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-    </SurfaceCard>
+    </section>
   );
 }
 
