@@ -1,4 +1,4 @@
-import { CalendarDays, Clock3, ListTodo } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import {
   DashboardMetricCard,

@@ -26,3 +26,10 @@ Architectural and design decisions for Luxurious.
 - **Owl Stays**: Desktop home reuses mobile owl art from `logo/views-of-logo-character/front-left.png`. Hero cannot drop mascot.
 - **No Desktop-Only Hero FX**: Home hero and sidebar branding remove radial-gradient experiments. Use mobile-aligned solid/linear surfaces.
 - **Font Scale Follows Mobile**: Home headline, hero copy, stat cards, and section headers map back to mobile sizes before desktop expansion.
+
+## 2026-05-14: Interactive Org Chart & Auth Guard
+
+- **Unconnected Users Visible**: Sidebar shows all users without `uplineId` pointing into the viewer's tree so admins can onboard orphans.
+- **Interactive Tool Catalog**: All org chart power tools (connect, disconnect, reconnect, drag, search) documented in `INTERACTIVE-TOOLS.md`.
+- **Auth Guard Redirect**: Invalid or expired Convex auth tokens auto-redirect to login page. No flash of protected content.
+- **Verification Required**: Every interactive tool must be tested end-to-end against seed data before marking complete.

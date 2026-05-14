@@ -138,7 +138,8 @@ export default function App() {
       </Authenticated>
       <Unauthenticated>
         <Routes>
-          <Route path="*" element={<LoginPage themeMode={themeMode} onToggleTheme={toggleTheme} />} />
+          <Route path="/" element={<LoginPage themeMode={themeMode} onToggleTheme={toggleTheme} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Unauthenticated>
     </BrowserRouter>

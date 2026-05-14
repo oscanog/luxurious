@@ -13,6 +13,7 @@ Capability contract.
 - [ ] Role-based access (RBAC).
 - [x] Post-login bootstrap ensures mobile profile-backed data exists for web user.
 - [x] Theme preference persists before and after login.
+- [x] Auto-redirect to login when token/session is invalid on authenticated pages.
 
 ## 3. Dashboard Home
 - [x] Network-first signed-in landing page.
@@ -23,14 +24,17 @@ Capability contract.
 
 ## 4. Network
 - [x] Visualize hierarchy.
-- [ ] Member sidebar quick assignment.
-- [ ] Connection dialog from visible canvas.
-- [ ] Reconnect handle for broken link recovery.
+- [x] Member sidebar quick assignment.
+- [x] Connection dialog from visible canvas.
+- [x] Reconnect handle for broken link recovery.
 - [ ] Connection tracking support.
 - [ ] Drag-drop reorg interactions.
 - [ ] Dynamic root focus parity language.
 - [x] Members filters aligned with mobile statuses.
 - [x] Feed page with mark-all-read behavior.
+- [x] Show unconnected users (no upline to Alice) in sidebar for quick onboarding.
+- [x] Interactive tool catalog documented in `INTERACTIVE-TOOLS.md`.
+- [x] Verification pass: confirm all tools work end-to-end with seed data.
 
 ## 5. Profile + Engagement
 - [x] Dedicated profile page with identity fields, rank, avatar state, verification state.

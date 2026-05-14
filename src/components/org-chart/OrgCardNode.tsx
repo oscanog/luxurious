@@ -6,6 +6,8 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { toast } from "react-hot-toast";
+import { useContextMenu } from "../ui/useContextMenu";
+import { type ContextMenuItem } from "../ui/ContextMenu";
 
 export type OrgCardData = {
   member: Omit<DummyMember, "id" | "uplineId"> & { 
@@ -53,8 +55,8 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     }
   }, [member.id, member.name, removeUpline]);
 
-  const handleReconnect = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleReconnect = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (member.lastUplineId) {
       void (async () => {
         try {
@@ -67,8 +69,51 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     }
   }, [member.id, member.lastUplineId, setUpline]);
 
+  const { handleContextMenu, ContextMenuComponent } = useContextMenu();
+
+  const handleRightClick = useCallback((e: React.MouseEvent) => {
+    const items: ContextMenuItem[] = [];
+
+    if (!isRoot) {
+      if (member.uplineId) {
+        items.push({
+          label: "Remove from Hierarchy",
+          icon: <Trash2 size={14} />,
+          variant: "danger",
+          onClick: () => {
+            if (confirm(`Remove ${member.name} from hierarchy?`)) {
+              void removeUpline({ userId: member.id }).then(() => {
+                toast.success("Member removed");
+              }).catch(() => {
+                toast.error("Failed to remove member");
+              });
+            }
+          }
+        });
+      } else if (member.lastUplineId) {
+        items.push({
+          label: "Reconnect to Manager",
+          icon: <Link2 size={14} />,
+          onClick: () => {
+            void setUpline({ userId: member.id, uplineId: member.lastUplineId as Id<"users"> }).then(() => {
+              toast.success("Reconnected to previous manager");
+            }).catch(() => {
+              toast.error("Failed to reconnect");
+            });
+          }
+        });
+      }
+    }
+
+    if (items.length > 0) {
+      handleContextMenu(e, items);
+    }
+  }, [isRoot, member.uplineId, member.lastUplineId, member.id, member.name, removeUpline, setUpline, handleContextMenu]);
+
   return (
+    <>
     <div
+      onContextMenu={handleRightClick}
       className={`relative w-[160px] sm:w-[220px] rounded-[14px] transition-all duration-300 ${
         isClickable ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : ""
       } ${selected ? "scale-[1.05] z-10" : "z-0"}`}
@@ -174,6 +219,8 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         </div>
       </div>
     </div>
+    {ContextMenuComponent}
+    </>
   );
 });
 

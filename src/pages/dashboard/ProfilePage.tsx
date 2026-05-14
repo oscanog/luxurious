@@ -32,7 +32,7 @@ export function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  if (profile === undefined) {
+  if (profile === undefined || profile === null) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <Skeleton className="h-44 rounded-[28px]" />
@@ -78,6 +78,7 @@ export function ProfilePage() {
   }
 
   function updateField<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
+    if (!profile) return;
     setDraft((current) => ({ ...(current ?? toProfileForm(profile)), [key]: value }));
   }
 

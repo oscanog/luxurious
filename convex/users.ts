@@ -55,3 +55,61 @@ export const removeUpline = mutation({
     });
   },
 });
+
+export const getOrgTree = query({
+  args: {},
+  handler: async (ctx) => {
+    const viewerId = await getAuthUserId(ctx);
+    if (!viewerId) return null;
+
+    const allUsers = await ctx.db.query("users").collect();
+    
+    // Build tree
+    const childrenByParent = new Map<string, typeof allUsers>();
+
+    for (const user of allUsers) {
+      const parentKey = user.uplineId ?? "root";
+      const list = childrenByParent.get(parentKey) ?? [];
+      list.push(user);
+      childrenByParent.set(parentKey, list);
+    }
+
+    function buildNode(user: typeof allUsers[0]): any {
+      const children = childrenByParent.get(user._id) ?? [];
+      const downlinesCount = countDescendants(user._id);
+      
+      return {
+        id: user._id,
+        name: user.name ?? "Unknown",
+        roleTitle: user.role === "admin" ? "Admin" : "Member",
+        status: "joined",
+        isViewer: user._id === viewerId,
+        member: {
+          id: user._id,
+          name: user.name ?? "Unknown",
+          email: user.email ?? "",
+          roleTitle: user.role === "admin" ? "Admin" : "Member",
+          rank: user.role === "admin" ? "Master" : "Beginner",
+          status: "joined",
+          avatarInitials: (user.name ?? "??").substring(0, 2).toUpperCase(),
+          totalDownlines: downlinesCount,
+          invitedCount: 0,
+          pendingCount: 0,
+          uplineId: user.uplineId ?? null,
+          lastUplineId: user.lastUplineId ?? null,
+        },
+        children: children.map(buildNode),
+      };
+    }
+
+    function countDescendants(userId: string): number {
+      const children = childrenByParent.get(userId) ?? [];
+      return children.reduce((sum, child) => sum + 1 + countDescendants(child._id), 0);
+    }
+
+    const roots = childrenByParent.get("root") ?? [];
+    return {
+      tree: roots.map(buildNode),
+    };
+  },
+});

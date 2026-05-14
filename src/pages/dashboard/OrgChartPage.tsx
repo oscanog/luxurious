@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useQuery } from "convex/react";
 import {
-  Handle,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
   Position,
   type Edge,
   type Node,
-  type NodeProps,
 } from "@xyflow/react";
-import { ArrowLeft, Star, UserRound } from "lucide-react";
+import { ArrowLeft, Focus, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
+import type { Doc } from "../../../convex/_generated/dataModel";
+import { OrgCardNode, type OrgCardData } from "../../components/org-chart/OrgCardNode";
+import { MemberSidebar } from "../../components/org-chart/MemberSidebar";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useContextMenu } from "../../components/ui/useContextMenu";
+import { type ContextMenuItem } from "../../components/ui/ContextMenu";
 
 type OrgTreeNode = {
   id: string;
@@ -21,6 +24,7 @@ type OrgTreeNode = {
   roleTitle: string;
   status: "joined" | "invited" | "pending";
   isViewer: boolean;
+  member: OrgCardData["member"];
   children: OrgTreeNode[];
 };
 
@@ -30,6 +34,7 @@ type OrgFlowData = {
   roleTitle: string;
   status: "joined" | "invited" | "pending";
   isViewer: boolean;
+  member: OrgCardData["member"];
 };
 
 const NODE_WIDTH = 176;
@@ -69,6 +74,7 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
         roleTitle: node.roleTitle,
         status: node.status,
         isViewer: node.isViewer,
+        member: node.member,
       },
       draggable: false,
       selectable: true,
@@ -106,72 +112,7 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
   return { nodes, edges };
 }
 
-function statusVisual(data: OrgFlowData) {
-  if (data.isViewer) {
-    return {
-      cardBorder: "border-[hsl(var(--secondary))] shadow-[0_0_0_1px_hsl(var(--secondary)/0.18)]",
-      avatarBg: "bg-[hsl(var(--primary))]",
-      iconClassName: "text-[hsl(var(--secondary))]",
-      useStar: true,
-    };
-  }
-
-  if (data.status === "invited") {
-    return {
-      cardBorder: "border-[hsl(var(--border))]",
-      avatarBg: "bg-[hsl(var(--secondary)/0.68)]",
-      iconClassName: "text-white",
-      useStar: false,
-    };
-  }
-
-  if (data.status === "pending") {
-    return {
-      cardBorder: "border-[hsl(var(--border))]",
-      avatarBg: "bg-[hsl(var(--accent))]",
-      iconClassName: "text-[hsl(var(--secondary))]",
-      useStar: false,
-    };
-  }
-
-  return {
-    cardBorder: "border-[hsl(var(--border))]",
-    avatarBg: "bg-[hsl(var(--primary))]",
-    iconClassName: "text-[hsl(var(--secondary))]",
-    useStar: false,
-  };
-}
-
-function OrgCardNode({ data, selected }: NodeProps<Node<OrgFlowData>>) {
-  const visual = statusVisual(data);
-  const Icon = visual.useStar ? Star : UserRound;
-
-  return (
-    <div
-      className={`w-[176px] rounded-[26px] border bg-[hsl(var(--card))] px-4 py-5 text-center shadow-[0_18px_48px_-40px_hsl(220_60%_10%_/_0.5)] transition-all ${
-        selected ? "scale-[1.02]" : ""
-      } ${visual.cardBorder}`}
-    >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!h-2 !w-2 !border-0 !bg-transparent !opacity-0"
-        isConnectable={false}
-      />
-      <div className={`mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-full ${visual.avatarBg}`}>
-        <Icon size={32} className={visual.iconClassName} fill={visual.useStar ? "currentColor" : "none"} />
-      </div>
-      <p className="mt-5 text-[15px] font-semibold leading-tight text-[hsl(var(--foreground))]">{data.name}</p>
-      <p className="mt-2 text-[12px] leading-tight text-[hsl(var(--muted-foreground))]">{data.roleTitle}</p>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!h-2 !w-2 !border-0 !bg-transparent !opacity-0"
-        isConnectable={false}
-      />
-    </div>
-  );
-}
+// Using imported OrgCardNode from components
 
 function FitViewOnLoad({ nodeCount }: { nodeCount: number }) {
   const { fitView } = useReactFlow();
@@ -195,10 +136,12 @@ function OrgChartCanvas({
   nodes,
   edges,
   onSelect,
+  onPaneContextMenu,
 }: {
   nodes: Array<Node<OrgFlowData>>;
   edges: Edge[];
   onSelect: (id: string) => void;
+  onPaneContextMenu?: (e: React.MouseEvent | MouseEvent) => void;
 }) {
   return (
     <ReactFlow
@@ -214,6 +157,7 @@ function OrgChartCanvas({
       zoomOnScroll={false}
       zoomOnPinch
       onNodeClick={(_, node) => onSelect(node.id)}
+      onPaneContextMenu={onPaneContextMenu}
       defaultEdgeOptions={{ selectable: false, focusable: false }}
       style={{ background: "hsl(var(--background))" }}
       proOptions={{ hideAttribution: true }}
@@ -233,8 +177,30 @@ function EmptyState() {
 }
 
 function OrgChartContent() {
-  const dashboard = useQuery(api.network.getDashboard);
+  const dashboard = useQuery(api.users.getOrgTree);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedSidebarMember, setSelectedSidebarMember] = useState<Doc<"users"> | null>(null);
+  const [targetManagerId, setTargetManagerId] = useState<string>("");
+
+  const { fitView } = useReactFlow();
+  const { handleContextMenu, ContextMenuComponent } = useContextMenu();
+
+  const handlePaneRightClick = useCallback((e: React.MouseEvent | MouseEvent) => {
+    const items: ContextMenuItem[] = [
+      {
+        label: "Reset View",
+        icon: <Focus size={14} />,
+        onClick: () => void fitView({ duration: 500, padding: 0.28, minZoom: 0.2, maxZoom: 1.15 }),
+      },
+      {
+        label: isSidebarOpen ? "Close Member Sidebar" : "Open Member Sidebar",
+        icon: <Users size={14} />,
+        onClick: () => setIsSidebarOpen(!isSidebarOpen),
+      },
+    ];
+    handleContextMenu(e, items);
+  }, [fitView, isSidebarOpen, handleContextMenu]);
 
   const { nodes, edges } = useMemo(() => {
     if (!dashboard) {
@@ -247,7 +213,17 @@ function OrgChartContent() {
     return buildFlowTree(dashboard.tree);
   }, [dashboard]);
 
-  if (dashboard === undefined) {
+  const visibleMembers = useMemo(
+    () =>
+      nodes.map((n) => ({
+        id: n.id,
+        name: n.data.name,
+        role: n.data.roleTitle,
+      })),
+    [nodes]
+  );
+
+  if (dashboard === undefined || dashboard === null) {
     return (
       <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-center pb-6">
@@ -275,6 +251,17 @@ function OrgChartContent() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-[1200px] flex-col px-4 py-6 sm:px-6 lg:px-8">
+      <MemberSidebar
+        currentPivotId={effectiveSelectedId || ""}
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        visibleMembers={visibleMembers}
+        selectedMember={selectedSidebarMember}
+        setSelectedMember={setSelectedSidebarMember}
+        targetManagerId={targetManagerId}
+        setTargetManagerId={setTargetManagerId}
+        onSuccess={() => setIsSidebarOpen(false)}
+      />
       <div className="relative flex items-center justify-center pb-6">
         <Link
           to="/"
@@ -289,8 +276,9 @@ function OrgChartContent() {
       </div>
 
       <div className="h-[760px] w-full overflow-hidden rounded-[36px]">
-        <OrgChartCanvas nodes={flowNodes} edges={edges} onSelect={setSelectedId} />
+        <OrgChartCanvas nodes={flowNodes} edges={edges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} />
       </div>
+      {ContextMenuComponent}
     </div>
   );
 }

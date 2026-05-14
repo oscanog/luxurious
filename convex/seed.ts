@@ -1,6 +1,6 @@
-import { internalMutation, action, mutation, query } from "./_generated/server";
+import { internalMutation, action, query } from "./_generated/server";
 import { internal, api } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 import { createAccount } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
@@ -233,44 +233,44 @@ export const clearAllUsers = internalMutation({
     // Clear auth tables first (they reference users)
     const authAccounts = await ctx.db.query("authAccounts").collect();
     for (const row of authAccounts) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("authAccounts", row._id);
     }
     const authSessions = await ctx.db.query("authSessions").collect();
     for (const row of authSessions) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("authSessions", row._id);
     }
     const authRefreshTokens = await ctx.db.query("authRefreshTokens").collect();
     for (const row of authRefreshTokens) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("authRefreshTokens", row._id);
     }
     const authVerificationCodes = await ctx.db.query("authVerificationCodes").collect();
     for (const row of authVerificationCodes) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("authVerificationCodes", row._id);
     }
     const authVerifiers = await ctx.db.query("authVerifiers").collect();
     for (const row of authVerifiers) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("authVerifiers", row._id);
     }
     const authRateLimits = await ctx.db.query("authRateLimits").collect();
     for (const row of authRateLimits) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("authRateLimits", row._id);
     }
     // Clear app tables
     const users = await ctx.db.query("users").collect();
     for (const user of users) {
-      await ctx.db.delete(user._id);
+      await ctx.db.delete("users", user._id);
     }
     const wallets = await ctx.db.query("wallets").collect();
     for (const wallet of wallets) {
-      await ctx.db.delete(wallet._id);
+      await ctx.db.delete("wallets", wallet._id);
     }
     const profiles = await ctx.db.query("mobileProfiles").collect();
     for (const profile of profiles) {
-      await ctx.db.delete(profile._id);
+      await ctx.db.delete("mobileProfiles", profile._id);
     }
     const network = await ctx.db.query("networkMembers").collect();
     for (const member of network) {
-      await ctx.db.delete(member._id);
+      await ctx.db.delete("networkMembers", member._id);
     }
     return users.length;
   },
