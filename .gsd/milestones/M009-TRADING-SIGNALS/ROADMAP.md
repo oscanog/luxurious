@@ -1,6 +1,6 @@
 # Milestone M009: Trading Signals
 
-**Status:** `[in-progress]`
+**Status:** `[completed]`
 **Start Date:** 2026-05-14
 **Objective:** Build premium trading signal center with focus on **Schedule Visibility**. Downlines must see exactly when signals drop (e.g., 3pm, 8pm) to maximize participation.
 
@@ -8,16 +8,16 @@
 
 ## Success Criteria
 
-1. [ ] Admin can CRUD signals with multi-TP targets, tier assignment, and analyst notes.
-2. [ ] Admin can manage weekly signal schedules by trading session (London/NY/Asia).
-3. [ ] Admin can define milestone tiers (Free → Silver → Gold) with requirements.
-4. [ ] Users see live signals filtered by their tier with copy-to-clipboard.
-5. [ ] Users see "Signal of the Week" (Featured) hero card.
-6. [ ] Users see schedule timeline with countdown to next session.
-7. [ ] Users see milestone progression and how to unlock more signals.
-8. [ ] Stats grid shows Win Rate, Active Count, Monthly Pips for both roles.
-9. [ ] Page handles light/dark mode correctly.
-10. [ ] Route `/trading-signals` wired in sidebar under Network.
+1. [x] Admin can CRUD signals with multi-TP targets, tier assignment, and analyst notes.
+2. [x] Admin can manage weekly signal schedules by trading session (London/NY/Asia).
+3. [x] Admin can define milestone tiers (Free → Silver → Gold) with requirements.
+4. [x] Users see live signals filtered by their tier with copy-to-clipboard.
+5. [x] Users see "Signal of the Week" (Featured) hero card.
+6. [x] Users see schedule timeline with countdown to next session.
+7. [x] Users see milestone progression and how to unlock more signals.
+8. [x] Stats grid shows Win Rate, Active Count, Monthly Pips for both roles.
+9. [x] Page handles light/dark mode correctly.
+10. [x] Route `/trading-signals` wired in sidebar under Network.
 
 ---
 
@@ -59,25 +59,25 @@
 ### Slice S05: Admin Page — Schedules + Milestones
 **Status:** `[completed]`
 - [x] T01: Schedule Manager — day-of-week card grid, session badges, add/edit/toggle.
-- [ ] T02: Milestone Editor — ordered cards showing tier progression path, add/edit.
+- [x] T02: Milestone Editor — ordered cards showing tier progression path, add/edit.
 - [x] T03: Wire route in `App.tsx`.
 
 ### Slice S06: User Page — Live Signals + Featured
-**Status:** `[not-started]`
-- [ ] T01: Featured Signal Hero Card — full-width, large BUY/SELL badge, copy buttons.
-- [ ] T02: Live Signal Cards Grid — color-coded (green=BUY, red=SELL), pulsing LIVE pill, copy entry/tp/sl.
-- [ ] T03: My Stats Grid — Win Rate, Signals Followed, Current Tier.
-- [ ] T04: Tier-based filtering — hide signals above user tier, show upgrade prompt.
+**Status:** `[completed]`
+- [x] T01: Featured Signal Hero Card — full-width, large BUY/SELL badge, copy buttons.
+- [x] T02: Live Signal Cards Grid — color-coded (green=BUY, red=SELL), pulsing LIVE pill, copy entry/tp/sl.
+- [x] T03: My Stats Grid — Win Rate, Signals Followed, Current Tier.
+- [x] T04: Tier-based filtering — hide signals above user tier, show upgrade prompt.
 
 ### Slice S07: User Page — Schedule + Milestones
-**Status:** `[not-started]`
-- [ ] T01: Schedule Timeline — vertical timeline, countdown to next session, session labels.
-- [ ] T02: Milestone Progress Cards — vertical stepper, current tier highlighted, next tier requirements.
-- [ ] T03: Signal History compact table — past signals user followed.
+**Status:** `[completed]`
+- [x] T01: Schedule Timeline — vertical timeline, countdown to next session, session labels.
+- [x] T02: Milestone Progress Cards — vertical stepper, current tier highlighted, next tier requirements.
+- [x] T03: Signal History compact table — past signals user followed.
 
 ### Slice S08: Polish + Mobile Parity Docs
-**Status:** `[not-started]`
-- [ ] T01: Light/dark mode audit for all signal components.
-- [ ] T02: Update `PARITY-GUIDE.md` with signal page specs for mobile.
-- [ ] T03: Final build + typecheck verification.
-- [ ] T04: Git commit.
+**Status:** `[completed]`
+- [x] T01: Light/dark mode audit for all signal components.
+- [x] T02: Update `PARITY-GUIDE.md` with signal page specs for mobile.
+- [x] T03: Final build + typecheck verification.
+- [x] T04: Git commit.

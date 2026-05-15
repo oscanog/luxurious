@@ -455,58 +455,163 @@ function StatCard({ title, value, status }: { title: string; value: number | str
 function UserSignalsView() {
   const featured = useQuery(api.signals.getFeatured);
   const activeSignals = useQuery(api.signals.listActive);
+  const schedules = useQuery(api.schedules.list);
+  const milestones = useQuery(api.milestones.list);
+  const [activeTab, setActiveTab] = useState<"live" | "history" | "schedule" | "milestones">("live");
   
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">Trading Signals</h1>
-        <p className="mt-2 text-[hsl(var(--muted-foreground))]">Real-time alerts from our expert analysts.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">Trading Signals</h1>
+          <p className="mt-2 text-[hsl(var(--muted-foreground))]">Real-time alerts from our expert analysts.</p>
+        </div>
+        <div className="flex items-center gap-1 rounded-2xl bg-[hsl(var(--muted)/0.4)] p-1 w-fit">
+          {["live", "history", "schedule", "milestones"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={cn(
+                "rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition-all",
+                activeTab === tab
+                  ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Session Drops Schedule - Boss Request */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
-            <Clock size={20} className="text-[hsl(var(--primary))]" />
-            Today's Signal Drops
-          </h2>
-          <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">UTC+8 TIMEZONE</span>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SessionCard time="3:00 PM" label="London Session Drop" description="Focus on GBP/EUR pairs" />
-          <SessionCard time="8:00 PM" label="New York Session Drop" description="Focus on USD/GOLD pairs" />
-        </div>
-      </div>
+      {activeTab === "live" && (
+        <div className="space-y-10">
+          {featured && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <Star size={18} className="text-yellow-500 fill-yellow-500" />
+                <h2 className="text-xl font-bold uppercase tracking-tight">Signal of the Week</h2>
+              </div>
+              <FeaturedSignalCard signal={featured} />
+            </div>
+          )}
 
-      {featured && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 px-1">
-            <Star size={18} className="text-yellow-500 fill-yellow-500" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Signal of the Week</h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xl font-bold uppercase tracking-tight">Live Alerts</h2>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">{activeSignals?.length ?? 0} Active</span>
+            </div>
+            
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {activeSignals?.map(signal => (
+                <UserSignalCard key={signal._id} signal={signal} />
+              ))}
+              {activeSignals?.length === 0 && (
+                <div className="col-span-full flex h-40 flex-col items-center justify-center rounded-[32px] border border-dashed border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]">
+                  <Zap size={32} className="mb-3 opacity-20" />
+                  <p className="text-sm font-bold">Scanning for opportunities...</p>
+                </div>
+              )}
+            </div>
           </div>
-          <FeaturedSignalCard signal={featured} />
         </div>
       )}
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-xl font-bold uppercase tracking-tight">Live Alerts</h2>
-          <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">{activeSignals?.length ?? 0} Active</span>
+      {activeTab === "history" && <SignalHistoryView />}
+      
+      {activeTab === "schedule" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
+              <Clock size={20} className="text-[hsl(var(--primary))]" />
+              Signal Drop Schedule
+            </h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {schedules?.map(s => (
+              <SessionCard 
+                key={s._id} 
+                time={s.time} 
+                label={s.title} 
+                description={`Analyst: ${s.analystName} • ${s.timezone}`} 
+              />
+            ))}
+          </div>
         </div>
-        
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {activeSignals?.map(signal => (
-            <UserSignalCard key={signal._id} signal={signal} />
-          ))}
-          {activeSignals?.length === 0 && (
-            <div className="col-span-full flex h-40 flex-col items-center justify-center rounded-[32px] border border-dashed border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]">
-              <Zap size={32} className="mb-3 opacity-20" />
-              <p className="text-sm font-bold">Scanning for opportunities...</p>
-            </div>
-          )}
+      )}
+
+      {activeTab === "milestones" && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold uppercase tracking-tight">Milestone Progression</h2>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {milestones?.map((m, idx) => (
+              <SurfaceCard key={m._id} className="relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-1 h-full bg-[hsl(var(--primary))]" />
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] font-black">
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg">{m.title}</h3>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">{m.description}</p>
+                    <div className="mt-4 flex gap-2">
+                      <span className="rounded-full bg-[hsl(var(--muted))] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
+                        {m.requiredSignals} SIGNALS
+                      </span>
+                      {m.requiredWinRate && (
+                        <span className="rounded-full bg-[hsl(var(--muted))] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
+                          {m.requiredWinRate}% WIN RATE
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SurfaceCard>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+function SignalHistoryView() {
+  const history = useQuery(api.signals.listHistory, { limit: 50 });
+  
+  return (
+    <SurfaceCard className="p-0 overflow-hidden">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b border-[hsl(var(--border)/0.5)] bg-[hsl(var(--muted)/0.3)] text-[10px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">
+            <th className="px-6 py-4">Signal</th>
+            <th className="px-6 py-4">Result</th>
+            <th className="px-6 py-4">Pips</th>
+            <th className="px-6 py-4">Date</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[hsl(var(--border)/0.3)]">
+          {history?.map(s => (
+            <tr key={s._id} className="hover:bg-[hsl(var(--muted)/0.1)] transition-colors">
+              <td className="px-6 py-4">
+                <div className="font-bold">{s.symbol} <span className="text-[10px] opacity-60 ml-1">{s.type.toUpperCase()}</span></div>
+              </td>
+              <td className="px-6 py-4">
+                <span className={cn(
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider",
+                  s.status === "tp_hit" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                )}>
+                  {s.status === "tp_hit" ? "WIN" : "LOSS"}
+                </span>
+              </td>
+              <td className="px-6 py-4 font-mono text-sm">{s.result ?? "—"}</td>
+              <td className="px-6 py-4 text-xs text-[hsl(var(--muted-foreground))]">
+                {new Date(s.closedAt ?? s.createdAt).toLocaleDateString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </SurfaceCard>
   );
 }
 

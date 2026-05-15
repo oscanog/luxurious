@@ -12,12 +12,13 @@ export const sendEmail = action({
   },
   handler: async (_ctx, args) => {
     // We expect GMAIL_USER and GMAIL_APP_PASSWORD to be set in Convex environment variables.
-    // Given password from prompt: pcgwepxuxpnydgdr
-    const user = process.env.GMAIL_USER || "your-email@gmail.com"; 
-    const pass = process.env.GMAIL_APP_PASSWORD || "pcgwepxuxpnydgdr"; 
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_APP_PASSWORD;
 
     if (!user || !pass) {
-      throw new Error("Missing GMAIL_USER or GMAIL_APP_PASSWORD environment variables");
+      throw new Error(
+        "Missing GMAIL_USER or GMAIL_APP_PASSWORD environment variables. Please set them in Convex dashboard.",
+      );
     }
 
     const transporter = nodemailer.createTransport({

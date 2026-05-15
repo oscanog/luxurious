@@ -198,9 +198,18 @@ export default defineSchema({
 
   networkMembers: defineTable({
     profileId: v.id("mobileProfiles"),
-    name: v.string(),
+    userId: v.optional(v.id("users")),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    middleName: v.optional(v.string()),
+    name: v.string(), // Legacy full name
     roleTitle: v.string(),
-    status: v.union(v.literal("joined"), v.literal("invited"), v.literal("pending")),
+    status: v.union(
+      v.literal("joined"),
+      v.literal("invited"),
+      v.literal("pending"),
+      v.literal("to-invite")
+    ),
     parentMemberId: v.optional(v.union(v.id("networkMembers"), v.null())),
     isViewer: v.boolean(),
     sortOrder: v.number(),
@@ -209,6 +218,11 @@ export default defineSchema({
     bonchatUsername: v.optional(v.string()),
     yepbitId: v.optional(v.string()),
     yepbitUsername: v.optional(v.string()),
+    birthday: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    currentWork: v.optional(v.string()),
+    investmentStartedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -403,7 +403,10 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
       avatarScale: existing.avatarScale ?? 1,
       updatedAt: now,
     });
-    await syncNetworkMembersForViewer(ctx, existing._id, viewer, now);
+    const existingMembers = await listNetworkMembersForProfile(ctx, existing._id);
+    if (existingMembers.length === 0) {
+      await syncNetworkMembersForViewer(ctx, existing._id, viewer, now);
+    }
     return await ctx.db.get("mobileProfiles", existing._id);
   }
 
