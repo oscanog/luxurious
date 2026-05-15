@@ -43,10 +43,10 @@ export const inviteMember = mutation({
 export const updateMemberSocials = mutation({
   args: {
     memberId: v.id("networkMembers"),
-    bonchatUsername: v.optional(v.string()),
-    yepbitUsername: v.optional(v.string()),
-    bonchatId: v.optional(v.string()),
-    yepbitId: v.optional(v.string()),
+    bonchatUsername: v.optional(v.union(v.string(), v.null())),
+    yepbitUsername: v.optional(v.union(v.string(), v.null())),
+    bonchatId: v.optional(v.union(v.string(), v.null())),
+    yepbitId: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
@@ -57,10 +57,10 @@ export const updateMemberSocials = mutation({
     }
 
     await ctx.db.patch(args.memberId, {
-      bonchatUsername: args.bonchatUsername,
-      yepbitUsername: args.yepbitUsername,
-      bonchatId: args.bonchatId,
-      yepbitId: args.yepbitId,
+      bonchatUsername: args.bonchatUsername?.trim() || undefined,
+      yepbitUsername: args.yepbitUsername?.trim() || undefined,
+      bonchatId: args.bonchatId?.trim() || undefined,
+      yepbitId: args.yepbitId?.trim() || undefined,
       updatedAt: Date.now(),
     });
   },

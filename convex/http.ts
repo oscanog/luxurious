@@ -27,6 +27,17 @@ function readStringArg(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
 
+function readOptionalStringArg(value: unknown) {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readNullableStringArg(value: unknown) {
+  if (value === null) {
+    return null;
+  }
+  return typeof value === "string" ? value : undefined;
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -421,6 +432,25 @@ http.route({
           await ctx.runMutation(api.mobile.bootstrap, {});
           result = await ctx.runMutation(api.shopping.removeItem, {
             id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "network:inviteMember":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.inviteMember, {
+            name: readStringArg(body.args?.name),
+            roleTitle: readStringArg(body.args?.roleTitle),
+            bonchatUsername: readOptionalStringArg(body.args?.bonchatUsername),
+            yepbitUsername: readOptionalStringArg(body.args?.yepbitUsername),
+          });
+          break;
+        case "network:updateMemberSocials":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.updateMemberSocials, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            bonchatUsername: readNullableStringArg(body.args?.bonchatUsername),
+            yepbitUsername: readNullableStringArg(body.args?.yepbitUsername),
+            bonchatId: readNullableStringArg(body.args?.bonchatId),
+            yepbitId: readNullableStringArg(body.args?.yepbitId),
           });
           break;
         case "network:reassignMemberParent":
