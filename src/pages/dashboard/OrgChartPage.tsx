@@ -10,6 +10,9 @@ import {
   Background,
   MiniMap,
   Controls,
+  useNodesState,
+  useEdgesState,
+  useNodesInitialized,
 } from "@xyflow/react";
 import { 
   ArrowLeft, 
@@ -57,9 +60,40 @@ type OrgFlowData = {
   member: OrgCardData["member"];
 };
 
-const NODE_WIDTH = 176;
+const NODE_WIDTH = 240;
 const HORIZONTAL_GAP = 92;
 const VERTICAL_GAP = 230;
+
+const nodeTypes = {
+  "org-card": OrgCardNode,
+};
+
+function getMiniMapNodeColor(node: Node<OrgFlowData>) {
+  if (node.data.isViewer) {
+    return "hsl(43 96% 48%)";
+  }
+
+  switch (node.data.status) {
+    case "joined":
+      return "hsl(221 83% 53%)";
+    case "invited":
+      return "hsl(43 96% 48%)";
+    case "pending":
+      return "hsl(215 16% 47%)";
+    case "to-invite":
+      return "hsl(217 19% 27%)";
+    default:
+      return "hsl(var(--muted))";
+  }
+}
+
+function getMiniMapNodeStroke(node: Node<OrgFlowData>) {
+  if (node.data.isViewer) {
+    return "hsl(43 96% 55%)";
+  }
+
+  return node.hidden ? "hsl(var(--border))" : "hsl(43 96% 48% / 0.55)";
+}
 
 function measureSubtree(node: OrgTreeNode): number {
   if (node.children.length === 0) {
@@ -137,27 +171,26 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
 
 // Using imported OrgCardNode from components
 
-function FitViewOnLoad({ nodeCount }: { nodeCount: number }) {
+function FitViewOnLoad({ isReady }: { isReady: boolean }) {
   const { fitView } = useReactFlow();
 
   useEffect(() => {
-    if (nodeCount === 0) {
+    if (!isReady) {
       return;
     }
 
     const timer = window.setTimeout(() => {
       void fitView({ duration: 500, padding: 0.28, minZoom: 0.2, maxZoom: 1.15 });
     }, 80);
-
     return () => window.clearTimeout(timer);
-  }, [fitView, nodeCount]);
+  }, [fitView, isReady]);
 
   return null;
 }
 
 function OrgChartCanvas({
-  nodes,
-  edges,
+  nodes: propNodes,
+  edges: propEdges,
   onSelect,
   onPaneContextMenu,
   showMinimap,
@@ -168,12 +201,62 @@ function OrgChartCanvas({
   onPaneContextMenu?: (e: React.MouseEvent | MouseEvent) => void;
   showMinimap: boolean;
 }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(propNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(propEdges);
+  const nodesInitialized = useNodesInitialized();
+
+  useEffect(() => {
+    setNodes((nds) => {
+      const existingById = new Map(nds.map((node) => [node.id, node]));
+
+      return propNodes.map((pn) => {
+        const existing = existingById.get(pn.id);
+        if (!existing) {
+          return pn;
+        }
+
+        return {
+          ...existing,
+          ...pn,
+          position: pn.position,
+          data: pn.data,
+          selected: pn.selected,
+          hidden: pn.hidden,
+        };
+      });
+    });
+  }, [propNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges((eds) => {
+      const existingById = new Map(eds.map((edge) => [edge.id, edge]));
+
+      return propEdges.map((pe) => {
+        const existing = existingById.get(pe.id);
+        if (!existing) {
+          return pe;
+        }
+
+        return {
+          ...existing,
+          ...pe,
+          style: pe.style,
+          animated: pe.animated,
+          selected: pe.selected,
+        };
+      });
+    });
+  }, [propEdges, setEdges]);
+
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
-      nodeTypes={{ "org-card": OrgCardNode }}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      nodeTypes={nodeTypes}
       fitView
+      fitViewOptions={{ padding: 0.28, minZoom: 0.2, maxZoom: 1.15 }}
       minZoom={0.2}
       maxZoom={1.15}
       nodesDraggable={false}
@@ -186,35 +269,42 @@ function OrgChartCanvas({
       defaultEdgeOptions={{ selectable: false, focusable: false }}
       style={{ background: "hsl(var(--background))" }}
       proOptions={{ hideAttribution: true }}
+      colorMode="system"
     >
-      <FitViewOnLoad nodeCount={nodes.length} />
+      <FitViewOnLoad isReady={nodesInitialized && nodes.length > 0} />
       <Background color="#ccc" variant={"dots" as any} />
-      {showMinimap && (
+      
+      {showMinimap && nodesInitialized && (
         <MiniMap 
-          style={{ 
-            borderRadius: 16, 
-            border: '2px solid hsl(43 96% 48%)', 
-            background: 'hsl(var(--card))',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px hsl(43 96% 48% / 0.3)',
-            width: 180,
-            height: 130,
-          }}
-          nodeColor={(n) => {
-            const status = (n.data as any).status as string | undefined;
-            if ((n.data as any).isViewer) return 'hsl(43 96% 48%)';
-            if (status === 'joined') return 'hsl(210 60% 36%)';
-            if (status === 'invited') return 'hsl(43 96% 48% / 0.7)';
-            if (status === 'pending') return 'hsl(var(--muted-foreground))';
-            return 'hsl(var(--muted))';
-          }}
-          nodeStrokeColor={(n) => (n.data as any).isViewer ? 'hsl(43 96% 48%)' : 'transparent'}
-          nodeStrokeWidth={2}
-          maskColor="hsl(var(--background) / 0.6)"
+          position="top-right"
           pannable
           zoomable
+          zoomStep={20}
+          offsetScale={10}
+          className="org-chart-minimap"
+          style={{ 
+            width: 200,
+            height: 140,
+          }}
+          bgColor="hsl(var(--card))"
+          maskColor="hsl(var(--background) / 0.6)"
+          maskStrokeColor="hsl(43 96% 48% / 0.55)"
+          maskStrokeWidth={1.2}
+          nodeColor={getMiniMapNodeColor}
+          nodeStrokeColor={getMiniMapNodeStroke}
+          nodeStrokeWidth={2}
+          nodeBorderRadius={14}
+          ariaLabel="Organization chart minimap"
         />
       )}
-      <Controls />
+      
+      <Controls
+        position="top-left"
+        orientation="horizontal"
+        showFitView={false}
+        showInteractive={false}
+        className="org-chart-controls"
+      />
     </ReactFlow>
   );
 }
@@ -317,18 +407,27 @@ function OrgChartContent() {
     };
   }), [edges, effectiveSelectedId]);
 
-  useEffect(() => {
-    if (search.trim()) {
-      const match = dashboard?.tree && nodes.find(node => 
-        node.data.name.toLowerCase().includes(search.toLowerCase()) || 
-        node.data.roleTitle.toLowerCase().includes(search.toLowerCase())
-      );
-      if (match) {
-        setSelectedId(match.id);
-        setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
-      }
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+
+    const trimmedValue = value.trim().toLowerCase();
+    if (!trimmedValue) {
+      return;
     }
-  }, [search, nodes, setCenter, dashboard?.tree]);
+
+    const match = nodes.find(
+      (node) =>
+        node.data.name.toLowerCase().includes(trimmedValue) ||
+        node.data.roleTitle.toLowerCase().includes(trimmedValue)
+    );
+
+    if (!match) {
+      return;
+    }
+
+    setSelectedId(match.id);
+    void setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
+  }, [nodes, setCenter]);
 
   if (dashboard === undefined || dashboard === null) {
     return (
@@ -381,7 +480,7 @@ function OrgChartContent() {
               type="text" 
               placeholder="Search member..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-12 pr-4 text-sm outline-none transition-all focus:border-[hsl(var(--primary))] focus:ring-4 focus:ring-[hsl(var(--primary)/0.1)]"
             />
           </div>
@@ -524,7 +623,7 @@ function OrgChartContent() {
         </div>
       </div>
 
-      <div className="h-[760px] w-full overflow-hidden rounded-[36px]">
+      <div className="relative h-[760px] w-full rounded-[36px] overflow-hidden">
         <OrgChartCanvas nodes={flowNodes} edges={flowEdges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} showMinimap={showMinimap} />
       </div>
 

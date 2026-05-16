@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@xyflow/react/dist/style.css";
 
 /* ============================================================
    LUXURIOUS — Design System CSS Variables
@@ -155,4 +154,41 @@ button {
 
 .dark .react-flow__minimap-mask {
   fill: hsl(var(--background) / 0.7) !important;
+}
+
+.react-flow__controls.org-chart-controls {
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: 16px;
+  background: hsl(var(--card));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24);
+}
+
+.react-flow__controls.org-chart-controls .react-flow__controls-button {
+  width: 34px;
+  height: 34px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-bottom: none;
+  border-right: 1px solid hsl(var(--border));
+}
+
+.react-flow__controls.org-chart-controls .react-flow__controls-button:hover {
+  background: hsl(var(--muted));
+}
+
+.react-flow__controls.org-chart-controls .react-flow__controls-button:last-child {
+  border-right: none;
+}
+
+.react-flow__controls.org-chart-controls .react-flow__controls-button svg {
+  max-width: 14px;
+  max-height: 14px;
+}
+
+.react-flow__panel.org-chart-minimap {
+  overflow: hidden;
+  border: 2px solid hsl(43 96% 48%);
+  border-radius: 20px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.34);
 }
