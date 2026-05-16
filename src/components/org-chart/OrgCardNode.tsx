@@ -33,8 +33,40 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
   const { member, isRoot } = data;
   const reassignMemberParent = useMutation(api.network.reassignMemberParent);
   const isFull = (member.directChildrenCount ?? 0) >= 6;
-  
+  const isMasterNode = isRoot || member.uplineId == null;
   const isClickable = !isRoot && member.totalDownlines > 0;
+  const statusBorderColor = {
+    joined: "#2E7D32",
+    invited: "#E65100",
+    pending: "#6A1B9A",
+    "to-invite": "transparent",
+  } as const;
+  const statusBorderToneClass = {
+    joined: "shadow-[0_0_20px_rgba(46,125,50,0.18)]",
+    invited: "shadow-[0_0_20px_rgba(230,81,0,0.18)]",
+    pending: "shadow-[0_0_18px_rgba(106,27,154,0.16)]",
+    "to-invite": "shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)]",
+  } as const;
+  const selectedStatusToneClass = {
+    joined: "scale-[1.05] z-10 shadow-[0_0_30px_rgba(46,125,50,0.32)]",
+    invited: "scale-[1.05] z-10 shadow-[0_0_30px_rgba(230,81,0,0.3)]",
+    pending: "scale-[1.05] z-10 shadow-[0_0_26px_rgba(106,27,154,0.24)]",
+    "to-invite":
+      "scale-[1.05] z-10 shadow-[0_0_26px_rgba(148,163,184,0.18)]",
+  } as const;
+  const borderColor = isMasterNode
+    ? "hsl(43 96% 48%)"
+    : selected && member.status === "to-invite"
+      ? "hsl(var(--foreground) / 0.24)"
+      : statusBorderColor[member.status];
+
+  const borderToneClass = isMasterNode
+    ? "shadow-[0_0_24px_hsl(43,96%,48%,0.28)]"
+    : statusBorderToneClass[member.status];
+
+  const selectedToneClass = isMasterNode
+    ? "scale-[1.05] z-10 shadow-[0_0_34px_hsl(43,96%,48%,0.45)]"
+    : selectedStatusToneClass[member.status];
 
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [removeMode, setRemoveMode] = useState<"disconnect" | "reconnect">("disconnect");
@@ -48,7 +80,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     setIsRemoveOpen(false);
     try {
       await reassignMemberParent({ 
-        memberId: member.id as any, 
+        memberId: member.id,
         newParentMemberId: null,
         reconnectChildren: removeMode === "reconnect"
       });
@@ -60,10 +92,12 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
 
   const handleReconnect = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (member.lastUplineId) {
+    const previousUplineId = member.lastUplineId;
+
+    if (previousUplineId) {
       void (async () => {
         try {
-          await reassignMemberParent({ memberId: member.id as any, newParentMemberId: member.lastUplineId as any });
+          await reassignMemberParent({ memberId: member.id, newParentMemberId: previousUplineId });
           toast.success(`Reconnected to previous manager`);
         } catch {
           toast.error("Failed to reconnect");
@@ -90,11 +124,13 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
       }
 
       if (!member.uplineId && member.lastUplineId) {
+        const previousUplineId = member.lastUplineId;
+
         items.push({
           label: "Reconnect to Previous Manager",
           icon: <Link2 size={14} />,
           onClick: () => {
-            void reassignMemberParent({ memberId: member.id as any, newParentMemberId: member.lastUplineId as any }).then(() => {
+            void reassignMemberParent({ memberId: member.id, newParentMemberId: previousUplineId }).then(() => {
               toast.success("Member reconnected");
             }).catch(() => {
               toast.error("Failed to reconnect");
@@ -107,7 +143,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     if (items.length > 0) {
       handleContextMenu(e, items);
     }
-  }, [isRoot, member.uplineId, member.lastUplineId, member.id, member.name, reassignMemberParent, handleContextMenu]);
+  }, [isRoot, member.uplineId, member.lastUplineId, member.id, reassignMemberParent, handleContextMenu]);
 
   return (
     <>
@@ -115,7 +151,8 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
       onContextMenu={handleRightClick}
       className={`relative w-[240px] rounded-[24px] transition-all duration-300 border-2 bg-[hsl(var(--card))] ${
         isClickable ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : ""
-      } ${selected ? "scale-[1.05] z-10 border-[hsl(43,96%,48%)] shadow-[0_0_30px_hsl(43,96%,48%,0.4)]" : "z-0 border-[hsl(var(--primary))] shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)]"} ${isFull ? "ring-2 ring-red-500/50" : ""}`}
+      } ${selected ? selectedToneClass : `z-0 ${borderToneClass}`} ${isFull ? "ring-2 ring-red-500/50" : ""}`}
+      style={{ borderColor }}
     >
       {/* Capacity Badge */}
       {isFull && (
@@ -207,7 +244,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
       description={`Are you sure you want to remove ${member.name} from the hierarchy?`}
       variant="danger"
       confirmLabel="Remove"
-      onConfirm={executeRemove}
+      onConfirm={() => void executeRemove()}
       onCancel={() => setIsRemoveOpen(false)}
     >
       <div className="space-y-3 mt-4">
