@@ -21,10 +21,18 @@ import { CredentialsDialog } from "../ui/CredentialsDialog";
 
 interface MemberInspectorProps {
   memberId: string | null;
+  networkStats?: {
+    directChildrenCount: number;
+    totalDownlines: number;
+  } | null;
   onClose: () => void;
 }
 
-export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
+export function MemberInspector({
+  memberId,
+  networkStats,
+  onClose,
+}: MemberInspectorProps) {
   const [activeTab, setActiveTab] = useState<"info" | "security">("info");
   const [isResetting, setIsResetting] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
@@ -42,6 +50,10 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
   const deleteMember = useMutation(api.network.deleteMember);
 
   if (!memberId || !member) return null;
+
+  const directChildrenCount =
+    networkStats?.directChildrenCount ?? member.directChildrenCount ?? 0;
+  const totalDownlines = networkStats?.totalDownlines ?? member.totalDownlines ?? 0;
 
   const handleResetPassword = async () => {
     setIsResetPasswordOpen(false);
@@ -157,11 +169,11 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
                   <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Direct</p>
-                  <p className="text-xl font-black mt-1">{member.directChildrenCount || 0}</p>
+                  <p className="text-xl font-black mt-1">{directChildrenCount}</p>
                 </div>
                 <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
                   <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Total</p>
-                  <p className="text-xl font-black mt-1">{member.totalDownlines || 0}</p>
+                  <p className="text-xl font-black mt-1">{totalDownlines}</p>
                 </div>
                 <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
                   <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Invited</p>

@@ -40,13 +40,16 @@ import { useContextMenu } from "../../components/ui/useContextMenu";
 import { type ContextMenuItem } from "../../components/ui/ContextMenu";
 import { cn } from "@/lib/utils";
 
+type OrgStatus = OrgCardData["member"]["status"];
+
 type OrgTreeNode = {
   id: string;
   name: string;
   roleTitle: string;
-  status: "joined" | "invited" | "pending" | "to-invite";
+  status: OrgStatus;
   isViewer: boolean;
   directChildrenCount: number;
+  totalDownlineCount: number;
   member: OrgCardData["member"];
   children: OrgTreeNode[];
 };
@@ -55,7 +58,7 @@ type OrgFlowData = {
   id: string;
   name: string;
   roleTitle: string;
-  status: "joined" | "invited" | "pending" | "to-invite";
+  status: OrgStatus;
   isViewer: boolean;
   member: OrgCardData["member"];
 };
@@ -131,6 +134,7 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
         member: {
           ...node.member,
           directChildrenCount: node.directChildrenCount,
+          totalDownlines: node.totalDownlineCount,
         },
       },
       draggable: false,
@@ -167,6 +171,73 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
   }
 
   return { nodes, edges };
+}
+
+function countProjectedDescendants(children: OrgTreeNode[]): number {
+  return children.reduce(
+    (sum, child) => sum + 1 + countProjectedDescendants(child.children),
+    0,
+  );
+}
+
+function projectOrgNode(
+  node: OrgTreeNode,
+  options: {
+    isProjectionView: boolean;
+    selectedId: string | null;
+  },
+): OrgTreeNode | null {
+  const projectedChildren = node.children
+    .map((child) => projectOrgNode(child, options))
+    .filter((child): child is OrgTreeNode => child !== null);
+
+  const statusVisible =
+    node.isViewer || options.isProjectionView || node.status === "joined";
+  const shouldKeep =
+    statusVisible || projectedChildren.length > 0 || node.id === options.selectedId;
+
+  if (!shouldKeep) {
+    return null;
+  }
+
+  const directChildrenCount = projectedChildren.length;
+  const totalDownlineCount = countProjectedDescendants(projectedChildren);
+
+  return {
+    ...node,
+    directChildrenCount,
+    totalDownlineCount,
+    member: {
+      ...node.member,
+      directChildrenCount,
+      totalDownlines: totalDownlineCount,
+    },
+    children: projectedChildren,
+  };
+}
+
+function projectOrgTree(
+  roots: OrgTreeNode[],
+  options: {
+    isProjectionView: boolean;
+    selectedId: string | null;
+  },
+): OrgTreeNode[] {
+  return roots
+    .map((root) => projectOrgNode(root, options))
+    .filter((root): root is OrgTreeNode => root !== null);
+}
+
+function flattenOrgTree(roots: OrgTreeNode[]): OrgTreeNode[] {
+  const nodes: OrgTreeNode[] = [];
+
+  const visit = (node: OrgTreeNode) => {
+    nodes.push(node);
+    node.children.forEach(visit);
+  };
+
+  roots.forEach(visit);
+  return nodes;
 }
 
 // Using imported OrgCardNode from components
@@ -325,12 +396,14 @@ function OrgChartContent() {
   const [selectedSidebarMember, setSelectedSidebarMember] = useState<Doc<"users"> | null>(null);
   const [targetManagerId, setTargetManagerId] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [isProjectionView, setIsProjectionView] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState("All");
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [pendingCenterNodeId, setPendingCenterNodeId] = useState<string | null>(null);
 
   const { fitView, setCenter } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
@@ -362,6 +435,22 @@ function OrgChartContent() {
     };
   }, []);
 
+  const rawTree = useMemo(
+    () => (dashboard?.tree as OrgTreeNode[] | undefined) ?? [],
+    [dashboard],
+  );
+
+  const allTreeNodes = useMemo(() => flattenOrgTree(rawTree), [rawTree]);
+
+  const projectedTree = useMemo(
+    () =>
+      projectOrgTree(rawTree, {
+        isProjectionView,
+        selectedId,
+      }),
+    [isProjectionView, rawTree, selectedId],
+  );
+
   const { nodes, edges } = useMemo(() => {
     if (!dashboard) {
       return {
@@ -370,8 +459,8 @@ function OrgChartContent() {
       };
     }
 
-    return buildFlowTree(dashboard.tree as any);
-  }, [dashboard]);
+    return buildFlowTree(projectedTree);
+  }, [dashboard, projectedTree]);
 
   const visibleMembers = useMemo(
     () =>
@@ -387,6 +476,26 @@ function OrgChartContent() {
     selectedId && nodes.some((node) => node.id === selectedId)
       ? selectedId
       : nodes.find((node) => node.data.isViewer)?.id ?? nodes[0]?.id ?? null;
+
+  const selectedViewStats = useMemo(() => {
+    if (!selectedId) {
+      return null;
+    }
+
+    const selectedNode = nodes.find((node) => node.id === selectedId);
+    if (!selectedNode) {
+      return null;
+    }
+
+    return {
+      directChildrenCount: selectedNode.data.member.directChildrenCount ?? 0,
+      totalDownlines: selectedNode.data.member.totalDownlines ?? 0,
+    };
+  }, [nodes, selectedId]);
+
+  const availableStatusFilters = isProjectionView
+    ? ["All", "Joined", "Invited", "Pending", "To-Invite"]
+    : ["All", "Joined"];
 
   const flowNodes = useMemo(() => nodes.map((node) => ({
     ...node,
@@ -415,19 +524,45 @@ function OrgChartContent() {
       return;
     }
 
-    const match = nodes.find(
+    const match = allTreeNodes.find(
       (node) =>
-        node.data.name.toLowerCase().includes(trimmedValue) ||
-        node.data.roleTitle.toLowerCase().includes(trimmedValue)
+        node.name.toLowerCase().includes(trimmedValue) ||
+        node.roleTitle.toLowerCase().includes(trimmedValue)
     );
 
     if (!match) {
       return;
     }
 
+    if (!isProjectionView && match.status !== "joined" && !match.isViewer) {
+      setIsProjectionView(true);
+    }
+
+    if (statusFilter !== "All" && statusFilter.toLowerCase() !== match.status) {
+      setStatusFilter("All");
+    }
+
     setSelectedId(match.id);
+    setPendingCenterNodeId(match.id);
+  }, [allTreeNodes, isProjectionView, statusFilter]);
+
+  useEffect(() => {
+    if (!pendingCenterNodeId) {
+      return;
+    }
+
+    const match = nodes.find(
+      (node) =>
+        node.id === pendingCenterNodeId
+    );
+
+    if (!match) {
+      return;
+    }
+
     void setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
-  }, [nodes, setCenter]);
+    setPendingCenterNodeId(null);
+  }, [nodes, pendingCenterNodeId, setCenter]);
 
   if (dashboard === undefined || dashboard === null) {
     return (
@@ -447,8 +582,14 @@ function OrgChartContent() {
 
 
 
-  const handleReset = () => {
-    void fitView({ duration: 500, padding: 0.28, minZoom: 0.2, maxZoom: 1.15 });
+  const handleToggleHierarchyView = () => {
+    setIsProjectionView((current) => {
+      const next = !current;
+      if (!next && !["All", "Joined"].includes(statusFilter)) {
+        setStatusFilter("All");
+      }
+      return next;
+    });
   };
 
   return (
@@ -537,7 +678,7 @@ function OrgChartContent() {
               <div className="absolute top-[120%] right-0 w-48 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
                 <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Filter by Status</h4>
                 <div className="flex flex-col gap-2">
-                  {["All", "Joined", "Invited", "Pending", "To-Invite"].map((status) => (
+                  {availableStatusFilters.map((status) => (
                     <label key={status} className="flex items-center gap-3 cursor-pointer group">
                       <input 
                         type="radio" 
@@ -614,11 +755,15 @@ function OrgChartContent() {
           </div>
           
           <button 
-            onClick={handleReset}
+            onClick={handleToggleHierarchyView}
             className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#1A2235] text-[hsl(43,96%,48%)] shadow-lg border border-[hsl(var(--border))] hover:bg-[#1f293f] hover:scale-[1.05] active:scale-[0.95] transition-all"
-            title="Fit View"
+            title={isProjectionView ? "Projection View (All)" : "Real Hierarchy (Joined Only)"}
           >
-            <Network size={22} strokeWidth={2.5} />
+            {isProjectionView ? (
+              <Users size={22} strokeWidth={2.5} />
+            ) : (
+              <Network size={22} strokeWidth={2.5} />
+            )}
           </button>
         </div>
       </div>
@@ -629,6 +774,7 @@ function OrgChartContent() {
 
       <MemberInspector 
         memberId={selectedId} 
+        networkStats={selectedViewStats}
         onClose={() => setSelectedId(null)} 
       />
 
