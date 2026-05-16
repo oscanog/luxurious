@@ -21,6 +21,9 @@ import {
   Map as MapIcon,
   Info,
   Network,
+  Check,
+  Mail,
+  UserPlus,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
@@ -32,7 +35,6 @@ import { AddMemberStepper } from "../../components/org-chart/AddMemberStepper";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useContextMenu } from "../../components/ui/useContextMenu";
 import { type ContextMenuItem } from "../../components/ui/ContextMenu";
-import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 
 type OrgTreeNode = {
@@ -189,9 +191,27 @@ function OrgChartCanvas({
       <Background color="#ccc" variant={"dots" as any} />
       {showMinimap && (
         <MiniMap 
-          style={{ borderRadius: 18, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
-          nodeColor={(n) => (n.data as any).isViewer ? 'hsl(43 96% 48%)' : 'hsl(var(--muted))'}
-          maskColor="hsl(var(--background)/0.5)"
+          style={{ 
+            borderRadius: 16, 
+            border: '2px solid hsl(43 96% 48%)', 
+            background: 'hsl(var(--card))',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px hsl(43 96% 48% / 0.3)',
+            width: 180,
+            height: 130,
+          }}
+          nodeColor={(n) => {
+            const status = (n.data as any).status as string | undefined;
+            if ((n.data as any).isViewer) return 'hsl(43 96% 48%)';
+            if (status === 'joined') return 'hsl(210 60% 36%)';
+            if (status === 'invited') return 'hsl(43 96% 48% / 0.7)';
+            if (status === 'pending') return 'hsl(var(--muted-foreground))';
+            return 'hsl(var(--muted))';
+          }}
+          nodeStrokeColor={(n) => (n.data as any).isViewer ? 'hsl(43 96% 48%)' : 'transparent'}
+          nodeStrokeWidth={2}
+          maskColor="hsl(var(--background) / 0.6)"
+          pannable
+          zoomable
         />
       )}
       <Controls />
@@ -441,19 +461,19 @@ function OrgChartContent() {
                 <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Network Summary</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.totalMembers}</p>
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.joinedCount}</p>
                     <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Joined</p>
                   </div>
                   <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.invited}</p>
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.invitedCount}</p>
                     <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Invited</p>
                   </div>
                   <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.pending}</p>
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.pendingCount}</p>
                     <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Pending</p>
                   </div>
                   <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.toInvite}</p>
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.toInviteCount}</p>
                     <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">To Invite</p>
                   </div>
                 </div>
@@ -463,23 +483,31 @@ function OrgChartContent() {
             {/* Info Legend Popover */}
             {showInfo && (
               <div className="absolute top-[120%] right-0 w-72 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
-                <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Chart Legend</h4>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full border-2 border-[hsl(43,96%,48%)] shadow-[0_0_10px_hsl(43,96%,48%/0.5)]" />
-                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Selected Node</span>
+                <h4 className="text-xl font-bold text-[hsl(var(--foreground))] tracking-tight mb-5">Status Legend</h4>
+                <div className="space-y-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[hsl(var(--primary))] dark:bg-[#273B7A] flex items-center justify-center">
+                      <Check size={16} className="text-[hsl(43,96%,48%)] dark:text-[#FFD700] stroke-[3]" />
+                    </div>
+                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">Joined</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-[#FFD700] flex items-center justify-center"><span className="text-black text-[10px] font-bold">+</span></div>
-                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Add Downline Member</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[hsl(43,96%,48%)] dark:bg-[#FFD700] flex items-center justify-center">
+                      <Mail size={16} className="text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">Invited</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))]"><span className="text-[10px] font-bold">−</span></div>
-                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Remove / Disconnect</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted-foreground))] dark:bg-[#4B5563] flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                    </div>
+                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">Pending</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-500 border border-red-500/50">FULL</div>
-                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Max 6 direct children reached</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] dark:bg-[#374151] flex items-center justify-center">
+                      <UserPlus size={16} className="text-[hsl(var(--foreground))] dark:text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">To-Invite</span>
                   </div>
                 </div>
               </div>
