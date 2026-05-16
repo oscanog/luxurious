@@ -235,6 +235,11 @@ http.route({
             },
           });
           break;
+        case "network:getDeleteMemberImpact":
+          result = await ctx.runQuery(api.network.getDeleteMemberImpact, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+          });
+          break;
         case "networkMembers:checkEmailAvailability":
           result = await ctx.runQuery(api.networkMembers.checkEmailAvailability, {
             email: readStringArg(body.args?.email).trim().toLowerCase(),
@@ -461,6 +466,19 @@ http.route({
               typeof body.args?.newParentMemberId === "string"
                 ? (body.args.newParentMemberId as any)
                 : null,
+          });
+          break;
+        case "network:deleteMember":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.deleteMember, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            mode: body.args?.mode === "cascade" ? "cascade" : "reconnect",
+            newParentMemberId:
+              typeof body.args?.newParentMemberId === "string"
+                ? (body.args.newParentMemberId as any)
+                : body.args?.newParentMemberId === null
+                  ? null
+                  : undefined,
           });
           break;
         case "networkMembers:addMember":

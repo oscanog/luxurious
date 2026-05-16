@@ -352,7 +352,7 @@ export async function requireMobileViewer(ctx: MobileCtx): Promise<MobileViewer>
   if (!userId) {
     throw new Error("Not authenticated");
   }
-  const user = await ctx.db.get("users", userId);
+  const user = await ctx.db.get(userId);
   if (!user) {
     throw new Error("Authenticated user missing.");
   }
@@ -390,7 +390,7 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
 
   if (existing) {
     const storedDisplayName = existing.displayName.trim();
-    await ctx.db.patch("mobileProfiles", existing._id, {
+    await ctx.db.patch(existing._id, {
       userId: viewer._id,
       viewerKey: `auth_${viewer._id}`,
       displayName:
@@ -407,7 +407,7 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
     if (existingMembers.length === 0) {
       await syncNetworkMembersForViewer(ctx, existing._id, viewer, now);
     }
-    return await ctx.db.get("mobileProfiles", existing._id);
+    return await ctx.db.get(existing._id);
   }
 
   const profileId = await ctx.db.insert("mobileProfiles", {
@@ -486,7 +486,7 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
     });
   }
 
-  return await ctx.db.get("mobileProfiles", profileId);
+  return await ctx.db.get(profileId);
 }
 
 export async function listNetworkMembersForProfile(
@@ -531,7 +531,7 @@ async function seedDefaultNetworkMembers(
     if (!memberId || !parentMemberId) {
       continue;
     }
-    await ctx.db.patch("networkMembers", memberId, { parentMemberId });
+    await ctx.db.patch(memberId, { parentMemberId });
   }
 }
 
@@ -543,7 +543,7 @@ async function syncNetworkMembersForViewer(
 ) {
   const existingMembers = await listNetworkMembersForProfile(ctx, profileId);
   for (const member of existingMembers) {
-    await ctx.db.delete("networkMembers", member._id);
+    await ctx.db.delete(member._id);
   }
   const seeds = await buildNetworkSeedsForViewer(ctx, viewer);
   await seedDefaultNetworkMembers(ctx, profileId, seeds, now);

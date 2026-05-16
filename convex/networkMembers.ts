@@ -74,7 +74,7 @@ export const updateSocialIds = mutation({
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
 
-    const member = await ctx.db.get("networkMembers", args.memberId);
+    const member = await ctx.db.get(args.memberId);
     if (!member) throw new Error("Member not found");
 
     if (member.profileId !== profile._id) {
@@ -82,7 +82,7 @@ export const updateSocialIds = mutation({
     }
 
     const { memberId, ...updates } = args;
-    await ctx.db.patch("networkMembers", memberId, {
+    await ctx.db.patch(memberId, {
       ...updates,
       updatedAt: Date.now(),
     });
@@ -147,12 +147,12 @@ export const createMemberRecord = internalMutation({
     });
 
     if (args.authUserId) {
-      const authUser = await ctx.db.get("users", args.authUserId);
+      const authUser = await ctx.db.get(args.authUserId);
       if (!authUser) {
         throw new Error("Created auth user missing.");
       }
 
-      await ctx.db.patch("users", authUser._id, {
+      await ctx.db.patch(authUser._id, {
         role: "member",
         uplineId: args.viewerUserId,
         lastUplineId: authUser.uplineId ?? null,
