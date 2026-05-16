@@ -217,6 +217,11 @@ function OrgChartContent() {
   const [search, setSearch] = useState("");
   const [showMinimap, setShowMinimap] = useState(false);
 
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+
   const { fitView, setCenter } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
 
@@ -276,7 +281,8 @@ function OrgChartContent() {
   const flowNodes = useMemo(() => nodes.map((node) => ({
     ...node,
     selected: node.id === effectiveSelectedId,
-  })), [nodes, effectiveSelectedId]);
+    hidden: statusFilter !== "All" && node.data.status !== statusFilter.toLowerCase(),
+  })), [nodes, effectiveSelectedId, statusFilter]);
 
   const flowEdges = useMemo(() => edges.map((edge) => {
     const isConnectedToSelected = edge.source === effectiveSelectedId || edge.target === effectiveSelectedId;
@@ -362,17 +368,25 @@ function OrgChartContent() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 rounded-[18px] bg-[#1A2235] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))]">
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[#1A2235] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] relative">
             <button 
-              onClick={() => toast("Filters coming in next phase", { icon: "🚧" })}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              onClick={() => {
+                setShowFilters(!showFilters);
+                setShowStats(false);
+                setShowInfo(false);
+              }}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showFilters ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white")}
               title="Filters"
             >
               <SlidersHorizontal size={18} />
             </button>
             <button 
-              onClick={() => toast("Statistics coming in next phase", { icon: "🚧" })}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              onClick={() => {
+                setShowStats(!showStats);
+                setShowFilters(false);
+                setShowInfo(false);
+              }}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showStats ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white")}
               title="Statistics"
             >
               <ChartColumn size={18} />
@@ -388,12 +402,88 @@ function OrgChartContent() {
               <MapIcon size={18} />
             </button>
             <button 
-              onClick={() => toast("Info panel coming in next phase", { icon: "🚧" })}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              onClick={() => {
+                setShowInfo(!showInfo);
+                setShowFilters(false);
+                setShowStats(false);
+              }}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showInfo ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white")}
               title="Info"
             >
               <Info size={18} />
             </button>
+
+            {/* Filters Popover */}
+            {showFilters && (
+              <div className="absolute top-[120%] right-0 w-48 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Filter by Status</h4>
+                <div className="flex flex-col gap-2">
+                  {["All", "Joined", "Invited", "Pending", "To-Invite"].map((status) => (
+                    <label key={status} className="flex items-center gap-3 cursor-pointer group">
+                      <input 
+                        type="radio" 
+                        name="statusFilter" 
+                        value={status}
+                        checked={statusFilter === status}
+                        onChange={() => setStatusFilter(status)}
+                        className="accent-[hsl(43,96%,48%)] w-4 h-4"
+                      />
+                      <span className="text-sm font-medium text-[hsl(var(--foreground))] group-hover:text-[hsl(43,96%,48%)] transition-colors">{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Statistics Popover */}
+            {showStats && dashboard && (
+              <div className="absolute top-[120%] right-0 w-64 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Network Summary</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.totalMembers}</p>
+                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Joined</p>
+                  </div>
+                  <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.invited}</p>
+                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Invited</p>
+                  </div>
+                  <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.pending}</p>
+                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Pending</p>
+                  </div>
+                  <div className="bg-[hsl(var(--muted)/0.5)] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black text-[hsl(var(--foreground))]">{dashboard.stats.toInvite}</p>
+                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">To Invite</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Info Legend Popover */}
+            {showInfo && (
+              <div className="absolute top-[120%] right-0 w-72 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Chart Legend</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full border-2 border-[hsl(43,96%,48%)] shadow-[0_0_10px_hsl(43,96%,48%/0.5)]" />
+                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Selected Node</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[#FFD700] flex items-center justify-center"><span className="text-black text-[10px] font-bold">+</span></div>
+                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Add Downline Member</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))]"><span className="text-[10px] font-bold">−</span></div>
+                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Remove / Disconnect</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-500 border border-red-500/50">FULL</div>
+                    <span className="text-xs font-medium text-[hsl(var(--foreground))]">Max 6 direct children reached</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <button 

@@ -16,7 +16,7 @@
 | **File** | `src/pages/dashboard/OrgChartPage.tsx` L334 |
 | **Problem** | `SlidersHorizontal` button has no `onClick` handler. Clicks are silent no-ops. |
 | **Expected** | Opens a popover/drawer with status filter chips: All / Joined / Invited / Pending / To-Invite. Filters the visible nodes in the ReactFlow canvas. |
-| **Status** | 🔴 STUB |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Click Filters icon → a filter panel opens
@@ -32,7 +32,7 @@
 | **File** | `src/pages/dashboard/OrgChartPage.tsx` L340 |
 | **Problem** | `ChartColumn` button has no `onClick` handler. |
 | **Expected** | Opens a slide-in stats summary panel (or modal) showing: Total joined, invited, pending, to-invite counts — sourced from `api.network.getDashboard`. |
-| **Status** | 🔴 STUB |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Click Statistics → panel opens with live counts
@@ -47,7 +47,7 @@
 | **File** | `src/pages/dashboard/OrgChartPage.tsx` L346 |
 | **Problem** | `Map` icon button has no `onClick` handler. The `<MiniMap />` component from `@xyflow/react` is already imported but not mounted. |
 | **Expected** | Toggle button mounts/unmounts the ReactFlow `<MiniMap />` overlay in the bottom-right corner of the canvas. |
-| **Status** | 🔴 STUB |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Click Map → minimap appears on canvas (bottom-right)
@@ -63,7 +63,7 @@
 | **File** | `src/pages/dashboard/OrgChartPage.tsx` L352 |
 | **Problem** | `Info` button has no `onClick` handler. No legend exists. |
 | **Expected** | Opens a small floating legend overlay explaining: node border color = selection, gold `+` = add member, `−` = remove, green border = active, "FULL" badge = max 6 children. |
-| **Status** | 🔴 STUB |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Click Info → legend overlay appears
@@ -78,7 +78,7 @@
 | **File** | `src/components/org-chart/MemberInspector.tsx` L57 |
 | **Problem** | `handleChangeEmail` calls `window.prompt(...)` — a native browser dialog. This is jarring, has no validation, no loading state in the dialog, and is incompatible with the app's light/dark themes. |
 | **Expected** | A dedicated styled modal dialog with an email input field, inline validation, and confirm/cancel buttons. Must use the centralized `ConfirmDialog` system (see DRY Dialog section). |
-| **Status** | 🔴 STUB |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Click "Change Email" → a styled modal opens (not browser prompt)
@@ -96,7 +96,7 @@
 | **File** | `src/components/org-chart/OrgCardNode.tsx` L130-L131 |
 | **Problem** | Both `Handle` components have `!opacity-0`. They are invisible but still functionally present. This prevents users from visually understanding connection points. In the mobile app, gold connector lines anchor visibly to edges of cards. |
 | **Expected** | Gold connector line attachment points should be visually expressed (even subtly), OR the edge styles should visually communicate the connection without explicit handle dots. |
-| **Status** | 🔴 STUB |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Edges (gold lines) connect visually and cleanly to card top/bottom
@@ -113,7 +113,7 @@
 | **Files** | `MemberInspector.tsx` L42, L76 / `OrgCardNode.tsx` L39, L77 |
 | **Problem** | Destructive actions (Reset Password, Delete Member, Remove from Hierarchy) all use native `window.confirm()`. This is unstyled, blocks the UI thread, and cannot be themed. |
 | **Expected** | All destructive actions must use the centralized `ConfirmDialog` component (see DRY Dialog section below). |
-| **Status** | 🟠 HIGH |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Delete Member → styled dialog with red accent, member name, warning copy
@@ -130,7 +130,7 @@
 | **File** | `src/components/org-chart/AddMemberStepper.tsx` L271-L296 |
 | **Problem** | The success screen shows credentials with a copy button but has no "Send via Email" action. The mobile flutter version includes an email dispatch button to send credentials to the new member via the system Gmail. The `Send` icon is imported but not connected. |
 | **Expected** | A "Send via Gmail" button that calls `api.email.sendEmail` with the new member's credentials. Must show loading + success/error feedback. |
-| **Status** | 🟠 HIGH |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Success screen shows "Send via Email" button
@@ -146,7 +146,7 @@
 | **File** | `src/components/org-chart/MemberInspector.tsx` L211-L248 |
 | **Problem** | After password reset / email change, the credentials dialog only shows Copy buttons. Missing the "Send via Email" button present in the mobile app. |
 | **Expected** | Same as STUB-08 — a styled "Email Credentials" button dispatching to `api.email.sendEmail`. |
-| **Status** | 🟠 HIGH |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Credentials dialog has "Send via Email" button
@@ -161,7 +161,7 @@
 | **File** | `src/components/org-chart/OrgCardNode.tsx` L116-L119, L147, L167, L179 |
 | **Problem** | The card uses raw hex colors (`#1A2235`, `#273B7A`, `#8B9BB4`, `#111827`, `#FFD700`) that are hard-coded to the dark theme palette. In light mode, the card will appear dark navy against a white canvas — completely broken. |
 | **Expected** | All card colors must use CSS custom properties or compute their values using a `useTheme` hook / `data-theme` attribute conditionals so they switch correctly between light and dark mode. |
-| **Status** | 🟠 HIGH |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Toggle to Light mode → org card is legible (not dark navy on white)
@@ -177,7 +177,7 @@
 | **File** | `src/pages/dashboard/OrgChartPage.tsx` L272 |
 | **Problem** | Search currently uses `hidden: true` on non-matching nodes. This keeps the viewport static. If the matching node is off-screen, the user has no visual cue and must manually pan. |
 | **Expected** | After a debounced search hit, `fitView` should animate to frame all visible (matching) nodes. |
-| **Status** | 🟠 HIGH |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Type a name in search → canvas auto-fits to show matching nodes
@@ -194,7 +194,7 @@
 | **File** | `src/components/org-chart/MemberInspector.tsx` L159-L168 |
 | **Problem** | Stats grid shows only "Total" downlines and "Invited" count. The mobile inspector shows: Direct Children, Total Downlines, Invited, Pending as a 4-cell grid. |
 | **Expected** | Add "Direct" and "Pending" cells to the grid. Values sourced from `member.directChildrenCount` and `member.pendingCount`. |
-| **Status** | 🟡 MEDIUM |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Inspector stats shows 4 cells: Direct / Total / Invited / Pending
@@ -209,7 +209,7 @@
 | **File** | `src/components/org-chart/AddMemberStepper.tsx` L218-L222 |
 | **Problem** | Birthday date picker exists but does not auto-calculate and display the member's age in real-time, as the mobile stepper does. |
 | **Expected** | After selecting birthday, display calculated age inline below the date picker (e.g., "Age: 34 years"). |
-| **Status** | 🟡 MEDIUM |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Select birthday → "Age: XX years" appears below
@@ -224,7 +224,7 @@
 | **File** | `src/components/org-chart/AddMemberStepper.tsx` L72-L76 |
 | **Problem** | `handleNext` advances steps unconditionally. No field validation — First Name can be blank, email can be invalid format. |
 | **Expected** | Each step validates required fields before advancing. Show inline error messages under failing fields. |
-| **Status** | 🟡 MEDIUM |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Step 2 (Identity): Can't advance without First Name and Last Name
@@ -240,7 +240,7 @@
 | **File** | `src/components/org-chart/OrgCardNode.tsx` L76-L84 |
 | **Problem** | "Remove from Hierarchy" always calls `reassignMemberParent` with `newParentMemberId: null`. This disconnects the node. But the backend `deleteMember` supports two modes: `reconnect` (reattaches children to grandparent) and `cascade`. The UI never exposes this choice. |
 | **Expected** | The removal confirmation dialog should present a choice: "Disconnect only" vs "Disconnect and reconnect children to grandparent". |
-| **Status** | 🟡 MEDIUM |
+| **Status** | ✅ DONE |
 
 **QA Steps:**
 - [ ] Remove dialog shows mode selector (radio/toggle)
@@ -258,7 +258,7 @@
 | **File** | `convex/network.ts` L177 |
 | **Problem** | `buildTree` hard-codes `rank: "Member"` for all nodes. The `networkMembers` schema likely has a `roleTitle` field with richer data. |
 | **Expected** | Map `roleTitle` to a rank tier (Master/Diamond/Gold/Silver/Bronze) or simply display `roleTitle` as the subtitle. |
-| **Status** | 🟢 LOW |
+| **Status** | ✅ DONE |
 
 ---
 
@@ -268,7 +268,7 @@
 | **File** | `src/pages/dashboard/OrgChartPage.tsx` L108 |
 | **Problem** | All edges use `animated: false`. When a node is selected, its parent/child edges are not highlighted. Mobile design uses animated gold flows on connected edges. |
 | **Expected** | On node selection, compute which edges connect to the selected node and set `animated: true` + brighter stroke for those edges only. |
-| **Status** | 🟢 LOW |
+| **Status** | ✅ DONE |
 
 ---
 
