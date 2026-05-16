@@ -1,7 +1,7 @@
 import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { Users, UserPlus, Clock, Trash2, Link2 } from "lucide-react";
-import { type DummyMember, RANK_COLORS, STATUS_COLORS } from "@/data/dummyMembers";
+import { Users, User, Trash2, Link2, Plus, Minus, CheckCircle, Network } from "lucide-react";
+import { type DummyMember } from "@/data/dummyMembers";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -10,10 +10,12 @@ import { useContextMenu } from "../ui/useContextMenu";
 import { type ContextMenuItem } from "../ui/ContextMenu";
 
 export type OrgCardData = {
-  member: Omit<DummyMember, "id" | "uplineId"> & { 
-    id: Id<"users">;
-    uplineId: Id<"users"> | null;
-    lastUplineId?: Id<"users"> | null;
+  member: Omit<DummyMember, "id" | "uplineId" | "status" | "joinDate"> & { 
+    id: Id<"networkMembers">;
+    uplineId: Id<"networkMembers"> | null;
+    lastUplineId?: Id<"networkMembers"> | null;
+    directChildrenCount?: number;
+    status: "joined" | "invited" | "pending" | "to-invite";
   };
   isRoot?: boolean;
   branchColor?: string;
@@ -21,23 +23,14 @@ export type OrgCardData = {
 
 export type OrgCardNode = Node<OrgCardData, "orgCard">;
 
-function StatusDot({ status }: { status: DummyMember["status"] }) {
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full shrink-0"
-      style={{ background: STATUS_COLORS[status] }}
-      title={status}
-    />
-  );
-}
 
-export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodeProps<OrgCardNode>) {
+
+export type OrgCardNodeType = Node<OrgCardData, "org-card">;
+
+export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodeProps<OrgCardNodeType>) {
   const { member, isRoot } = data;
-  const removeUpline = useMutation(api.users.removeUpline);
-  const setUpline = useMutation(api.users.setUpline);
-  
-  const rankColor = RANK_COLORS[member.rank];
-  const isGoldTier = member.rank === "Master" || member.rank === "Diamond" || member.rank === "Gold";
+  const reassignMemberParent = useMutation(api.network.reassignMemberParent);
+  const isFull = (member.directChildrenCount ?? 0) >= 6;
   
   const isClickable = !isRoot && member.totalDownlines > 0;
 
@@ -46,28 +39,28 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     if (confirm(`Remove ${member.name} from hierarchy?`)) {
       void (async () => {
         try {
-          await removeUpline({ userId: member.id });
+          await reassignMemberParent({ memberId: member.id as any, newParentMemberId: null });
           toast.success("Member removed");
         } catch {
           toast.error("Failed to remove member");
         }
       })();
     }
-  }, [member.id, member.name, removeUpline]);
+  }, [member.id, member.name, reassignMemberParent]);
 
   const handleReconnect = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (member.lastUplineId) {
       void (async () => {
         try {
-          await setUpline({ userId: member.id, uplineId: member.lastUplineId as Id<"users"> });
+          await reassignMemberParent({ memberId: member.id as any, newParentMemberId: member.lastUplineId as any });
           toast.success(`Reconnected to previous manager`);
         } catch {
           toast.error("Failed to reconnect");
         }
       })();
     }
-  }, [member.id, member.lastUplineId, setUpline]);
+  }, [member.id, member.lastUplineId, reassignMemberParent]);
 
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
 
@@ -82,7 +75,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
           variant: "danger",
           onClick: () => {
             if (confirm(`Remove ${member.name} from hierarchy?`)) {
-              void removeUpline({ userId: member.id }).then(() => {
+              void reassignMemberParent({ memberId: member.id as any, newParentMemberId: null }).then(() => {
                 toast.success("Member removed");
               }).catch(() => {
                 toast.error("Failed to remove member");
@@ -90,13 +83,15 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
             }
           }
         });
-      } else if (member.lastUplineId) {
+      }
+
+      if (!member.uplineId && member.lastUplineId) {
         items.push({
-          label: "Reconnect to Manager",
+          label: "Reconnect to Previous Manager",
           icon: <Link2 size={14} />,
           onClick: () => {
-            void setUpline({ userId: member.id, uplineId: member.lastUplineId as Id<"users"> }).then(() => {
-              toast.success("Reconnected to previous manager");
+            void reassignMemberParent({ memberId: member.id as any, newParentMemberId: member.lastUplineId as any }).then(() => {
+              toast.success("Member reconnected");
             }).catch(() => {
               toast.error("Failed to reconnect");
             });
@@ -108,135 +103,106 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     if (items.length > 0) {
       handleContextMenu(e, items);
     }
-  }, [isRoot, member.uplineId, member.lastUplineId, member.id, member.name, removeUpline, setUpline, handleContextMenu]);
+  }, [isRoot, member.uplineId, member.lastUplineId, member.id, member.name, reassignMemberParent, handleContextMenu]);
 
   return (
     <>
     <div
       onContextMenu={handleRightClick}
-      className={`relative w-[160px] sm:w-[220px] rounded-[14px] transition-all duration-300 ${
+      className={`relative w-[240px] rounded-[24px] transition-all duration-300 ${
         isClickable ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : ""
-      } ${selected ? "scale-[1.05] z-10" : "z-0"}`}
+      } ${selected ? "scale-[1.05] z-10" : "z-0"} ${isFull ? "ring-2 ring-red-500/50" : ""}`}
       style={{
-        border: `2px solid ${
-          selected ? rankColor : isRoot ? "hsl(43 96% 48%)" : data.branchColor || "hsl(var(--border))"
-        }`,
-        background: "hsl(var(--card))",
-        boxShadow: isRoot
-          ? "0 0 24px hsl(43 96% 48% / 0.25), var(--shadow-surface)"
-          : selected
-            ? `0 0 30px ${rankColor}40, var(--shadow-surface)`
-            : "var(--shadow-surface)",
-        transition: "box-shadow 0.3s, border-color 0.3s, transform 0.3s",
+        background: "#1A2235",
+        border: `2px solid ${selected ? "hsl(43 96% 48%)" : "#2E8B57"}`,
+        boxShadow: selected ? `0 0 30px hsl(43 96% 48% / 0.4)` : "0 4px 20px rgba(0,0,0,0.5)",
       }}
-
     >
-      {/* Reconnect Handle */}
+      {/* Capacity Badge */}
+      {isFull && (
+        <div className="absolute -top-3 -right-3 z-30 flex h-6 items-center gap-1 rounded-full bg-red-600 px-2 text-[10px] font-black uppercase tracking-widest text-white shadow-xl">
+          <Users size={12} />
+          <span>FULL</span>
+        </div>
+      )}
+
+      {/* Handles */}
+      <Handle type="target" position={Position.Top} className="!opacity-0" />
+      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+
+      {/* Reconnect Handle (if disconnected) */}
       {!isRoot && !member.uplineId && member.lastUplineId && (
         <button
           onClick={handleReconnect}
           className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 w-8 h-8 rounded-full bg-[hsl(var(--primary))] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-bounce border-2 border-[hsl(var(--background))]"
-          title="Quick reconnect to previous manager"
         >
           <Link2 size={14} />
         </button>
       )}
-      <Handle 
-        type="target" 
-        position={Position.Top} 
-        className="!w-3 !h-3 !bg-[hsl(var(--primary))] !border-2 !border-[hsl(var(--background))] !shadow-lg hover:scale-125 transition-transform cursor-pointer"
-        style={{ top: -2 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleReconnect(e); // Quick reconnect if possible, or maybe open dialog?
-          // For now, let's make it trigger the reconnection or dialog
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Bottom} 
-        className="!w-3 !h-3 !bg-[hsl(var(--primary))] !border-2 !border-[hsl(var(--background))] !shadow-lg hover:scale-125 transition-transform cursor-pointer"
-        style={{ bottom: -2 }}
-      />
 
-      {/* Rank band */}
-      <div
-        className="rounded-t-[12px] px-2 sm:px-3 py-1 sm:py-1.5 flex items-center justify-between border-b group"
-        style={{
-          background: isGoldTier
-            ? "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))"
-            : `${rankColor}18`,
-          borderBottomColor: `${rankColor}30`,
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest"
-            style={{ color: isGoldTier ? "white" : rankColor }}
-          >
-            {member.rank}
-          </span>
+      <div className="p-4 pb-6">
+        {/* Top Section: Avatar, Name, Action */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-12 h-12 rounded-full bg-[#273B7A] flex items-center justify-center shadow-inner shrink-0">
+              <User size={24} className="text-[#FFD700]" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-white font-bold text-lg leading-tight truncate">{member.name}</span>
+              <span className="text-[#8B9BB4] text-xs font-medium truncate">{member.rank}</span>
+            </div>
+          </div>
           {!isRoot && (
-            <button
+            <button 
               onClick={handleRemove}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-500 text-white/70"
+              className="text-[#8B9BB4] hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors shrink-0 ml-2"
             >
-              <Trash2 size={10} />
+              <Minus size={18} />
             </button>
           )}
         </div>
-        <StatusDot status={member.status} />
+
+        {/* Middle Section: Status & Children Count */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-1.5 bg-[#273B7A] px-3 py-1.5 rounded-full">
+            <CheckCircle size={14} className="text-[#FFD700]" />
+            <span className="text-[#FFD700] text-xs font-bold uppercase tracking-wider">
+              {member.status}
+            </span>
+          </div>
+          <span className="text-[#8B9BB4] text-sm font-medium">
+            {member.directChildrenCount || 0} children
+          </span>
+        </div>
+
+        {/* Bottom Section: Total Downline */}
+        <div className="bg-[#111827]/50 rounded-xl py-2.5 px-3 flex items-center justify-center gap-2">
+          <Network size={16} className="text-[#8B9BB4]" />
+          <span className="text-white text-sm font-medium">{member.totalDownlines || 0} total downline</span>
+        </div>
       </div>
 
-      {/* Body */}
-      <div className="p-2 sm:p-3">
-        {/* Avatar + name */}
-        <div className="flex items-center gap-2 sm:gap-2.5 mb-2">
-          <div
-            className="w-7 h-7 sm:w-[34px] sm:h-[34px] rounded-lg sm:rounded-xl flex items-center justify-center text-[10px] sm:text-xs font-extrabold text-white shrink-0"
-            style={{
-              background: isGoldTier
-                ? "linear-gradient(135deg, hsl(43 96% 48%), hsl(221 83% 53%))"
-                : `linear-gradient(135deg, ${rankColor}, hsl(221 83% 53%))`,
-            }}
-          >
-            {member.avatarInitials}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-[11px] sm:text-[13px] font-bold text-[hsl(var(--foreground))] whitespace-nowrap overflow-hidden text-ellipsis m-0">
-              {member.name}
-            </p>
-            <p className="hidden sm:block text-[10px] text-[hsl(var(--muted-foreground))] m-0 whitespace-nowrap overflow-hidden text-ellipsis">
-              {member.email}
-            </p>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
-          <StatChip icon={<Users size={10} />} label="dline" value={String(member.totalDownlines ?? 0)} />
-          <StatChip icon={<UserPlus size={10} />} label="invited" value={String(member.invitedCount ?? 0)} />
-          <StatChip icon={<Clock size={10} />} label="pending" value={String(member.pendingCount ?? 0)} />
-        </div>
+      {/* Add Button (Floating) */}
+      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            (window as any).triggerAddMember?.(member.id);
+          }}
+          disabled={isFull}
+          className={`flex w-10 h-10 items-center justify-center rounded-full shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-transform ${
+            isFull 
+              ? "bg-gray-600 cursor-not-allowed opacity-50 shadow-none"
+              : "bg-[#FFD700] hover:scale-110 active:scale-95 cursor-pointer"
+          }`}
+        >
+          <Plus size={20} className="text-black" strokeWidth={3} />
+        </button>
       </div>
     </div>
     {ContextMenuComponent}
     </>
   );
 });
-
-function StatChip({ icon, label, value, positive }: { icon: React.ReactNode; label: string; value: string; positive?: boolean }) {
-  return (
-    <div className="bg-[hsl(var(--muted))] rounded-md sm:rounded-lg p-1 sm:p-1.5 flex flex-col items-center sm:items-start text-center sm:text-left">
-      <div className="flex items-center justify-center sm:justify-start gap-1 text-[hsl(var(--muted-foreground))] mb-0.5">
-        {icon}
-        <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-widest">{label}</span>
-      </div>
-      <p className={`text-[10px] sm:text-[11px] font-bold m-0 whitespace-nowrap overflow-hidden text-ellipsis ${positive ? "text-[hsl(152_69%_42%)]" : "text-[hsl(var(--foreground))]"}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
 
 OrgCardNode.displayName = "OrgCardNode";

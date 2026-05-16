@@ -1,31 +1,63 @@
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { Users } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, usePaginatedQuery } from "convex/react";
+import { Users, Copy, Check, UserPlus } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DashboardSearch, DashboardFilterGroup, DashboardFilterButton } from "@/components/dashboard/DashboardSearch";
+import { toast } from "react-hot-toast";
+import { cn } from "@/lib/utils";
 
-type MemberStatus = "all" | "joined" | "invited" | "pending";
+type MemberStatus = "all" | "joined" | "invited" | "pending" | "to-invite";
 
 const FILTERS: Array<{ value: MemberStatus; label: string }> = [
   { value: "all", label: "All" },
   { value: "joined", label: "Joined" },
   { value: "invited", label: "Invited" },
   { value: "pending", label: "Pending" },
+  { value: "to-invite", label: "To Invite" },
 ];
 
 export function MembersPage() {
   const [status, setStatus] = useState<MemberStatus>("all");
   const [search, setSearch] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const dashboard = useQuery(api.network.getDashboard);
-  const members = useQuery(
-    api.network.listMembers,
-    status === "all" ? {} : { status },
+  
+  const { results, status: paginationStatus, loadMore } = usePaginatedQuery(
+    api.network.listMembersPaginated,
+    status === "all" ? {} : { status: status === "to-invite" ? "to-invite" : status as any },
+    { initialNumItems: 20 }
   );
 
-  const filteredMembers = (members ?? []).filter((member) => {
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && paginationStatus === "CanLoadMore") {
+          loadMore(20);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [paginationStatus, loadMore]);
+
+  const copyToClipboard = (text: string, id: string) => {
+    void navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const filteredMembers = (results ?? []).filter((member) => {
     const needle = search.trim().toLowerCase();
     if (!needle) {
       return true;
@@ -43,26 +75,22 @@ export function MembersPage() {
           <div className="flex-1 pb-[18px]">
             <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))] dark:text-blue-100/60">Network</p>
             <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] text-[hsl(var(--foreground))] dark:text-white sm:text-[44px]">
-              Directory
+              Explorer
             </h1>
             <p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))] dark:text-blue-100/80 sm:text-base max-w-xl">
-              Joined, invited, and pending members. Admin directory moved back under admin.
+              Manage your direct network and downlines. Use filters to narrow down by status.
             </p>
           </div>
         </div>
       </section>
 
-
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatTile label="Total" value={(dashboard?.stats.joinedCount ?? 0) + (dashboard?.stats.invitedCount ?? 0) + (dashboard?.stats.pendingCount ?? 0)} accentClassName="text-[hsl(var(--primary))]" />
-        <StatTile label="Joined" value={dashboard?.stats.joinedCount} accentClassName="text-[hsl(var(--secondary))]" />
-        <StatTile label="Invited" value={dashboard?.stats.invitedCount} accentClassName="text-[hsl(var(--foreground))]" />
-        <StatTile label="Pending" value={dashboard?.stats.pendingCount} accentClassName="text-[hsl(var(--foreground))]" />
+        <StatTile label="Joined" value={dashboard?.stats.joinedCount} accentClassName="text-emerald-500" />
+        <StatTile label="Invited" value={dashboard?.stats.invitedCount} accentClassName="text-blue-500" />
+        <StatTile label="Pending" value={dashboard?.stats.pendingCount} accentClassName="text-amber-500" />
+        <StatTile label="Slots" value={dashboard?.stats.toInviteCount} accentClassName="text-[hsl(var(--muted-foreground))]" />
       </div>
-
-
-
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <DashboardFilterGroup>
@@ -83,31 +111,26 @@ export function MembersPage() {
         />
       </div>
 
-      {members === undefined ? (
-        <div className="grid gap-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-24 rounded-[28px]" />
-          ))}
-        </div>
-      ) : (
-        <SurfaceCard className="overflow-x-auto">
+      <SurfaceCard className="overflow-hidden border border-[hsl(var(--border)/0.5)] shadow-sm">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[hsl(var(--border))] text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Role</th>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] text-[11px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+                <th className="px-6 py-4">Member</th>
+                <th className="px-6 py-4">Role / ID</th>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[hsl(var(--border))]">
               {filteredMembers.map((member) => (
                 <tr
                   key={member.id}
-                  className="transition-colors hover:bg-[hsl(var(--muted))]"
+                  className="group transition-colors hover:bg-[hsl(var(--muted)/0.5)]"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))] shadow-sm transition-transform group-hover:scale-105">
                         <Users size={16} />
                       </div>
                       <div className="flex flex-col">
@@ -122,35 +145,89 @@ export function MembersPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-[hsl(var(--muted-foreground))]">
-                    {member.roleTitle}
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[hsl(var(--muted-foreground))]">{member.roleTitle}</span>
+                      <button 
+                        onClick={() => copyToClipboard(member.id, member.id)}
+                        className="flex w-max items-center gap-1.5 text-[10px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--primary))]"
+                      >
+                        <span className="font-mono">{member.id.slice(0, 8)}...</span>
+                        {copiedId === member.id ? <Check size={10} /> : <Copy size={10} />}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${
+                      className={cn(
+                        "inline-flex rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em]",
                         member.status === "joined"
                           ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
                           : member.status === "pending"
                             ? "bg-amber-500/12 text-amber-600 dark:text-amber-300"
-                            : "bg-violet-500/12 text-violet-600 dark:text-violet-300"
-                      }`}
+                            : member.status === "invited"
+                              ? "bg-blue-500/12 text-blue-600 dark:text-blue-300"
+                              : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"
+                      )}
                     >
                       {member.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    {member.status === "to-invite" ? (
+                      <button className="rounded-lg bg-[hsl(var(--primary))] p-2 text-white shadow-md transition-all hover:scale-105 hover:bg-[hsl(var(--primary)/0.9)] active:scale-95">
+                        <UserPlus size={16} />
+                      </button>
+                    ) : (
+                      <button className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 text-[hsl(var(--muted-foreground))] transition-all hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--primary))]">
+                        <Users size={16} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {filteredMembers.length === 0 && (
+              
+              {paginationStatus === "LoadingFirstPage" && (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={4} className="px-6 py-4">
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                    </td>
+                  </tr>
+                ))
+              )}
+
+              {filteredMembers.length === 0 && paginationStatus !== "LoadingFirstPage" && (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-[hsl(var(--muted-foreground))]">
-                    No members matched current filter.
+                  <td colSpan={4} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Users size={32} className="text-[hsl(var(--muted-foreground)/0.5)]" />
+                      <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">
+                        No members matched your current filters.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </SurfaceCard>
-      )}
+        </div>
+        
+        {/* Infinite Scroll Trigger */}
+        <div ref={loadMoreRef} className="flex justify-center p-6">
+          {paginationStatus === "LoadingMore" && (
+            <div className="flex items-center gap-3 text-sm font-medium text-[hsl(var(--muted-foreground))]">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" />
+              Loading more members...
+            </div>
+          )}
+          {paginationStatus === "Exhausted" && filteredMembers.length > 0 && (
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground)/0.5)]">
+              End of Directory
+            </p>
+          )}
+        </div>
+      </SurfaceCard>
     </div>
   );
 }
@@ -165,9 +242,9 @@ function StatTile({
   accentClassName: string;
 }) {
   return (
-    <SurfaceCard className="rounded-[30px] p-[18px]">
+    <SurfaceCard className="rounded-[30px] p-[18px] border border-[hsl(var(--border)/0.5)] shadow-sm transition-all hover:shadow-md">
       <p className="text-[12px] font-medium text-[hsl(var(--muted-foreground))]">{label}</p>
-      <p className={`mt-3 text-[40px] leading-none font-bold tabular-nums ${accentClassName}`}>{value ?? "..."}</p>
+      <p className={cn("mt-3 text-[36px] leading-none font-bold tabular-nums", accentClassName)}>{value ?? "..."}</p>
     </SurfaceCard>
   );
 }

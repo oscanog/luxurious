@@ -1,5 +1,6 @@
 import { MutationCtx, QueryCtx, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   getMobileProfileForViewerOrThrow,
@@ -100,6 +101,19 @@ type OrgTreeNode = {
   isViewer: boolean;
   directChildrenCount: number;
   totalDownlineCount: number;
+  member: {
+    id: Id<"users"> | Id<"networkMembers">;
+    name: string;
+    email: string;
+    roleTitle: string;
+    rank: string;
+    status: NetworkMember["status"];
+    avatarInitials: string;
+    totalDownlines: number;
+    invitedCount: number;
+    pendingCount: number;
+    uplineId: Id<"networkMembers"> | null;
+  };
   children: OrgTreeNode[];
 };
 
@@ -155,6 +169,19 @@ function buildTree(
     isViewer: member.isViewer,
     directChildrenCount: (parentLookup.get(member._id) ?? []).length,
     totalDownlineCount: countDescendants(parentLookup, member._id),
+    member: {
+      id: member.userId ?? (member._id as any),
+      name: member.name,
+      email: member.email ?? "",
+      roleTitle: member.roleTitle,
+      rank: "Member",
+      status: member.status,
+      avatarInitials: member.name.substring(0, 2).toUpperCase(),
+      totalDownlines: countDescendants(parentLookup, member._id),
+      invitedCount: 0,
+      pendingCount: 0,
+      uplineId: (member.parentMemberId as any),
+    },
     children: buildTree(parentLookup, member._id),
   }));
 }
@@ -571,6 +598,54 @@ export const listMembers = query({
   },
 });
 
+export const listMembersPaginated = query({
+  args: {
+    status: v.optional(
+      v.union(
+        v.literal("joined"),
+        v.literal("invited"),
+        v.literal("pending"),
+        v.literal("to-invite"),
+      ),
+    ),
+    search: v.optional(v.string()),
+    sortBy: v.optional(v.union(v.literal("name"), v.literal("date"))),
+    sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    
+    let query;
+    if (args.status) {
+      query = ctx.db
+        .query("networkMembers")
+        .withIndex("by_profileId_and_status", (q) => 
+          q.eq("profileId", profile._id).eq("status", args.status as any)
+        )
+        .order("desc");
+    } else {
+      query = ctx.db
+        .query("networkMembers")
+        .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+        .order("desc");
+    }
+
+    const results = await query.paginate(args.paginationOpts);
+
+    return {
+      ...results,
+      page: results.page.map((member) => ({
+        id: member._id,
+        name: member.name,
+        roleTitle: member.roleTitle,
+        status: member.status,
+        isViewer: member.isViewer,
+      })),
+    };
+  },
+});
+
 export const reassignMemberParent = mutation({
   args: {
     memberId: v.id("networkMembers"),
@@ -753,79 +828,26 @@ export const deleteMember = mutation({
   },
 });
 
-export const listMembersPaginated = query({
-  args: {
-    status: v.optional(
-      v.union(
-        v.literal("joined"),
-        v.literal("invited"),
-        v.literal("pending"),
-        v.literal("to-invite"),
-      ),
-    ),
-    search: v.optional(v.string()),
-    sortBy: v.optional(v.union(v.literal("name"), v.literal("date"))),
-    sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: v.object({
-      numItems: v.number(),
-      cursor: v.union(v.string(), v.null()),
-    }),
-  },
+
+export const getMember = query({
+  args: { memberId: v.id("networkMembers") },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    
-    const query = ctx.db
-      .query("networkMembers")
-      .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id));
-
-    const result = await query.paginate(args.paginationOpts);
-
-    let page = result.page;
-    
-    // Filter
-    if (args.search) {
-      const searchLower = args.search.toLowerCase();
-      page = page.filter((m) => 
-        m.name.toLowerCase().includes(searchLower) || 
-        m.roleTitle.toLowerCase().includes(searchLower)
-      );
+    const member = await ctx.db.get(args.memberId);
+    if (!member || member.profileId !== profile._id) {
+      return null;
     }
-    
-    if (args.status) {
-      page = page.filter((m) => m.status === args.status);
-    }
-
-    // Sort
-    if (args.sortBy) {
-      page.sort((a, b) => {
-        let valA: any = a.name;
-        let valB: any = b.name;
-        if (args.sortBy === "date") {
-          valA = a._creationTime;
-          valB = b._creationTime;
-        }
-        
-        const order = args.sortOrder === "desc" ? -1 : 1;
-        if (valA < valB) return -1 * order;
-        if (valA > valB) return 1 * order;
-        return 0;
-      });
-    }
-
     return {
-      ...result,
-      page: page.map((member) => ({
-        id: member._id,
-        name: member.name,
-        roleTitle: member.roleTitle,
-        status: member.status,
-        isViewer: member.isViewer,
-        parentMemberId: member.parentMemberId ?? null,
-        bonchatId: member.bonchatId,
-        bonchatUsername: member.bonchatUsername,
-        yepbitId: member.yepbitId,
-        yepbitUsername: member.yepbitUsername,
-      })),
+      id: member._id,
+      name: member.name,
+      roleTitle: member.roleTitle,
+      status: member.status,
+      email: member.email,
+      phone: member.phone,
+      bonchatUsername: member.bonchatUsername,
+      yepbitUsername: member.yepbitUsername,
+      totalDownlines: 0, // Placeholder
+      invitedCount: 0, // Placeholder
     };
   },
 });

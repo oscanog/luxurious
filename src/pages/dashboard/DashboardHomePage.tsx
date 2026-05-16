@@ -65,7 +65,7 @@ function StatusChip({
   isViewer,
 }: {
   label: string;
-  status: "joined" | "invited" | "pending";
+  status: "joined" | "invited" | "pending" | "to-invite";
   isViewer: boolean;
 }) {
   const toneClassName =

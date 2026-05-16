@@ -7,13 +7,28 @@ import {
   Position,
   type Edge,
   type Node,
+  Background,
+  MiniMap,
+  Controls,
 } from "@xyflow/react";
-import { ArrowLeft, Focus, Users } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Focus, 
+  Users, 
+  Search, 
+  SlidersHorizontal,
+  ChartColumn,
+  Map as MapIcon,
+  Info,
+  Network,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { OrgCardNode, type OrgCardData } from "../../components/org-chart/OrgCardNode";
 import { MemberSidebar } from "../../components/org-chart/MemberSidebar";
+import { MemberInspector } from "../../components/org-chart/MemberInspector";
+import { AddMemberStepper } from "../../components/org-chart/AddMemberStepper";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useContextMenu } from "../../components/ui/useContextMenu";
 import { type ContextMenuItem } from "../../components/ui/ContextMenu";
@@ -22,8 +37,9 @@ type OrgTreeNode = {
   id: string;
   name: string;
   roleTitle: string;
-  status: "joined" | "invited" | "pending";
+  status: "joined" | "invited" | "pending" | "to-invite";
   isViewer: boolean;
+  directChildrenCount: number;
   member: OrgCardData["member"];
   children: OrgTreeNode[];
 };
@@ -32,7 +48,7 @@ type OrgFlowData = {
   id: string;
   name: string;
   roleTitle: string;
-  status: "joined" | "invited" | "pending";
+  status: "joined" | "invited" | "pending" | "to-invite";
   isViewer: boolean;
   member: OrgCardData["member"];
 };
@@ -74,7 +90,10 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
         roleTitle: node.roleTitle,
         status: node.status,
         isViewer: node.isViewer,
-        member: node.member,
+        member: {
+          ...node.member,
+          directChildrenCount: node.directChildrenCount,
+        },
       },
       draggable: false,
       selectable: true,
@@ -163,6 +182,13 @@ function OrgChartCanvas({
       proOptions={{ hideAttribution: true }}
     >
       <FitViewOnLoad nodeCount={nodes.length} />
+      <Background color="#ccc" variant={"dots" as any} />
+      <MiniMap 
+        style={{ borderRadius: 18, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+        nodeColor={(n) => (n.data as any).isViewer ? 'hsl(43 96% 48%)' : 'hsl(var(--muted))'}
+        maskColor="hsl(var(--background)/0.5)"
+      />
+      <Controls />
     </ReactFlow>
   );
 }
@@ -177,11 +203,12 @@ function EmptyState() {
 }
 
 function OrgChartContent() {
-  const dashboard = useQuery(api.users.getOrgTree);
+  const dashboard = useQuery(api.network.getDashboard);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedSidebarMember, setSelectedSidebarMember] = useState<Doc<"users"> | null>(null);
   const [targetManagerId, setTargetManagerId] = useState<string>("");
+  const [search, setSearch] = useState("");
 
   const { fitView } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
@@ -202,6 +229,17 @@ function OrgChartContent() {
     handleContextMenu(e, items);
   }, [fitView, isSidebarOpen, handleContextMenu]);
 
+  const [stepperParentId, setStepperParentId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    (window as any).triggerAddMember = (id: string) => {
+      setStepperParentId(id);
+    };
+    return () => {
+      delete (window as any).triggerAddMember;
+    };
+  }, []);
+
   const { nodes, edges } = useMemo(() => {
     if (!dashboard) {
       return {
@@ -210,7 +248,7 @@ function OrgChartContent() {
       };
     }
 
-    return buildFlowTree(dashboard.tree);
+    return buildFlowTree(dashboard.tree as any);
   }, [dashboard]);
 
   const visibleMembers = useMemo(
@@ -222,6 +260,17 @@ function OrgChartContent() {
       })),
     [nodes]
   );
+
+  const effectiveSelectedId =
+    selectedId && nodes.some((node) => node.id === selectedId)
+      ? selectedId
+      : nodes.find((node) => node.data.isViewer)?.id ?? nodes[0]?.id ?? null;
+
+  const flowNodes = useMemo(() => nodes.map((node) => ({
+    ...node,
+    selected: node.id === effectiveSelectedId,
+    hidden: search ? !node.data.name.toLowerCase().includes(search.toLowerCase()) && !node.data.roleTitle.toLowerCase().includes(search.toLowerCase()) : false
+  })), [nodes, effectiveSelectedId, search]);
 
   if (dashboard === undefined || dashboard === null) {
     return (
@@ -239,15 +288,11 @@ function OrgChartContent() {
     return <EmptyState />;
   }
 
-  const effectiveSelectedId =
-    selectedId && nodes.some((node) => node.id === selectedId)
-      ? selectedId
-      : nodes.find((node) => node.data.isViewer)?.id ?? nodes[0]?.id ?? null;
 
-  const flowNodes = nodes.map((node) => ({
-    ...node,
-    selected: node.id === effectiveSelectedId,
-  }));
+
+  const handleReset = () => {
+    void fitView({ duration: 500, padding: 0.28, minZoom: 0.2, maxZoom: 1.15 });
+  };
 
   return (
     <div className="mx-auto flex min-h-full max-w-[1200px] flex-col px-4 py-6 sm:px-6 lg:px-8">
@@ -262,22 +307,87 @@ function OrgChartContent() {
         setTargetManagerId={setTargetManagerId}
         onSuccess={() => setIsSidebarOpen(false)}
       />
-      <div className="relative flex items-center justify-center pb-6">
+      <div className="flex items-center justify-between gap-4 pb-6">
         <Link
           to="/"
-          className="absolute left-0 flex h-12 w-12 items-center justify-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
+          className="flex h-12 w-12 items-center justify-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
           aria-label="Back to dashboard"
         >
           <ArrowLeft size={34} />
         </Link>
-        <h1 className="text-center text-[34px] font-bold uppercase tracking-[0.08em] text-[hsl(var(--foreground))] sm:text-[44px]">
-          Org Chart
-        </h1>
+        
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search member..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-12 pr-4 text-sm outline-none transition-all focus:border-[hsl(var(--primary))] focus:ring-4 focus:ring-[hsl(var(--primary)/0.1)]"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[#1A2235] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))]">
+            <button 
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              title="Filters"
+            >
+              <SlidersHorizontal size={18} />
+            </button>
+            <button 
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              title="Statistics"
+            >
+              <ChartColumn size={18} />
+            </button>
+            <button 
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              title="Minimap"
+            >
+              <MapIcon size={18} />
+            </button>
+            <button 
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              title="Info"
+            >
+              <Info size={18} />
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleReset}
+            className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#1A2235] text-[hsl(43,96%,48%)] shadow-lg border border-[hsl(var(--border))] hover:bg-[#1f293f] hover:scale-[1.05] active:scale-[0.95] transition-all"
+            title="Fit View"
+          >
+            <Network size={22} strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
 
       <div className="h-[760px] w-full overflow-hidden rounded-[36px]">
         <OrgChartCanvas nodes={flowNodes} edges={edges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} />
       </div>
+
+      <MemberInspector 
+        memberId={selectedId} 
+        onClose={() => setSelectedId(null)} 
+      />
+
+      {stepperParentId && (
+        <AddMemberStepper 
+          parentId={stepperParentId}
+          isOpen={!!stepperParentId}
+          onClose={() => setStepperParentId(null)}
+          onSuccess={() => {
+            // Success handled by stepper, but we could refresh here if needed
+            // Convex queries refresh automatically
+          }}
+        />
+      )}
+      
       {ContextMenuComponent}
     </div>
   );

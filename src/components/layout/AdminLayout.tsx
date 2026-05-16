@@ -487,7 +487,7 @@ export function AdminLayout({
 
       <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.94)] backdrop-blur">
-          <div className="flex min-h-[88px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)_minmax(0,1fr)] xl:items-center">
+          <div className="flex min-h-[88px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:items-center">
             <div className="flex items-center gap-3 xl:justify-self-start shrink-0">
               <button onClick={() => setMobileMenuOpen(true)} className="rounded-md p-1.5 hover:bg-[hsl(var(--muted))] md:hidden">
                 <Menu size={20} />
@@ -500,13 +500,6 @@ export function AdminLayout({
               </div>
               <div className="sm:hidden">
                 <h2 className="text-sm font-black text-[hsl(var(--foreground))]">{activeLabel}</h2>
-              </div>
-            </div>
-
-            <div className="hidden min-w-0 items-center justify-center md:flex xl:px-4">
-              <div className="flex min-w-0 w-full items-center justify-center gap-2 rounded-[22px] border border-[hsl(var(--primary)/0.15)] bg-[hsl(var(--primary)/0.06)] px-5 py-[12px] text-[13px] font-bold text-[hsl(var(--foreground))] xl:max-w-[340px] shadow-sm">
-                <Network size={16} className="shrink-0 text-[hsl(var(--primary))]" />
-                <span className="truncate tracking-tight">System dynamic parity active</span>
               </div>
             </div>
 
