@@ -155,35 +155,46 @@ function buildParentLookup(members: NetworkMember[]) {
   return parentLookup;
 }
 
+function getRank(totalDownlines: number) {
+  if (totalDownlines >= 100) return "President";
+  if (totalDownlines >= 50) return "Director";
+  if (totalDownlines >= 20) return "Manager";
+  if (totalDownlines >= 5) return "Lead";
+  return "Member";
+}
+
 function buildTree(
   parentLookup: Map<Id<"networkMembers"> | "root", NetworkMember[]>,
   parentId: Id<"networkMembers"> | "root",
 ): OrgTreeNode[] {
   const children = parentLookup.get(parentId) ?? [];
-  return children.map((member) => ({
-    id: member._id,
-    parentMemberId: member.parentMemberId ?? null,
-    name: member.name,
-    roleTitle: member.roleTitle,
-    status: member.status,
-    isViewer: member.isViewer,
-    directChildrenCount: (parentLookup.get(member._id) ?? []).length,
-    totalDownlineCount: countDescendants(parentLookup, member._id),
-    member: {
-      id: member.userId ?? (member._id as any),
+  return children.map((member) => {
+    const totalDownlines = countDescendants(parentLookup, member._id);
+    return {
+      id: member._id,
+      parentMemberId: member.parentMemberId ?? null,
       name: member.name,
-      email: member.email ?? "",
       roleTitle: member.roleTitle,
-      rank: "Member",
       status: member.status,
-      avatarInitials: member.name.substring(0, 2).toUpperCase(),
-      totalDownlines: countDescendants(parentLookup, member._id),
-      invitedCount: 0,
-      pendingCount: 0,
-      uplineId: (member.parentMemberId as any),
-    },
-    children: buildTree(parentLookup, member._id),
-  }));
+      isViewer: member.isViewer,
+      directChildrenCount: (parentLookup.get(member._id) ?? []).length,
+      totalDownlineCount: totalDownlines,
+      member: {
+        id: member.userId ?? (member._id as any),
+        name: member.name,
+        email: member.email ?? "",
+        roleTitle: member.roleTitle,
+        rank: getRank(totalDownlines),
+        status: member.status,
+        avatarInitials: member.name.substring(0, 2).toUpperCase(),
+        totalDownlines: totalDownlines,
+        invitedCount: 0,
+        pendingCount: 0,
+        uplineId: (member.parentMemberId as any),
+      },
+      children: buildTree(parentLookup, member._id),
+    };
+  });
 }
 
 function countDescendants(

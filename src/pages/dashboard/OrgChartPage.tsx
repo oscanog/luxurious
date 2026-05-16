@@ -32,6 +32,8 @@ import { AddMemberStepper } from "../../components/org-chart/AddMemberStepper";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useContextMenu } from "../../components/ui/useContextMenu";
 import { type ContextMenuItem } from "../../components/ui/ContextMenu";
+import { toast } from "react-hot-toast";
+import { cn } from "@/lib/utils";
 
 type OrgTreeNode = {
   id: string;
@@ -161,6 +163,7 @@ function OrgChartCanvas({
   edges: Edge[];
   onSelect: (id: string) => void;
   onPaneContextMenu?: (e: React.MouseEvent | MouseEvent) => void;
+  showMinimap: boolean;
 }) {
   return (
     <ReactFlow
@@ -183,11 +186,13 @@ function OrgChartCanvas({
     >
       <FitViewOnLoad nodeCount={nodes.length} />
       <Background color="#ccc" variant={"dots" as any} />
-      <MiniMap 
-        style={{ borderRadius: 18, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
-        nodeColor={(n) => (n.data as any).isViewer ? 'hsl(43 96% 48%)' : 'hsl(var(--muted))'}
-        maskColor="hsl(var(--background)/0.5)"
-      />
+      {showMinimap && (
+        <MiniMap 
+          style={{ borderRadius: 18, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+          nodeColor={(n) => (n.data as any).isViewer ? 'hsl(43 96% 48%)' : 'hsl(var(--muted))'}
+          maskColor="hsl(var(--background)/0.5)"
+        />
+      )}
       <Controls />
     </ReactFlow>
   );
@@ -209,9 +214,23 @@ function OrgChartContent() {
   const [selectedSidebarMember, setSelectedSidebarMember] = useState<Doc<"users"> | null>(null);
   const [targetManagerId, setTargetManagerId] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [showMinimap, setShowMinimap] = useState(false);
 
-  const { fitView } = useReactFlow();
+  const { fitView, setCenter } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
+
+  useEffect(() => {
+    if (search.trim()) {
+      const match = dashboard?.tree && nodes.find(node => 
+        node.data.name.toLowerCase().includes(search.toLowerCase()) || 
+        node.data.roleTitle.toLowerCase().includes(search.toLowerCase())
+      );
+      if (match) {
+        setSelectedId(match.id);
+        setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
+      }
+    }
+  }, [search, nodes, setCenter, dashboard?.tree]);
 
   const handlePaneRightClick = useCallback((e: React.MouseEvent | MouseEvent) => {
     const items: ContextMenuItem[] = [
@@ -269,8 +288,7 @@ function OrgChartContent() {
   const flowNodes = useMemo(() => nodes.map((node) => ({
     ...node,
     selected: node.id === effectiveSelectedId,
-    hidden: search ? !node.data.name.toLowerCase().includes(search.toLowerCase()) && !node.data.roleTitle.toLowerCase().includes(search.toLowerCase()) : false
-  })), [nodes, effectiveSelectedId, search]);
+  })), [nodes, effectiveSelectedId]);
 
   if (dashboard === undefined || dashboard === null) {
     return (
@@ -332,24 +350,31 @@ function OrgChartContent() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 rounded-[18px] bg-[#1A2235] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))]">
             <button 
+              onClick={() => toast("Filters coming in next phase", { icon: "🚧" })}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
               title="Filters"
             >
               <SlidersHorizontal size={18} />
             </button>
             <button 
+              onClick={() => toast("Statistics coming in next phase", { icon: "🚧" })}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
               title="Statistics"
             >
               <ChartColumn size={18} />
             </button>
             <button 
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+              onClick={() => setShowMinimap(!showMinimap)}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                showMinimap ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white"
+              )}
               title="Minimap"
             >
               <MapIcon size={18} />
             </button>
             <button 
+              onClick={() => toast("Info panel coming in next phase", { icon: "🚧" })}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
               title="Info"
             >
@@ -368,7 +393,7 @@ function OrgChartContent() {
       </div>
 
       <div className="h-[760px] w-full overflow-hidden rounded-[36px]">
-        <OrgChartCanvas nodes={flowNodes} edges={edges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} />
+        <OrgChartCanvas nodes={flowNodes} edges={edges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} showMinimap={showMinimap} />
       </div>
 
       <MemberInspector 
