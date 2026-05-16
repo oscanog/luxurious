@@ -8,6 +8,8 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { toast } from "react-hot-toast";
 import { useContextMenu } from "../ui/useContextMenu";
 import { type ContextMenuItem } from "../ui/ContextMenu";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { useState } from "react";
 
 export type OrgCardData = {
   member: Omit<DummyMember, "id" | "uplineId" | "status" | "joinDate"> & { 
@@ -34,19 +36,27 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
   
   const isClickable = !isRoot && member.totalDownlines > 0;
 
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+  const [removeMode, setRemoveMode] = useState<"disconnect" | "reconnect">("disconnect");
+
   const handleRemove = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Remove ${member.name} from hierarchy?`)) {
-      void (async () => {
-        try {
-          await reassignMemberParent({ memberId: member.id as any, newParentMemberId: null });
-          toast.success("Member removed");
-        } catch {
-          toast.error("Failed to remove member");
-        }
-      })();
+    setIsRemoveOpen(true);
+  }, []);
+
+  const executeRemove = useCallback(async () => {
+    setIsRemoveOpen(false);
+    try {
+      await reassignMemberParent({ 
+        memberId: member.id as any, 
+        newParentMemberId: null,
+        reconnectChildren: removeMode === "reconnect"
+      });
+      toast.success("Member removed from hierarchy");
+    } catch {
+      toast.error("Failed to remove member");
     }
-  }, [member.id, member.name, reassignMemberParent]);
+  }, [member.id, removeMode, reassignMemberParent]);
 
   const handleReconnect = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -74,13 +84,7 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
           icon: <Trash2 size={14} />,
           variant: "danger",
           onClick: () => {
-            if (confirm(`Remove ${member.name} from hierarchy?`)) {
-              void reassignMemberParent({ memberId: member.id as any, newParentMemberId: null }).then(() => {
-                toast.success("Member removed");
-              }).catch(() => {
-                toast.error("Failed to remove member");
-              });
-            }
+            setIsRemoveOpen(true);
           }
         });
       }
@@ -109,14 +113,9 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
     <>
     <div
       onContextMenu={handleRightClick}
-      className={`relative w-[240px] rounded-[24px] transition-all duration-300 ${
+      className={`relative w-[240px] rounded-[24px] transition-all duration-300 border-2 bg-[hsl(var(--card))] ${
         isClickable ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : ""
-      } ${selected ? "scale-[1.05] z-10" : "z-0"} ${isFull ? "ring-2 ring-red-500/50" : ""}`}
-      style={{
-        background: "#1A2235",
-        border: `2px solid ${selected ? "hsl(43 96% 48%)" : "#2E8B57"}`,
-        boxShadow: selected ? `0 0 30px hsl(43 96% 48% / 0.4)` : "0 4px 20px rgba(0,0,0,0.5)",
-      }}
+      } ${selected ? "scale-[1.05] z-10 border-[hsl(43,96%,48%)] shadow-[0_0_30px_hsl(43,96%,48%,0.4)]" : "z-0 border-[hsl(var(--primary))] shadow-lg dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)]"} ${isFull ? "ring-2 ring-red-500/50" : ""}`}
     >
       {/* Capacity Badge */}
       {isFull && (
@@ -127,8 +126,8 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
       )}
 
       {/* Handles */}
-      <Handle type="target" position={Position.Top} className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-[hsl(43,96%,48%)] !border-none opacity-0 group-hover:opacity-100 transition-opacity" />
+      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-[hsl(43,96%,48%)] !border-none opacity-0 group-hover:opacity-100 transition-opacity" />
 
       {/* Reconnect Handle (if disconnected) */}
       {!isRoot && !member.uplineId && member.lastUplineId && (
@@ -140,22 +139,22 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         </button>
       )}
 
-      <div className="p-4 pb-6">
+      <div className="p-4 pb-6 group">
         {/* Top Section: Avatar, Name, Action */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-12 h-12 rounded-full bg-[#273B7A] flex items-center justify-center shadow-inner shrink-0">
-              <User size={24} className="text-[#FFD700]" />
+            <div className="w-12 h-12 rounded-full bg-[hsl(var(--muted))] dark:bg-[#273B7A] flex items-center justify-center shadow-inner shrink-0">
+              <User size={24} className="text-[hsl(43,96%,48%)]" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-white font-bold text-lg leading-tight truncate">{member.name}</span>
-              <span className="text-[#8B9BB4] text-xs font-medium truncate">{member.rank}</span>
+              <span className="text-[hsl(var(--foreground))] font-bold text-lg leading-tight truncate">{member.name}</span>
+              <span className="text-[hsl(var(--muted-foreground))] text-xs font-medium truncate">{member.rank}</span>
             </div>
           </div>
           {!isRoot && (
             <button 
               onClick={handleRemove}
-              className="text-[#8B9BB4] hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors shrink-0 ml-2"
+              className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] rounded-full p-1 transition-colors shrink-0 ml-2"
             >
               <Minus size={18} />
             </button>
@@ -164,21 +163,21 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
 
         {/* Middle Section: Status & Children Count */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-1.5 bg-[#273B7A] px-3 py-1.5 rounded-full">
-            <CheckCircle size={14} className="text-[#FFD700]" />
-            <span className="text-[#FFD700] text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 bg-[hsl(var(--muted))] dark:bg-[#273B7A] px-3 py-1.5 rounded-full">
+            <CheckCircle size={14} className="text-[hsl(43,96%,48%)]" />
+            <span className="text-[hsl(43,96%,48%)] text-xs font-bold uppercase tracking-wider">
               {member.status}
             </span>
           </div>
-          <span className="text-[#8B9BB4] text-sm font-medium">
+          <span className="text-[hsl(var(--muted-foreground))] text-sm font-medium">
             {member.directChildrenCount || 0} children
           </span>
         </div>
 
         {/* Bottom Section: Total Downline */}
-        <div className="bg-[#111827]/50 rounded-xl py-2.5 px-3 flex items-center justify-center gap-2">
-          <Network size={16} className="text-[#8B9BB4]" />
-          <span className="text-white text-sm font-medium">{member.totalDownlines || 0} total downline</span>
+        <div className="bg-[hsl(var(--muted)/0.5)] dark:bg-[#111827]/50 rounded-xl py-2.5 px-3 flex items-center justify-center gap-2">
+          <Network size={16} className="text-[hsl(var(--muted-foreground))]" />
+          <span className="text-[hsl(var(--foreground))] text-sm font-medium">{member.totalDownlines || 0} total downline</span>
         </div>
       </div>
 
@@ -200,7 +199,49 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         </button>
       </div>
     </div>
+    </div>
     {ContextMenuComponent}
+    
+    <ConfirmDialog
+      isOpen={isRemoveOpen}
+      title="Remove from Hierarchy"
+      description={`Are you sure you want to remove ${member.name} from the hierarchy?`}
+      variant="danger"
+      confirmLabel="Remove"
+      onConfirm={executeRemove}
+      onCancel={() => setIsRemoveOpen(false)}
+    >
+      <div className="space-y-3 mt-4">
+        <label className="flex items-start gap-3 p-3 rounded-xl border border-[hsl(var(--border))] cursor-pointer hover:bg-[hsl(var(--muted)/0.5)] transition-colors">
+          <input 
+            type="radio" 
+            name="removeMode" 
+            value="disconnect"
+            checked={removeMode === "disconnect"}
+            onChange={() => setRemoveMode("disconnect")}
+            className="mt-1"
+          />
+          <div>
+            <p className="font-bold text-sm text-[hsl(var(--foreground))]">Disconnect only</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">Member and their entire downline will be disconnected from the chart.</p>
+          </div>
+        </label>
+        <label className="flex items-start gap-3 p-3 rounded-xl border border-[hsl(var(--border))] cursor-pointer hover:bg-[hsl(var(--muted)/0.5)] transition-colors">
+          <input 
+            type="radio" 
+            name="removeMode" 
+            value="reconnect"
+            checked={removeMode === "reconnect"}
+            onChange={() => setRemoveMode("reconnect")}
+            className="mt-1"
+          />
+          <div>
+            <p className="font-bold text-sm text-[hsl(var(--foreground))]">Reconnect children</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">Member will be disconnected, but their direct downlines will be moved up to the grandparent.</p>
+          </div>
+        </label>
+      </div>
+    </ConfirmDialog>
     </>
   );
 });

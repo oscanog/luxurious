@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { InputDialog } from "../ui/InputDialog";
+import { CredentialsDialog } from "../ui/CredentialsDialog";
 
 interface MemberInspectorProps {
   memberId: string | null;
@@ -28,7 +31,11 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
   const [isResetting, setIsResetting] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [credentials, setCredentials] = useState<{ email: string; password: string; name: string } | null>(null);
+  const [credentials, setCredentials] = useState<{ email: string; password?: string; name: string } | null>(null);
+
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const member = useQuery(api.network.getMember, memberId ? { memberId: memberId as Id<"networkMembers"> } : "skip");
   
@@ -39,8 +46,7 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
   if (!memberId || !member) return null;
 
   const handleResetPassword = async () => {
-    if (!confirm(`Are you sure you want to reset the password for ${member.name}? The user will be logged out immediately.`)) return;
-    
+    setIsResetPasswordOpen(false);
     setIsResetting(true);
     try {
       const result = await resetPassword({ memberId: memberId as Id<"networkMembers"> });
@@ -53,8 +59,8 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
     }
   };
 
-  const handleChangeEmail = async () => {
-    const newEmail = window.prompt("Enter new email address:", member.email || "");
+  const handleChangeEmail = async (newEmail: string) => {
+    setIsChangeEmailOpen(false);
     if (!newEmail || newEmail === member.email) return;
 
     setIsChangingEmail(true);
@@ -73,8 +79,7 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`CRITICAL: Are you sure you want to DELETE ${member.name}? All personal data and linked accounts will be purged. This cannot be undone.`)) return;
-    
+    setIsDeleteOpen(false);
     setIsDeleting(true);
     try {
       await deleteMember({ 
@@ -158,12 +163,20 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
+                  <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Direct</p>
+                  <p className="text-xl font-black mt-1">{member.directChildrenCount || 0}</p>
+                </div>
+                <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
                   <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Total</p>
                   <p className="text-xl font-black mt-1">{member.totalDownlines || 0}</p>
                 </div>
                 <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
                   <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Invited</p>
                   <p className="text-xl font-black mt-1">{member.invitedCount || 0}</p>
+                </div>
+                <div className="bg-[hsl(var(--card))] p-3 rounded-xl border border-[hsl(var(--border))]">
+                  <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Pending</p>
+                  <p className="text-xl font-black mt-1">{member.pendingCount || 0}</p>
                 </div>
               </div>
             </div>
@@ -185,14 +198,14 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
                 icon={<Key size={18} />} 
                 label="Reset Password" 
                 description="Generates a new temporary password"
-                onClick={handleResetPassword}
+                onClick={() => setIsResetPasswordOpen(true)}
                 loading={isResetting}
               />
               <SecurityButton 
                 icon={<MailIcon size={18} />} 
                 label="Change Email" 
                 description="Update login and notification email"
-                onClick={handleChangeEmail}
+                onClick={() => setIsChangeEmailOpen(true)}
                 loading={isChangingEmail}
               />
               <SecurityButton 
@@ -200,7 +213,7 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
                 label="Delete Member" 
                 description="Permanently purge member from system"
                 variant="danger"
-                onClick={handleDelete}
+                onClick={() => setIsDeleteOpen(true)}
                 loading={isDeleting}
               />
             </div>
@@ -208,45 +221,46 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
         )}
       </div>
 
-      {/* Credentials Dialog */}
-      {credentials && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-6 animate-in fade-in duration-200">
-          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-3xl w-full shadow-2xl overflow-hidden p-6 text-center space-y-6">
-            <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <Check size={32} />
-            </div>
-            <div>
-              <h4 className="text-xl font-bold">Credentials Updated</h4>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">New login information for {credentials.name}</p>
-            </div>
-            
-            <div className="p-4 rounded-2xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-left space-y-4">
-              <div>
-                <label className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Email</label>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-bold truncate">{credentials.email}</span>
-                  <button onClick={() => copyToClipboard(credentials.email)} className="p-2 hover:bg-[hsl(var(--muted))] rounded-lg shrink-0"><Copy size={14} /></button>
-                </div>
-              </div>
-              <div className="h-[1px] bg-[hsl(var(--border))]" />
-              <div>
-                <label className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Temporary Password</label>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400 truncate">{credentials.password}</span>
-                  <button onClick={() => copyToClipboard(credentials.password)} className="p-2 hover:bg-[hsl(var(--muted))] rounded-lg shrink-0"><Copy size={14} /></button>
-                </div>
-              </div>
-            </div>
+      <ConfirmDialog
+        isOpen={isResetPasswordOpen}
+        title="Reset Password"
+        description={`Are you sure you want to reset the password for ${member.name}? The user will be logged out immediately.`}
+        onConfirm={handleResetPassword}
+        onCancel={() => setIsResetPasswordOpen(false)}
+      />
 
-            <button
-              onClick={() => setCredentials(null)}
-              className="w-full py-3 rounded-2xl bg-[hsl(var(--primary))] text-white font-bold hover:opacity-90 transition-opacity"
-            >
-              Close & Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+      <InputDialog
+        isOpen={isChangeEmailOpen}
+        title="Change Email"
+        label="New Email Address"
+        defaultValue={member.email || ""}
+        placeholder="user@example.com"
+        validate={(v) => {
+          if (!v) return "Email is required";
+          if (v === member.email) return "Email is unchanged";
+          if (!/^\S+@\S+\.\S+$/.test(v)) return "Invalid email format";
+          return null;
+        }}
+        onConfirm={handleChangeEmail}
+        onCancel={() => setIsChangeEmailOpen(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteOpen}
+        title="Delete Member"
+        description={`CRITICAL: Are you sure you want to DELETE ${member.name}? All personal data and linked accounts will be purged. This cannot be undone.`}
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteOpen(false)}
+      />
+
+      <CredentialsDialog
+        isOpen={!!credentials}
+        name={credentials?.name || ""}
+        email={credentials?.email || ""}
+        password={credentials?.password}
+        onClose={() => setCredentials(null)}
+      />
     </div>
   );
 }

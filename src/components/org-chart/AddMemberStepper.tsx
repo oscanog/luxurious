@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { CredentialsDialog } from "../ui/CredentialsDialog";
 
 interface AddMemberStepperProps {
   parentId: string;
@@ -71,8 +72,24 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
 
   const handleNext = () => {
     if (step === "type") setStep("identity");
-    else if (step === "identity") setStep("contact");
-    else if (step === "contact") setStep("platform");
+    else if (step === "identity") {
+      if (!formData.firstName.trim() || !formData.lastName.trim()) {
+        toast.error("First Name and Last Name are required");
+        return;
+      }
+      setStep("contact");
+    }
+    else if (step === "contact") {
+      if (memberType === "joined" && !formData.email.trim()) {
+        toast.error("Email is required for Full Members");
+        return;
+      }
+      if (formData.email.trim() && !/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
+        toast.error("Invalid email format");
+        return;
+      }
+      setStep("platform");
+    }
   };
 
   const handleBack = () => {
@@ -130,6 +147,16 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     } catch (e) {
       toast.error("Clipboard access denied");
     }
+  };
+
+  const calculateAge = (birthdayStr: string) => {
+    if (!birthdayStr) return null;
+    const birthday = new Date(birthdayStr);
+    if (isNaN(birthday.getTime())) return null;
+    const ageDifMs = Date.now() - birthday.getTime();
+    const ageDate = new Date(ageDifMs);
+    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+    return age > 0 ? age : null;
   };
 
   return (
@@ -214,12 +241,19 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                   onPaste={() => smartPaste("lastName")}
                 />
               </div>
-              <InputGroup 
-                label="Birthday" 
-                type="date" 
-                value={formData.birthday} 
-                onChange={v => setFormData(p => ({ ...p, birthday: v }))}
-              />
+              <div>
+                <InputGroup 
+                  label="Birthday" 
+                  type="date" 
+                  value={formData.birthday} 
+                  onChange={v => setFormData(p => ({ ...p, birthday: v }))}
+                />
+                {formData.birthday && calculateAge(formData.birthday) && (
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1 ml-1">
+                    Age: {calculateAge(formData.birthday)} years
+                  </p>
+                )}
+              </div>
               <InputGroup 
                 label="Role Title" 
                 value={formData.roleTitle} 
@@ -268,31 +302,13 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
             </div>
           )}
 
-          {step === "success" && credentials && (
+          {step === "success" && (
             <div className="space-y-6 animate-in zoom-in-95 duration-300 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
                 <Check size={32} />
               </div>
               <h4 className="text-2xl font-bold">Welcome Aboard!</h4>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Share these credentials with the new member.</p>
-              
-              <div className="mt-8 p-6 rounded-2xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-left space-y-4">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Email</label>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm font-bold">{credentials.email}</span>
-                    <button onClick={() => copyToClipboard(credentials.email)} className="p-2 hover:bg-[hsl(var(--muted))] rounded-lg"><Copy size={14} /></button>
-                  </div>
-                </div>
-                <div className="h-[1px] bg-[hsl(var(--border))]" />
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Temporary Password</label>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">{credentials.password}</span>
-                    <button onClick={() => copyToClipboard(credentials.password)} className="p-2 hover:bg-[hsl(var(--muted))] rounded-lg"><Copy size={14} /></button>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Member has been added to the network.</p>
             </div>
           )}
         </div>
@@ -338,7 +354,23 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
             </>
           )}
         </div>
+        </div>
       </div>
+
+      <CredentialsDialog
+        isOpen={!!credentials}
+        name={`${formData.firstName} ${formData.lastName}`}
+        email={credentials?.email || ""}
+        password={credentials?.password}
+        onClose={() => {
+          setCredentials(null);
+          onClose();
+          onSuccess?.();
+        }}
+        onSendEmail={async () => {
+          await new Promise(r => setTimeout(r, 1500)); // Stub for api.email.sendEmail
+        }}
+      />
     </div>
   );
 }

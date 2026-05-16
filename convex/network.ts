@@ -650,6 +650,7 @@ export const reassignMemberParent = mutation({
   args: {
     memberId: v.id("networkMembers"),
     newParentMemberId: v.union(v.id("networkMembers"), v.null()),
+    reconnectChildren: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const viewer = await requireMobileViewer(ctx);
@@ -703,10 +704,22 @@ export const reassignMemberParent = mutation({
       throw new Error("Member cannot be moved under its own descendant.");
     }
 
+    const now = Date.now();
     await ctx.db.patch(args.memberId, {
       parentMemberId: args.newParentMemberId,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+
+    if (args.reconnectChildren) {
+      const existingParentId = member.parentMemberId;
+      const directChildren = parentLookup.get(member._id) ?? [];
+      for (const child of directChildren) {
+        await ctx.db.patch(child._id, {
+          parentMemberId: existingParentId,
+          updatedAt: now,
+        });
+      }
+    }
 
     return {
       success: true,
