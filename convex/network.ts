@@ -7,6 +7,22 @@ import {
   requireMobileViewer,
 } from "./mobileHelpers";
 
+const MAX_DIRECT_DOWNLINES = 6;
+
+async function countDirectChildren(
+  ctx: QueryCtx | MutationCtx,
+  profileId: Id<"mobileProfiles">,
+  parentId: Id<"networkMembers">,
+): Promise<number> {
+  const children = await ctx.db
+    .query("networkMembers")
+    .withIndex("by_profileId_and_parentMemberId", (q) =>
+      q.eq("profileId", profileId).eq("parentMemberId", parentId),
+    )
+    .take(MAX_DIRECT_DOWNLINES + 1);
+  return children.length;
+}
+
 export const inviteMember = mutation({
   args: {
     name: v.string(),
@@ -23,6 +39,13 @@ export const inviteMember = mutation({
       .query("networkMembers")
       .withIndex("by_profileId_and_isViewer", (q) => q.eq("profileId", profile._id).eq("isViewer", true))
       .unique();
+
+    if (viewer) {
+      const childCount = await countDirectChildren(ctx, profile._id, viewer._id);
+      if (childCount >= MAX_DIRECT_DOWNLINES) {
+        throw new Error(`Parent already has ${MAX_DIRECT_DOWNLINES} direct downlines.`);
+      }
+    }
 
     return await ctx.db.insert("networkMembers", {
       profileId: profile._id,
@@ -478,6 +501,7 @@ function buildOverview(members: NetworkMember[]) {
       status: member.status,
       isViewer: member.isViewer,
       parentMemberId: member.parentMemberId ?? null,
+      directChildrenCount: (parentLookup.get(member._id) ?? []).length,
       bonchatId: member.bonchatId,
       bonchatUsername: member.bonchatUsername,
       yepbitId: member.yepbitId,
@@ -586,6 +610,18 @@ export const reassignMemberParent = mutation({
       throw new Error("New parent must be joined.");
     }
 
+    // Enforce max direct downlines on new parent
+    if (nextParent) {
+      const existingChildren = parentLookup.get(nextParent._id) ?? [];
+      // Exclude the member being moved (they may already be a child of this parent)
+      const netChildren = existingChildren.filter((c) => c._id !== member._id);
+      if (netChildren.length >= MAX_DIRECT_DOWNLINES) {
+        throw new Error(
+          `Cannot reassign: ${nextParent.name} already has ${MAX_DIRECT_DOWNLINES} direct downlines.`,
+        );
+      }
+    }
+
     const descendantIds = new Set<Id<"networkMembers">>();
     collectDescendantIds(parentLookup, member._id, descendantIds);
     if (nextParent && descendantIds.has(nextParent._id)) {
@@ -652,6 +688,18 @@ export const deleteMember = mutation({
       const descendantIds = new Set(descendants.map((entry) => entry._id));
       if (requestedParentId !== null && descendantIds.has(requestedParentId)) {
         throw new Error("Member cannot reconnect descendants under their own subtree.");
+      }
+
+      // Enforce max direct downlines on reconnect target
+      if (nextParent) {
+        const existingChildrenOfTarget = parentLookup.get(nextParent._id) ?? [];
+        // Children of the deleted member will attach here; existing children minus the deleted member itself
+        const currentCount = existingChildrenOfTarget.filter((c) => c._id !== member._id).length;
+        if (currentCount + directChildren.length > MAX_DIRECT_DOWNLINES) {
+          throw new Error(
+            `Cannot reconnect: ${nextParent.name} would exceed ${MAX_DIRECT_DOWNLINES} direct downlines (has ${currentCount}, reconnecting ${directChildren.length}).`,
+          );
+        }
       }
 
       const nextParentUserId = resolveParentUserId(nextParent, viewer);
