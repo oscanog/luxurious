@@ -158,6 +158,7 @@ function OrgChartCanvas({
   edges,
   onSelect,
   onPaneContextMenu,
+  showMinimap,
 }: {
   nodes: Array<Node<OrgFlowData>>;
   edges: Edge[];
@@ -219,19 +220,6 @@ function OrgChartContent() {
   const { fitView, setCenter } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
 
-  useEffect(() => {
-    if (search.trim()) {
-      const match = dashboard?.tree && nodes.find(node => 
-        node.data.name.toLowerCase().includes(search.toLowerCase()) || 
-        node.data.roleTitle.toLowerCase().includes(search.toLowerCase())
-      );
-      if (match) {
-        setSelectedId(match.id);
-        setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
-      }
-    }
-  }, [search, nodes, setCenter, dashboard?.tree]);
-
   const handlePaneRightClick = useCallback((e: React.MouseEvent | MouseEvent) => {
     const items: ContextMenuItem[] = [
       {
@@ -289,6 +277,32 @@ function OrgChartContent() {
     ...node,
     selected: node.id === effectiveSelectedId,
   })), [nodes, effectiveSelectedId]);
+
+  const flowEdges = useMemo(() => edges.map((edge) => {
+    const isConnectedToSelected = edge.source === effectiveSelectedId || edge.target === effectiveSelectedId;
+    return {
+      ...edge,
+      animated: isConnectedToSelected,
+      style: {
+        ...edge.style,
+        stroke: isConnectedToSelected ? "hsl(43 96% 48%)" : "hsl(43 96% 48% / 0.55)",
+        strokeWidth: isConnectedToSelected ? 3 : 2.4,
+      },
+    };
+  }), [edges, effectiveSelectedId]);
+
+  useEffect(() => {
+    if (search.trim()) {
+      const match = dashboard?.tree && nodes.find(node => 
+        node.data.name.toLowerCase().includes(search.toLowerCase()) || 
+        node.data.roleTitle.toLowerCase().includes(search.toLowerCase())
+      );
+      if (match) {
+        setSelectedId(match.id);
+        setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
+      }
+    }
+  }, [search, nodes, setCenter, dashboard?.tree]);
 
   if (dashboard === undefined || dashboard === null) {
     return (
@@ -393,7 +407,7 @@ function OrgChartContent() {
       </div>
 
       <div className="h-[760px] w-full overflow-hidden rounded-[36px]">
-        <OrgChartCanvas nodes={flowNodes} edges={edges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} showMinimap={showMinimap} />
+        <OrgChartCanvas nodes={flowNodes} edges={flowEdges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} showMinimap={showMinimap} />
       </div>
 
       <MemberInspector 

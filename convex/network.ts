@@ -861,6 +861,12 @@ export const getMember = query({
     if (!member || member.profileId !== profile._id) {
       return null;
     }
+    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const parentLookup = buildParentLookup(members);
+    const directChildrenCount = (parentLookup.get(member._id) ?? []).length;
+    const totalDownlines = countDescendants(parentLookup, member._id);
+    const pendingCount = (parentLookup.get(member._id) ?? []).filter(c => c.status === "pending").length;
+
     return {
       id: member._id,
       name: member.name,
@@ -870,8 +876,10 @@ export const getMember = query({
       phone: member.phone,
       bonchatUsername: member.bonchatUsername,
       yepbitUsername: member.yepbitUsername,
-      totalDownlines: 0, // Placeholder
+      totalDownlines: totalDownlines,
       invitedCount: 0, // Placeholder
+      directChildrenCount: directChildrenCount,
+      pendingCount: pendingCount,
     };
   },
 });

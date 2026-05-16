@@ -8,8 +8,6 @@ import {
   Shield, 
   Key, 
   Trash2, 
-  Copy, 
-  Check, 
   Mail as MailIcon,
   Globe,
   Settings,
@@ -93,11 +91,6 @@ export function MemberInspector({ memberId, onClose }: MemberInspectorProps) {
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    void navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
   };
 
   return (

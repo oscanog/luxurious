@@ -10,7 +10,6 @@ import {
   Phone, 
   Globe, 
   Check, 
-  Copy,
   Send,
   Zap,
   UserPlus
@@ -132,11 +131,6 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    void navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
   };
 
   const smartPaste = async (field: keyof typeof formData) => {
@@ -353,7 +347,6 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
               )}
             </>
           )}
-        </div>
         </div>
       </div>
 

@@ -199,7 +199,6 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         </button>
       </div>
     </div>
-    </div>
     {ContextMenuComponent}
     
     <ConfirmDialog
