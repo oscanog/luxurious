@@ -5,6 +5,7 @@ import { Doc, Id } from "./_generated/dataModel";
 import {
   getMobileProfileForViewerOrThrow,
   listNetworkMembersForProfile,
+  listUnifiedNetworkMembers,
   requireMobileViewer,
 } from "./mobileHelpers";
 
@@ -586,7 +587,7 @@ export const getDashboard = query({
   args: {},
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
     return buildOverview(members);
   },
 });
@@ -595,7 +596,7 @@ export const getTree = query({
   args: {},
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
     return buildOverview(members).tree;
   },
 });
@@ -607,7 +608,7 @@ export const getDeleteMemberImpact = query({
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx);
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const member = members.find((entry) => entry._id === args.memberId) ?? null;
 
     if (!member) {
@@ -634,7 +635,7 @@ export const listMembers = query({
   },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const filtered = args.status
       ? members.filter((member) => member.status === args.status)
       : members;
@@ -704,7 +705,7 @@ export const reassignMemberParent = mutation({
     }
 
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const parentLookup = buildParentLookup(members);
 
     const member = members.find((entry) => entry._id === args.memberId) ?? null;
@@ -782,7 +783,7 @@ export const deleteMember = mutation({
   handler: async (ctx, args) => {
     const viewer = await requireOrgAdmin(ctx);
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const parentLookup = buildParentLookup(members);
     const member = members.find((entry) => entry._id === args.memberId) ?? null;
 
@@ -890,11 +891,11 @@ export const getMember = query({
   args: { memberId: v.id("networkMembers") },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const member = await ctx.db.get(args.memberId);
-    if (!member || member.profileId !== profile._id) {
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member = members.find((entry) => entry._id === args.memberId) ?? null;
+    if (!member) {
       return null;
     }
-    const members = await listNetworkMembersForProfile(ctx, profile._id);
     const parentLookup = buildParentLookup(members);
     const directChildrenCount = (parentLookup.get(member._id) ?? []).length;
     const totalDownlines = countDescendants(parentLookup, member._id);

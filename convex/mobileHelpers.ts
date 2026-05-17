@@ -499,6 +499,90 @@ export async function listNetworkMembersForProfile(
     .take(64);
 }
 
+export async function listUnifiedNetworkMembers(
+  ctx: MobileCtx,
+  profileId: Id<"mobileProfiles">,
+): Promise<Doc<"networkMembers">[]> {
+  const primaryMembers = await ctx.db
+    .query("networkMembers")
+    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profileId))
+    .collect();
+
+  const allMembers = [...primaryMembers];
+  const processedUserIds = new Set<string>();
+  const profileQueue = [{ profileId, members: primaryMembers }];
+  const userIdToParentMemberId = new Map<Id<"users">, Id<"networkMembers">>();
+  
+  for (const m of primaryMembers) {
+    if (m.userId && !m.isViewer) {
+      userIdToParentMemberId.set(m.userId, m._id);
+    }
+  }
+
+  while (profileQueue.length > 0) {
+    const current = profileQueue.shift()!;
+    for (const member of current.members) {
+      if (member.userId && !member.isViewer) {
+        const linkedUserId = member.userId;
+        if (processedUserIds.has(linkedUserId)) {
+          continue;
+        }
+        processedUserIds.add(linkedUserId);
+
+        const linkedProfiles = await ctx.db
+          .query("mobileProfiles")
+          .withIndex("by_userId", (q) => q.eq("userId", linkedUserId))
+          .collect();
+
+        for (const linkedProfile of linkedProfiles) {
+          const childMembers = await ctx.db
+            .query("networkMembers")
+            .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", linkedProfile._id))
+            .collect();
+
+          if (childMembers.length === 0) {
+            continue;
+          }
+
+          const childViewer = childMembers.find((m) => m.isViewer);
+          if (!childViewer) {
+            continue;
+          }
+
+          const parentMemberIdInParentTree = userIdToParentMemberId.get(linkedUserId) || member._id;
+          const remappedMembers: Doc<"networkMembers">[] = [];
+
+          for (const cm of childMembers) {
+            if (cm.isViewer) {
+              continue;
+            }
+            const remappedParentId = cm.parentMemberId === childViewer._id 
+              ? parentMemberIdInParentTree 
+              : cm.parentMemberId;
+
+            remappedMembers.push({
+              ...cm,
+              parentMemberId: remappedParentId,
+            });
+          }
+
+          allMembers.push(...remappedMembers);
+
+          for (const rm of remappedMembers) {
+            if (rm.userId && !rm.isViewer) {
+              userIdToParentMemberId.set(rm.userId, rm._id);
+            }
+          }
+
+          profileQueue.push({ profileId: linkedProfile._id, members: remappedMembers });
+        }
+      }
+    }
+  }
+
+  return allMembers;
+}
+
 async function seedDefaultNetworkMembers(
   ctx: MutationCtx,
   profileId: Id<"mobileProfiles">,
