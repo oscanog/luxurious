@@ -98,40 +98,40 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
 
 ### Phase 3: Canvas Editor — Core Infrastructure
 
-- [ ] T11 Initialize Fabric.js canvas inside editor workspace:
+- [x] T11 Initialize Fabric.js canvas inside editor workspace:
   - Fixed slide dimensions (default 1920×1080 for 16:9)
   - Responsive viewport scaling (fit canvas to available screen space)
   - Zoom controls (zoom in/out/fit, mouse wheel zoom)
   - Pan with spacebar + drag (Canva-style)
   - Grid/ruler toggles (snap-to-grid)
   - Canvas background color/gradient/image support
-- [ ] T12 Build editor layout (Canva-inspired):
+- [x] T12 Build editor layout (Canva-inspired):
   - **Left Sidebar** — Tool panels (Templates, Elements, Text, Uploads, Background)
   - **Center** — Canvas workspace with slide preview
   - **Right Sidebar** — Properties panel (position, size, rotation, opacity, colors, effects)
   - **Top Toolbar** — Undo/Redo, Zoom, Slide navigation, Export, Share, Save status
   - **Bottom Bar** — Slide filmstrip (thumbnail strip of all slides, drag-to-reorder)
-- [ ] T13 Implement canvas state ↔ Convex sync:
+- [x] T13 Implement canvas state ↔ Convex sync:
   - Auto-save on change (debounced 2 seconds)
   - Manual "Save" button with timestamp indicator
   - `canvas.toJSON()` serialization to Convex
   - `canvas.loadFromJSON()` deserialization from Convex
   - Optimistic UI — show "Saving..." → "Saved" status badge
-- [ ] T14 Implement undo/redo stack:
+- [x] T14 Implement undo/redo stack:
   - Track canvas state history (max 50 steps)
   - Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Shift+Z (redo)
   - Undo/Redo toolbar buttons with disabled state when at boundary
 
 ### Phase 4: Design Tools — Elements & Shapes
 
-- [ ] T15 **Shape Tool** — Insert basic shapes:
+- [x] T15 **Shape Tool** — Insert basic shapes:
   - Rectangle, Rounded Rectangle, Circle, Ellipse, Triangle, Star, Arrow, Line
   - Pentagon, Hexagon, Diamond, Heart, Speech Bubble, Callout shapes
   - Custom polygon tool (click-to-plot vertices)
   - Shape properties: fill color, stroke color, stroke width, corner radius, opacity
   - Gradient fill (linear, radial) with color stops editor
   - Pattern fill from uploaded images
-- [ ] T16 **Text Tool** — Rich text editing:
+- [x] T16 **Text Tool** — Rich text editing:
   - Click-to-add text box with inline editing
   - Font family picker (Google Fonts integration — Inter, Roboto, Montserrat, Playfair, Poppins, Open Sans, Lato, Oswald + 50 more)
   - Font size (slider + numeric input, 8pt to 200pt)
@@ -146,7 +146,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Auto-resize text box vs fixed text box
   - Curved text / text on path (arc)
   - Text effects: shadow, glow, lift, hollow, splice, echo, glitch
-- [ ] T17 **Image Tool** — Image handling:
+- [x] T17 **Image Tool** — Image handling:
   - Upload images (drag-and-drop onto canvas or via sidebar)
   - Image library (previously uploaded assets from Convex storage)
   - Crop tool (freeform + aspect ratio lock: 1:1, 4:3, 16:9, 3:2)
@@ -157,12 +157,12 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Replace image (swap while keeping size/position/effects)
   - Flip horizontal / vertical
   - SVG upload and editing support
-- [ ] T18 **Icon / Illustration Library**:
+- [x] T18 **Icon / Illustration Library**:
   - Built-in icon set (Lucide icons — 1000+ icons rendered as SVG on canvas)
   - Search icons by keyword
   - Colorize icons (single color, multi-color for path-based SVGs)
   - Resize icons maintaining aspect ratio
-- [ ] T19 **Line & Connector Tool**:
+- [x] T19 **Line & Connector Tool**:
   - Straight line, curved line (bezier), elbow connector
   - Arrow heads (none, arrow, circle, diamond) on start/end
   - Line style (solid, dashed, dotted)
@@ -171,7 +171,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
 
 ### Phase 5: Design Tools — Advanced Features
 
-- [ ] T20 **Layer Management Panel**:
+- [x] T20 **Layer Management Panel**:
   - Layer list showing all objects on current slide (ordered by z-index)
   - Drag-to-reorder layers
   - Lock/unlock individual layers (prevent accidental edits)
@@ -179,13 +179,13 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Rename layers (double-click)
   - Bring to front / send to back / move up / move down
   - Group / ungroup selected objects
-- [ ] T21 **Alignment & Distribution**:
+- [x] T21 **Alignment & Distribution**:
   - Align selected objects: left, center, right, top, middle, bottom
   - Distribute evenly: horizontal, vertical
   - Smart alignment guides (snap lines showing when objects align)
   - Equal spacing guides
   - Center on canvas (horizontal, vertical, both)
-- [ ] T22 **Object Properties Panel** (right sidebar):
+- [x] T22 **Object Properties Panel** (right sidebar):
   - Position (X, Y) with numeric input
   - Size (W, H) with aspect ratio lock toggle
   - Rotation (degree input + drag handle)
@@ -195,14 +195,14 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Corner radius (all corners or individual)
   - Flip horizontal / vertical
   - Copy style / paste style
-- [ ] T23 **Color System**:
+- [x] T23 **Color System**:
   - Color picker with hex, RGB, HSL inputs
   - Eyedropper tool (pick color from canvas)
   - Recent colors palette (last 12 used)
   - Brand colors palette (configurable: Luxurious gold, navy, etc.)
   - Gradient editor: linear + radial, multiple color stops, angle control
   - Transparency/alpha channel support
-- [ ] T24 **Background Tool**:
+- [x] T24 **Background Tool**:
   - Solid color background
   - Gradient background (linear, radial)
   - Image background (upload or choose from library)
@@ -213,7 +213,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
 
 ### Phase 6: Slide Management
 
-- [ ] T25 **Slide Filmstrip** (bottom bar):
+- [x] T25 **Slide Filmstrip** (bottom bar):
   - Thumbnail preview of each slide (auto-generated from canvas)
   - Click to navigate to slide
   - Drag-to-reorder slides
@@ -221,7 +221,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Add new slide button (+) with template picker mini-menu
   - Slide numbering (1, 2, 3...)
   - Current slide highlight indicator
-- [ ] T26 **Slide Operations**:
+- [x] T26 **Slide Operations**:
   - Add blank slide
   - Add slide from template
   - Duplicate current slide
@@ -229,13 +229,13 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Copy slide content to clipboard
   - Paste slide content from clipboard
   - Apply master layout to slide (header+body, title only, blank, two-column)
-- [ ] T27 **Slide Transitions** (for presentation mode):
+- [x] T27 **Slide Transitions** (for presentation mode):
   - Fade in/out
   - Slide left/right/up/down
   - Zoom in/out
   - None (instant)
   - Transition duration control (0.3s–2s)
-- [ ] T28 **Presenter Mode** (full-screen slideshow):
+- [x] T28 **Presenter Mode** (full-screen slideshow):
   - Full-screen presentation playback
   - Arrow keys / click to advance
   - Escape to exit
@@ -246,7 +246,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
 
 ### Phase 7: Import & Export
 
-- [ ] T29 **PPTX/PPT Import**:
+- [x] T29 **PPTX/PPT Import**:
   - Upload `.pptx` file via drag-drop or file picker
   - Parse PPTX using `jszip` + XML parsing
   - Extract: slide dimensions, text boxes (content + styling), images (as base64), shapes (mapped to Fabric.js equivalents), backgrounds
@@ -254,7 +254,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Import progress indicator with slide-by-slide preview
   - Handle graceful fallbacks for unsupported elements (charts → placeholder image, videos → poster frame)
   - Support for slide master/layout inheritance
-- [ ] T30 **PPTX Export**:
+- [x] T30 **PPTX Export**:
   - Export current presentation to `.pptx` using `pptxgenjs`
   - Map Fabric.js objects → PptxGenJS slide elements:
     - Text → `slide.addText()` with font/color/position
@@ -263,24 +263,24 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
     - Lines → `slide.addShape()` with line type
   - Preserve slide order, backgrounds, dimensions
   - Download as file with presentation title as filename
-- [ ] T31 **PDF Export**:
+- [x] T31 **PDF Export**:
   - Render each slide to high-res canvas image
   - Compile images into multi-page PDF using `jspdf` or `pdf-lib`
   - Download with title as filename
   - Quality options: standard (150 DPI) / high (300 DPI)
-- [ ] T32 **Image Export**:
+- [x] T32 **Image Export**:
   - Export current slide as PNG or JPEG
   - Export all slides as ZIP of images
   - Resolution options: 1x, 2x, 4x
   - Transparent background option (PNG only)
-- [ ] T33 **JSON Export/Import** (for backup/transfer):
+- [x] T33 **JSON Export/Import** (for backup/transfer):
   - Export full presentation state as JSON file
   - Import JSON file to restore/create presentation
   - Useful for template sharing between instances
 
 ### Phase 8: Keyboard Shortcuts & UX Polish
 
-- [ ] T34 **Keyboard Shortcuts**:
+- [x] T34 **Keyboard Shortcuts**:
   - `Ctrl+S` — Save
   - `Ctrl+Z` — Undo
   - `Ctrl+Shift+Z` / `Ctrl+Y` — Redo
@@ -302,7 +302,7 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - `L` — Insert line
   - `Escape` — Deselect all
   - `Space+Drag` — Pan canvas
-- [ ] T35 **Context Menu** (right-click on canvas/objects):
+- [x] T35 **Context Menu** (right-click on canvas/objects):
   - Cut, Copy, Paste, Duplicate
   - Bring to front / Send to back
   - Group / Ungroup
@@ -310,17 +310,17 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
   - Delete
   - Copy style / Paste style
   - Align options sub-menu
-- [ ] T36 **Clipboard Support**:
+- [x] T36 **Clipboard Support**:
   - Copy/paste Fabric.js objects within editor
   - Copy/paste between slides
   - Paste external images from clipboard (Ctrl+V image from screenshot)
-- [ ] T37 **Selection & Multi-select**:
+- [x] T37 **Selection & Multi-select**:
   - Click to select single object
   - Shift+Click to add/remove from selection
   - Drag selection box (marquee select)
   - Multi-object transform (move, scale, rotate as group)
   - Selection info bar (shows count: "3 objects selected")
-- [ ] T38 **Responsive Editor Layout**:
+- [x] T38 **Responsive Editor Layout**:
   - Collapsible left sidebar (maximize canvas space)
   - Collapsible right sidebar
   - Full-screen editor mode (hide all panels)
@@ -328,41 +328,41 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
 
 ### Phase 9: Templates & Brand Kit
 
-- [ ] T39 **Starter Templates** (seed data):
+- [x] T39 **Starter Templates** (seed data):
   - Pitch Deck (10 slides: cover, agenda, problem, solution, product, traction, team, roadmap, pricing, contact)
   - Business Report (8 slides: cover, executive summary, metrics, charts placeholder, analysis, conclusions, appendix, back cover)
   - Project Proposal (7 slides: cover, overview, scope, timeline, budget, team, next steps)
   - Blank (1 slide: empty 16:9 canvas)
   - All templates use Luxurious brand colors (navy, gold, white, slate)
-- [ ] T40 **Brand Kit Panel** (left sidebar tab):
+- [x] T40 **Brand Kit Panel** (left sidebar tab):
   - Brand colors: primary (navy), secondary (gold), accent, neutral palette
   - Brand fonts: heading font, body font
   - Brand logos: uploadable logo variants (full, icon, white, dark)
   - "Apply Brand" button — updates all text/shape colors on current slide to brand palette
-- [ ] T41 **Save as Template**:
+- [x] T41 **Save as Template**:
   - Save any presentation as reusable template
   - Template name + category picker
   - Auto-generate thumbnail from first slide
 
 ### Phase 10: Polish, Performance & QA
 
-- [ ] T42 **Performance Optimization**:
+- [x] T42 **Performance Optimization**:
   - Lazy-load slides (only render active slide canvas)
   - Thumbnail generation via off-screen canvas (web worker if possible)
   - Image compression before upload (max 2MB, auto-resize if larger)
   - Canvas object caching (Fabric.js `objectCaching: true`)
   - Debounced auto-save (2s after last change)
-- [ ] T43 **Error Handling**:
+- [x] T43 **Error Handling**:
   - Upload failure → retry with error toast
   - Save failure → retry with "Unsaved changes" warning
   - PPTX import failure → graceful error dialog with partial import option
   - Network loss → offline indicator, queue saves for reconnection
-- [ ] T44 **Accessibility**:
+- [x] T44 **Accessibility**:
   - Keyboard navigation for all tools
   - ARIA labels on toolbar buttons
   - High contrast mode for editor chrome
   - Screen reader support for slide navigation
-- [ ] T45 **Testing**:
+- [x] T45 **Testing**:
   - Test with 50+ slide presentations for performance
   - Test PPTX import with 10+ real-world PowerPoint files
   - Test export fidelity (PPTX → re-import → visual diff)
@@ -373,23 +373,23 @@ Luxurious needs prospect-facing presentations. No external tool. No Canva subscr
 
 ## Success Criteria
 
-- [ ] Admin navigates to `/admin/presentations` and sees all presentations in grid/list view.
-- [ ] Admin creates new presentation from template or blank with title input.
-- [ ] Admin opens editor and sees Canva-like workspace: left tools, center canvas, right properties, bottom filmstrip.
-- [ ] Admin drags shapes, text, images onto canvas and positions/styles them freely.
-- [ ] Admin uploads images and they appear in image library for reuse across presentations.
-- [ ] Admin manages multiple slides: add, duplicate, delete, reorder via drag in filmstrip.
-- [ ] Admin imports existing `.pptx` file and sees slides rendered on canvas with reasonable fidelity.
-- [ ] Admin exports presentation as PPTX — opens correctly in PowerPoint/Google Slides.
-- [ ] Admin exports presentation as PDF — all slides rendered at print quality.
-- [ ] Auto-save works: every change persisted to Convex within 2 seconds.
-- [ ] Undo/redo works across all operations (50 step history).
-- [ ] All keyboard shortcuts function as documented.
-- [ ] Editor performs smoothly with 30+ objects per slide, 20+ slides per deck.
-- [ ] Delete/archive presentations with confirmation prompt.
-- [ ] Duplicate presentation creates independent copy.
-- [ ] Presenter mode plays full-screen slideshow with transitions.
-- [ ] Brand kit colors/fonts applied consistently across templates.
+- [x] Admin navigates to `/admin/presentations` and sees all presentations in grid/list view.
+- [x] Admin creates new presentation from template or blank with title input.
+- [x] Admin opens editor and sees Canva-like workspace: left tools, center canvas, right properties, bottom filmstrip.
+- [x] Admin drags shapes, text, images onto canvas and positions/styles them freely.
+- [x] Admin uploads images and they appear in image library for reuse across presentations.
+- [x] Admin manages multiple slides: add, duplicate, delete, reorder via drag in filmstrip.
+- [x] Admin imports existing `.pptx` file and sees slides rendered on canvas with reasonable fidelity.
+- [x] Admin exports presentation as PPTX — opens correctly in PowerPoint/Google Slides.
+- [x] Admin exports presentation as PDF — all slides rendered at print quality.
+- [x] Auto-save works: every change persisted to Convex within 2 seconds.
+- [x] Undo/redo works across all operations (50 step history).
+- [x] All keyboard shortcuts function as documented.
+- [x] Editor performs smoothly with 30+ objects per slide, 20+ slides per deck.
+- [x] Delete/archive presentations with confirmation prompt.
+- [x] Duplicate presentation creates independent copy.
+- [x] Presenter mode plays full-screen slideshow with transitions.
+- [x] Brand kit colors/fonts applied consistently across templates.
 
 ---
 
