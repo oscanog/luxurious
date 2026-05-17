@@ -510,7 +510,31 @@ function buildOverview(members: NetworkMember[]) {
     if (isMasterUpline) {
       treeRoots = buildTree(parentLookup, "root");
     } else {
-      treeRoots = buildTree(parentLookup, viewer._id);
+      const totalDownlines = countDescendants(parentLookup, viewer._id);
+      treeRoots = [{
+        id: viewer._id,
+        parentMemberId: viewer.parentMemberId ?? null,
+        name: viewer.name,
+        roleTitle: viewer.roleTitle,
+        status: viewer.status,
+        isViewer: viewer.isViewer,
+        directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
+        totalDownlineCount: totalDownlines,
+        member: {
+          id: viewer.userId ?? (viewer._id as any),
+          name: viewer.name,
+          email: viewer.email ?? "",
+          roleTitle: viewer.roleTitle,
+          rank: getRank(totalDownlines),
+          status: viewer.status,
+          avatarInitials: viewer.name.substring(0, 2).toUpperCase(),
+          totalDownlines: totalDownlines,
+          invitedCount: 0,
+          pendingCount: 0,
+          uplineId: (viewer.parentMemberId as any),
+        },
+        children: buildTree(parentLookup, viewer._id),
+      }];
     }
   } else {
     treeRoots = buildTree(parentLookup, "root");
