@@ -663,18 +663,36 @@ export const getDashboard = query({
     }
 
     const allAssets = await ctx.db.query("memberAssets").collect();
-    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
-    const assetsByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">[]>();
-    for (const asset of allAssets) {
-      const list = assetsByMember.get(asset.memberId) ?? [];
-      list.push(asset);
-      assetsByMember.set(asset.memberId, list);
+    const allMembersList = await ctx.db.query("networkMembers").collect();
+    const memberIdToUserId = new Map<Id<"networkMembers">, Id<"users">>();
+    for (const m of allMembersList) {
+      if (m.userId) {
+        memberIdToUserId.set(m._id, m.userId);
+      }
     }
-    for (const [memberId, list] of assetsByMember.entries()) {
-      list.sort((a, b) => b.createdAt - a.createdAt);
-      const latest = list[0];
+
+    const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
+    const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
+    const sortedAssets = [...allAssets].sort((a, b) => a.createdAt - b.createdAt);
+    for (const asset of sortedAssets) {
+      const uId = memberIdToUserId.get(asset.memberId);
+      if (uId) {
+        latestAssetByUser.set(uId, asset);
+      } else {
+        latestAssetByMember.set(asset.memberId, asset);
+      }
+    }
+
+    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
+    for (const m of allMembersList) {
+      let latest: Doc<"memberAssets"> | undefined;
+      if (m.userId) {
+        latest = latestAssetByUser.get(m.userId);
+      } else {
+        latest = latestAssetByMember.get(m._id);
+      }
       if (latest) {
-        latestAssetsMap.set(memberId, {
+        latestAssetsMap.set(m._id, {
           name: latest.name,
           value: latest.value,
           currency: latest.currency,
@@ -709,18 +727,36 @@ export const getTree = query({
     }
 
     const allAssets = await ctx.db.query("memberAssets").collect();
-    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
-    const assetsByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">[]>();
-    for (const asset of allAssets) {
-      const list = assetsByMember.get(asset.memberId) ?? [];
-      list.push(asset);
-      assetsByMember.set(asset.memberId, list);
+    const allMembersList = await ctx.db.query("networkMembers").collect();
+    const memberIdToUserId = new Map<Id<"networkMembers">, Id<"users">>();
+    for (const m of allMembersList) {
+      if (m.userId) {
+        memberIdToUserId.set(m._id, m.userId);
+      }
     }
-    for (const [memberId, list] of assetsByMember.entries()) {
-      list.sort((a, b) => b.createdAt - a.createdAt);
-      const latest = list[0];
+
+    const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
+    const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
+    const sortedAssets = [...allAssets].sort((a, b) => a.createdAt - b.createdAt);
+    for (const asset of sortedAssets) {
+      const uId = memberIdToUserId.get(asset.memberId);
+      if (uId) {
+        latestAssetByUser.set(uId, asset);
+      } else {
+        latestAssetByMember.set(asset.memberId, asset);
+      }
+    }
+
+    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
+    for (const m of allMembersList) {
+      let latest: Doc<"memberAssets"> | undefined;
+      if (m.userId) {
+        latest = latestAssetByUser.get(m.userId);
+      } else {
+        latest = latestAssetByMember.get(m._id);
+      }
       if (latest) {
-        latestAssetsMap.set(memberId, {
+        latestAssetsMap.set(m._id, {
           name: latest.name,
           value: latest.value,
           currency: latest.currency,
