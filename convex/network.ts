@@ -665,19 +665,28 @@ export const getDashboard = query({
     const allAssets = await ctx.db.query("memberAssets").collect();
     const allMembersList = await ctx.db.query("networkMembers").collect();
     const memberIdToUserId = new Map<Id<"networkMembers">, Id<"users">>();
+    const memberIdToNameKey = new Map<Id<"networkMembers">, string>();
     for (const m of allMembersList) {
       if (m.userId) {
         memberIdToUserId.set(m._id, m.userId);
       }
+      const nameKey = m.name.trim().toLowerCase();
+      memberIdToNameKey.set(m._id, nameKey);
     }
 
     const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
+    const latestAssetByName = new Map<string, Doc<"memberAssets">>();
     const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
+    
     const sortedAssets = [...allAssets].sort((a, b) => a.createdAt - b.createdAt);
     for (const asset of sortedAssets) {
       const uId = memberIdToUserId.get(asset.memberId);
+      const nameKey = memberIdToNameKey.get(asset.memberId);
+      
       if (uId) {
         latestAssetByUser.set(uId, asset);
+      } else if (nameKey) {
+        latestAssetByName.set(nameKey, asset);
       } else {
         latestAssetByMember.set(asset.memberId, asset);
       }
@@ -686,11 +695,18 @@ export const getDashboard = query({
     const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
     for (const m of allMembersList) {
       let latest: Doc<"memberAssets"> | undefined;
+      const nameKey = m.name.trim().toLowerCase();
+      
       if (m.userId) {
         latest = latestAssetByUser.get(m.userId);
-      } else {
+      }
+      if (!latest && nameKey) {
+        latest = latestAssetByName.get(nameKey);
+      }
+      if (!latest) {
         latest = latestAssetByMember.get(m._id);
       }
+      
       if (latest) {
         latestAssetsMap.set(m._id, {
           name: latest.name,
@@ -729,19 +745,28 @@ export const getTree = query({
     const allAssets = await ctx.db.query("memberAssets").collect();
     const allMembersList = await ctx.db.query("networkMembers").collect();
     const memberIdToUserId = new Map<Id<"networkMembers">, Id<"users">>();
+    const memberIdToNameKey = new Map<Id<"networkMembers">, string>();
     for (const m of allMembersList) {
       if (m.userId) {
         memberIdToUserId.set(m._id, m.userId);
       }
+      const nameKey = m.name.trim().toLowerCase();
+      memberIdToNameKey.set(m._id, nameKey);
     }
 
     const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
+    const latestAssetByName = new Map<string, Doc<"memberAssets">>();
     const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
+    
     const sortedAssets = [...allAssets].sort((a, b) => a.createdAt - b.createdAt);
     for (const asset of sortedAssets) {
       const uId = memberIdToUserId.get(asset.memberId);
+      const nameKey = memberIdToNameKey.get(asset.memberId);
+      
       if (uId) {
         latestAssetByUser.set(uId, asset);
+      } else if (nameKey) {
+        latestAssetByName.set(nameKey, asset);
       } else {
         latestAssetByMember.set(asset.memberId, asset);
       }
@@ -750,11 +775,18 @@ export const getTree = query({
     const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
     for (const m of allMembersList) {
       let latest: Doc<"memberAssets"> | undefined;
+      const nameKey = m.name.trim().toLowerCase();
+      
       if (m.userId) {
         latest = latestAssetByUser.get(m.userId);
-      } else {
+      }
+      if (!latest && nameKey) {
+        latest = latestAssetByName.get(nameKey);
+      }
+      if (!latest) {
         latest = latestAssetByMember.get(m._id);
       }
+      
       if (latest) {
         latestAssetsMap.set(m._id, {
           name: latest.name,
@@ -1131,11 +1163,41 @@ export const getMemberAssets = query({
     memberId: v.id("networkMembers"),
   },
   handler: async (ctx, args) => {
-    const assets = await ctx.db
-      .query("memberAssets")
-      .withIndex("by_memberId", (q) => q.eq("memberId", args.memberId))
-      .collect();
-    return assets.sort((a, b) => b.createdAt - a.createdAt);
+    const member = await ctx.db.get(args.memberId);
+    if (!member) return [];
+
+    const nameKey = member.name.trim().toLowerCase();
+    const allMembersList = await ctx.db.query("networkMembers").collect();
+    
+    const targetMemberIds = new Set<Id<"networkMembers">>();
+    targetMemberIds.add(args.memberId);
+    
+    for (const m of allMembersList) {
+      if (member.userId && m.userId === member.userId) {
+        targetMemberIds.add(m._id);
+      }
+      if (m.name.trim().toLowerCase() === nameKey) {
+        targetMemberIds.add(m._id);
+      }
+    }
+
+    const allAssets: Doc<"memberAssets">[] = [];
+    for (const mId of targetMemberIds) {
+      const assets = await ctx.db
+        .query("memberAssets")
+        .withIndex("by_memberId", (q) => q.eq("memberId", mId))
+        .collect();
+      allAssets.push(...assets);
+    }
+
+    const uniqueAssetsMap = new Map<string, Doc<"memberAssets">>();
+    for (const asset of allAssets) {
+      const assetKey = `${asset.value}_${asset.currency}_${asset.createdAt}`;
+      uniqueAssetsMap.set(assetKey, asset);
+    }
+    const deduplicatedAssets = Array.from(uniqueAssetsMap.values());
+    
+    return deduplicatedAssets.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 

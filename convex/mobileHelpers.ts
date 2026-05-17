@@ -62,6 +62,7 @@ type NetworkMemberSeed = {
   isViewer: boolean;
   sortOrder: number;
   joinedAt?: number;
+  userId?: Id<"users">;
 };
 
 type DescendantEntry = {
@@ -600,6 +601,7 @@ async function seedDefaultNetworkMembers(
       isViewer: member.isViewer,
       sortOrder: member.sortOrder,
       joinedAt: member.joinedAt,
+      userId: member.userId,
       createdAt: now,
       updatedAt: now,
     });
@@ -674,6 +676,7 @@ async function buildNetworkSeedsForViewer(
       isViewer: false,
       sortOrder: seeds.length,
       joinedAt: monthsAgo(10 - i),
+      userId: upline._id,
     });
     parentKey = key;
   }
@@ -687,6 +690,7 @@ async function buildNetworkSeedsForViewer(
     isViewer: true,
     sortOrder: seeds.length,
     joinedAt: monthsAgo(6),
+    userId: viewer._id,
   });
 
   const descendants: DescendantEntry[] = [];
@@ -705,6 +709,7 @@ async function buildNetworkSeedsForViewer(
       isViewer: false,
       sortOrder: seeds.length,
       joinedAt: monthsAgo(entry.depth === 1 ? 4 : 2),
+      userId: entry.user._id,
     });
   }
 
