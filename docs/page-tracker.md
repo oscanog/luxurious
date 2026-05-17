@@ -178,3 +178,16 @@ src/
 ---
 
 *Last updated: 2026-04-30 | Phase 1 — Dummy Frontend*
+## Social Feed Snapshot
+
+| Page / Component | Status | Notes |
+| :--- | :--- | :--- |
+| **Social Feed Page** (`/social-feed`) | 🚧 💰 🔐 | Live route. Bounded feed query, hashtag filter, likes, saves, share copy. |
+| **Composer Page** (`/social-feed/new`) | 🚧 💰 🔐 | Live route. Single active draft, autosave, storage upload, publish gate. |
+| **Post Detail Page** (`/social-feed/post/:postId`) | 🚧 💰 🔐 | Live route. Full caption, flat comments, delete moderation rules. |
+| **Author Feed Page** (`/social-feed/user/:userId`) | 🚧 💰 🔐 | Live route. Public posts for others, private visible to owner/admin. |
+| Convex schema: social tables | 🚧 💰 | `socialPosts`, `socialMediaAssets`, `socialPostMedia`, likes, saves, comments, hashtags. |
+| Upload processing pipeline | 🔲 💰 | Current slice uses raw uploaded asset as delivery. |
+| Cursor pagination | 🔲 💰 | Current slice uses bounded `take()` queries. |
+
+*Social snapshot updated: 2026-05-16*

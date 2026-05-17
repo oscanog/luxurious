@@ -4,6 +4,7 @@ import {
   BookOpen,
   BriefcaseBusiness,
   CalendarDays,
+  Clapperboard,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -44,6 +45,8 @@ export type NavPath =
   | "/dashboard"
   | "/org-chart"
   | "/members"
+  | "/social-feed"
+  | "/social-feed/new"
   | "/activity-feed"
   | "/trading-signals"
   | "/accounts"
@@ -73,6 +76,7 @@ const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
   { path: "/", label: "Home", icon: Home },
   { path: "/org-chart", label: "Org Chart", icon: Network },
   { path: "/members", label: "Members", icon: Users },
+  { path: "/social-feed", label: "Social Feed", icon: Clapperboard },
   { path: "/activity-feed", label: "Activity Feed", icon: Bell },
   { path: "/trading-signals", label: "Trading Signals", icon: Zap },
 ];
@@ -135,6 +139,8 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/dashboard": "Dashboard",
   "/org-chart": "Organization Chart",
   "/members": "Members",
+  "/social-feed": "Social Feed",
+  "/social-feed/new": "New Post",
   "/activity-feed": "Activity Feed",
   "/trading-signals": "Trading Signals",
   "/accounts": "Accounts",
@@ -348,7 +354,12 @@ export function AdminLayout({
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = Boolean(isAdminQuery || mobileStatus?.isAdmin);
-  const activeLabel = PATH_LABELS[(location.pathname as NavPath) ?? "/"] ?? PATH_LABELS["/"];
+  const activeLabel =
+    location.pathname.startsWith("/social-feed/post/")
+      ? "Post Detail"
+      : location.pathname.startsWith("/social-feed/user/")
+        ? "Author Feed"
+        : PATH_LABELS[(location.pathname as NavPath) ?? "/"] ?? PATH_LABELS["/"];
   const unreadCount = notificationSummary?.unreadCount ?? 0;
   const promotionCount = notificationSummary?.activePromotionCount ?? 0;
   const initials = (mobileStatus?.user.name ?? "User")

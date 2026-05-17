@@ -29,6 +29,10 @@ import { ProfilePage } from "@/pages/dashboard/ProfilePage";
 import { PromotionsPage } from "@/pages/dashboard/PromotionsPage";
 import { ReceiptScannerPage } from "@/pages/dashboard/ReceiptScannerPage";
 import { ShoppingListPage } from "@/pages/dashboard/ShoppingListPage";
+import { SocialAuthorPage } from "@/pages/dashboard/SocialAuthorPage";
+import { SocialComposerPage } from "@/pages/dashboard/SocialComposerPage";
+import { SocialFeedPage } from "@/pages/dashboard/SocialFeedPage";
+import { SocialPostDetailPage } from "@/pages/dashboard/SocialPostDetailPage";
 import { StatisticsPage } from "@/pages/dashboard/StatisticsPage";
 import { TradingSignalsPage } from "@/pages/dashboard/TradingSignalsPage";
 import {
@@ -90,6 +94,10 @@ function AuthenticatedApp({
         <Route path="/org-chart" element={<OrgChartPage />} />
         <Route path="/members" element={<MembersPage />} />
         <Route path="/invitations" element={<Navigate to="/members" replace />} />
+        <Route path="/social-feed" element={<SocialFeedPage />} />
+        <Route path="/social-feed/new" element={<SocialComposerPage />} />
+        <Route path="/social-feed/post/:postId" element={<SocialPostDetailPage />} />
+        <Route path="/social-feed/user/:userId" element={<SocialAuthorPage />} />
         <Route path="/activity-feed" element={<ActivityFeedPage />} />
         <Route path="/trading-signals" element={<TradingSignalsPage />} />
         <Route path="/accounts" element={<AccountsPage />} />

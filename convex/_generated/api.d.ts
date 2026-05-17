@@ -32,6 +32,7 @@ import type * as seed from "../seed.js";
 import type * as shopping from "../shopping.js";
 import type * as signals from "../signals.js";
 import type * as simulation from "../simulation.js";
+import type * as socialFeed from "../socialFeed.js";
 import type * as support from "../support.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   shopping: typeof shopping;
   signals: typeof signals;
   simulation: typeof simulation;
+  socialFeed: typeof socialFeed;
   support: typeof support;
   transactions: typeof transactions;
   users: typeof users;

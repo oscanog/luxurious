@@ -122,6 +122,138 @@ export default defineSchema({
     .index("by_profileId_and_updatedAt", ["profileId", "updatedAt"])
     .index("by_token", ["token"]),
 
+  socialMediaAssets: defineTable({
+    ownerUserId: v.id("users"),
+    ownerProfileId: v.optional(v.id("mobileProfiles")),
+    originalStorageId: v.id("_storage"),
+    processedStorageId: v.optional(v.id("_storage")),
+    kind: v.union(v.literal("image"), v.literal("video")),
+    mimeType: v.string(),
+    processedMimeType: v.optional(v.string()),
+    fileName: v.optional(v.string()),
+    sizeBytes: v.number(),
+    processedSizeBytes: v.optional(v.number()),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    durationMs: v.optional(v.number()),
+    posterStorageId: v.optional(v.id("_storage")),
+    processingStatus: v.union(
+      v.literal("uploading"),
+      v.literal("queued"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    processingError: v.optional(v.string()),
+    transcodeProfile: v.optional(v.string()),
+    checksum: v.optional(v.string()),
+    sourceExtension: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerUserId_and_createdAt", ["ownerUserId", "createdAt"])
+    .index("by_ownerUserId_and_processingStatus_and_createdAt", [
+      "ownerUserId",
+      "processingStatus",
+      "createdAt",
+    ])
+    .index("by_processingStatus_and_createdAt", ["processingStatus", "createdAt"]),
+
+  socialPosts: defineTable({
+    authorUserId: v.id("users"),
+    authorProfileId: v.optional(v.id("mobileProfiles")),
+    caption: v.optional(v.string()),
+    hashtags: v.array(v.string()),
+    visibility: v.union(v.literal("public"), v.literal("private")),
+    lifecycle: v.union(
+      v.literal("draft"),
+      v.literal("publishing"),
+      v.literal("published"),
+      v.literal("archived"),
+      v.literal("deleted"),
+    ),
+    moderationStatus: v.union(
+      v.literal("clear"),
+      v.literal("flagged"),
+      v.literal("removed"),
+    ),
+    mediaCount: v.number(),
+    likeCount: v.number(),
+    commentCount: v.number(),
+    saveCount: v.number(),
+    publishedAt: v.optional(v.number()),
+    lastEditedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_authorUserId_and_lifecycle_and_updatedAt", [
+      "authorUserId",
+      "lifecycle",
+      "updatedAt",
+    ])
+    .index("by_authorUserId_and_lifecycle_and_createdAt", [
+      "authorUserId",
+      "lifecycle",
+      "createdAt",
+    ])
+    .index("by_lifecycle_and_visibility_and_publishedAt", [
+      "lifecycle",
+      "visibility",
+      "publishedAt",
+    ])
+    .index("by_visibility_and_publishedAt", ["visibility", "publishedAt"]),
+
+  socialPostMedia: defineTable({
+    postId: v.id("socialPosts"),
+    assetId: v.id("socialMediaAssets"),
+    sortOrder: v.number(),
+    altText: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_postId_and_sortOrder", ["postId", "sortOrder"])
+    .index("by_assetId", ["assetId"]),
+
+  socialPostLikes: defineTable({
+    postId: v.id("socialPosts"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_postId_and_createdAt", ["postId", "createdAt"])
+    .index("by_postId_and_userId", ["postId", "userId"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+
+  socialPostComments: defineTable({
+    postId: v.id("socialPosts"),
+    authorUserId: v.id("users"),
+    authorProfileId: v.optional(v.id("mobileProfiles")),
+    body: v.string(),
+    status: v.union(
+      v.literal("visible"),
+      v.literal("deleted"),
+      v.literal("removed"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_postId_and_createdAt", ["postId", "createdAt"])
+    .index("by_authorUserId_and_createdAt", ["authorUserId", "createdAt"]),
+
+  socialSavedPosts: defineTable({
+    postId: v.id("socialPosts"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
+    .index("by_postId_and_userId", ["postId", "userId"]),
+
+  socialPostHashtags: defineTable({
+    postId: v.id("socialPosts"),
+    hashtag: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_hashtag_and_createdAt", ["hashtag", "createdAt"])
+    .index("by_postId", ["postId"]),
+
   financialAccounts: defineTable({
     profileId: v.id("mobileProfiles"),
     name: v.string(),
