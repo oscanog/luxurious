@@ -198,13 +198,6 @@ export const validateAddMemberTarget = internalQuery({
       throw new Error("Parent node not found");
     }
 
-    const existingChildren = await ctx.db
-      .query("networkMembers")
-      .withIndex("by_profileId_and_parentMemberId", (q) =>
-        q.eq("profileId", profile._id).eq("parentMemberId", args.parentId),
-      )
-      .take(1000);
-
     return { profileId: profile._id };
   },
 });
