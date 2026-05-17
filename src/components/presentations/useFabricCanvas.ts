@@ -99,14 +99,25 @@ export function useFabricCanvas(
       fabricRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasElRef, options.height, options.width]);
+  }, [canvasElRef.current]);
+
+  useEffect(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    canvas.setDimensions({ width: options.width, height: options.height });
+    canvas.renderAll();
+  }, [options.height, options.width]);
 
   const loadJson = useCallback(async (json: string) => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
     try {
       isHydratingRef.current = true;
-      await canvas.loadFromJSON(JSON.parse(json));
+      const parsed = JSON.parse(json) as { width?: number; height?: number };
+      delete parsed.width;
+      delete parsed.height;
+      await canvas.loadFromJSON(parsed);
+      canvas.setDimensions({ width: options.width, height: options.height });
       if (!isDisposedRef.current) {
         canvas.renderAll();
       }
@@ -115,7 +126,7 @@ export function useFabricCanvas(
     } finally {
       isHydratingRef.current = false;
     }
-  }, []);
+  }, [options.height, options.width]);
 
   const getJson = useCallback(() => {
     if (!fabricRef.current) return "{}";

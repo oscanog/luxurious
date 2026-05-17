@@ -86,6 +86,8 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       const id = await createMutation({
         title: title.trim(),
         templateId: tpl?._id as Id<"presentationTemplates"> | undefined,
+        slideWidth: selectedTemplate ? undefined : 1920,
+        slideHeight: selectedTemplate ? undefined : 1080,
       });
       toast.success("Presentation created");
       navigate(`/admin/presentations/${id}/edit`);

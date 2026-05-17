@@ -109,6 +109,8 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
 
   const presentation = useQuery(api.presentations.get, { id: presentationId as Id<"presentations"> });
   const updateMut = useMutation(api.presentations.update);
+  const slideWidth = presentation?.slideWidth ?? SLIDE_W;
+  const slideHeight = presentation?.slideHeight ?? SLIDE_H;
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [zoom, setZoom] = useState(0.4);
@@ -125,8 +127,8 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
 
   const history = useCanvasHistory();
   const canvas = useFabricCanvas(canvasEl, {
-    width: SLIDE_W,
-    height: SLIDE_H,
+    width: slideWidth,
+    height: slideHeight,
     onModified: (json) => {
       history.push(json);
       scheduleSave(json);
@@ -394,8 +396,8 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: "center center",
-                width: SLIDE_W,
-                height: SLIDE_H,
+                width: slideWidth,
+                height: slideHeight,
               }}
             >
               <canvas ref={canvasEl} />
@@ -408,8 +410,8 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
               <div key={slide.id} className="flex-shrink-0 w-28">
                 <SlideThumbnail
                   json={slide.canvasJson}
-                  width={SLIDE_W}
-                  height={SLIDE_H}
+                  width={slideWidth}
+                  height={slideHeight}
                   isActive={i === activeSlide}
                   index={i}
                   onClick={() => setActiveSlide(i)}
@@ -586,7 +588,7 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
           <div className="mb-4 rounded-xl bg-[hsl(var(--muted)/0.3)] p-3">
             <div className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Slide</div>
             <div className="mt-1 text-lg font-black text-[hsl(var(--foreground))]">{activeSlide + 1} / {slides.length}</div>
-            <div className="text-xs text-[hsl(var(--muted-foreground))]">{SLIDE_W} × {SLIDE_H}px</div>
+            <div className="text-xs text-[hsl(var(--muted-foreground))]">{slideWidth} × {slideHeight}px</div>
           </div>
 
           {/* Navigation */}
