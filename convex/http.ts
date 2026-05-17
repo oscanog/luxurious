@@ -579,6 +579,23 @@ http.route({
                 : undefined,
           });
           break;
+        case "networkMembers:resetMemberPassword":
+          result = await ctx.runAction(api.networkMembers.resetMemberPassword, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+          });
+          break;
+        case "networkMembers:updateMemberEmail":
+          result = await ctx.runAction(api.networkMembers.updateMemberEmail, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            newEmail: readStringArg(body.args?.newEmail),
+          });
+          break;
+        case "networkMembers:joinExistingMember":
+          result = await ctx.runAction(api.networkMembers.joinExistingMember, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            email: readStringArg(body.args?.email),
+          });
+          break;
         case "support:createTicket":
           await ctx.runMutation(api.mobile.bootstrap, {});
           result = await ctx.runMutation(api.support.createTicket, {
