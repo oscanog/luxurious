@@ -91,8 +91,8 @@ export function SocialPostDetailPage() {
         post={post}
         showComments={false}
         showFullCaption
-        onToggleLike={(value) => toggleLike({ postId: value as never })}
-        onToggleSave={(value) => toggleSave({ postId: value as never })}
+        onToggleLike={async (value) => { await toggleLike({ postId: value as never }); }}
+        onToggleSave={async (value) => { await toggleSave({ postId: value as never }); }}
         onShare={handleShare}
       />
 

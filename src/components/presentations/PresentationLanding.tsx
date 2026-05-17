@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { toast } from "react-hot-toast";
 import {
   Plus, Search, Grid3X3, List, ArrowDownUp, Trash2, Copy, Pencil,
-  Clock, Layers, Presentation, MoreVertical, SlidersHorizontal,
+  Clock, Layers, Presentation, MoreVertical,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";

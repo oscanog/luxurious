@@ -67,10 +67,9 @@ export async function exportToPptx(
           case "rect":
             slide.addShape(pptx.ShapeType.rect, {
               x, y, w, h, rotate,
-              fill: { color: hexColor(obj.fill as string) },
+              fill: { color: hexColor(obj.fill as string), transparency: 100 - opacity },
               line: obj.stroke ? { color: hexColor(obj.stroke), width: obj.strokeWidth ?? 1 } : undefined,
               rectRadius: obj.rx ? px(obj.rx) : undefined,
-              transparency: 100 - opacity,
             });
             break;
 
@@ -81,16 +80,15 @@ export async function exportToPptx(
               w: px((obj.radius ?? 50) * 2 * (obj.scaleX ?? 1)),
               h: px((obj.radius ?? 50) * 2 * (obj.scaleY ?? 1)),
               rotate,
-              fill: { color: hexColor(obj.fill as string) },
+              fill: { color: hexColor(obj.fill as string), transparency: 100 - opacity },
               line: obj.stroke ? { color: hexColor(obj.stroke), width: obj.strokeWidth ?? 1 } : undefined,
-              transparency: 100 - opacity,
             });
             break;
 
           case "triangle":
             slide.addShape(pptx.ShapeType.triangle, {
               x, y, w, h, rotate,
-              fill: { color: hexColor(obj.fill as string) },
+              fill: { color: hexColor(obj.fill as string), transparency: 100 - opacity },
               line: obj.stroke ? { color: hexColor(obj.stroke), width: obj.strokeWidth ?? 1 } : undefined,
             });
             break;
@@ -154,7 +152,7 @@ export async function exportToPdf(
   }
 
   const bytes = await doc.save();
-  const blob = new Blob([bytes], { type: "application/pdf" });
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = `${title}.pdf`; a.click();

@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import {
   ArrowLeft, Undo2, Redo2, ZoomIn, ZoomOut, Save, Download,
   Plus, Trash2, Square, Circle, Triangle, Type, Minus,
-  Image, ChevronLeft, ChevronRight, Layers, Copy, Upload,
+  ChevronLeft, ChevronRight, Layers, Copy, Upload,
   FileDown, Presentation,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -86,7 +86,7 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
   const navigate = useNavigate();
   const canvasEl = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const presentation = useQuery(api.presentations.get, { id: presentationId as Id<"presentations"> });
   const updateMut = useMutation(api.presentations.update);
@@ -225,7 +225,7 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
     try {
       const url = await generateUploadUrl();
       const res = await fetch(url, { method: "POST", body: file, headers: { "Content-Type": file.type } });
-      const { storageId } = await res.json();
+      await res.json();
       // Get URL from Convex
       const reader = new FileReader();
       reader.onload = ev => canvas.addImageUrl(ev.target?.result as string);
@@ -248,6 +248,7 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
 
   // PPTX export
   async function handleExportPptx() {
+    if (!presentation) return;
     try {
       toast("Generating PPTX…");
       const current = slides.map((s, i) =>
@@ -260,6 +261,7 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
 
   // PDF export
   async function handleExportPdf() {
+    if (!presentation) return;
     try {
       toast("Generating PDF…");
       const dataUrls = slides.map(() => canvas.toDataUrl()); // simplified — would render each slide
@@ -267,9 +269,17 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
       toast.success("Downloaded!");
     } catch (e: any) { toast.error(e.message ?? "PDF export failed"); }
   }
+  if (presentation === undefined) {
     return (
       <div className="flex h-screen items-center justify-center bg-[hsl(var(--background))]">
         <div className="text-[hsl(var(--muted-foreground))] animate-pulse">Loading editor…</div>
+      </div>
+    );
+  }
+  if (presentation === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[hsl(var(--background))]">
+        <div className="text-red-500">Presentation not found</div>
       </div>
     );
   }

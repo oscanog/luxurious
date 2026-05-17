@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { ShieldCheck, Download, Search, Share2, ArrowDownUp, ArchiveX, Copy } from "lucide-react";
+import { ShieldCheck, Download, Search, Share2, ArrowDownUp, ArchiveX } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Link, useSearchParams } from "react-router-dom";
 

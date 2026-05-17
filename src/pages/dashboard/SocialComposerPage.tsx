@@ -261,8 +261,8 @@ export function SocialComposerPage() {
     privacy: visibility === "public" || visibility === "private",
     publish:
       Boolean(draft) &&
-      draft.media.length > 0 &&
-      draft.readyMediaCount === draft.media.length &&
+      (draft?.media.length ?? 0) > 0 &&
+      (draft?.readyMediaCount ?? 0) === (draft?.media.length ?? 0) &&
       saveState !== "saving" &&
       !uploading,
   };
