@@ -504,9 +504,16 @@ function buildOverview(members: NetworkMember[]) {
   const toInviteCount = Math.max(6 - directMembers.length, 0);
   const downlineCount = viewer ? countDescendants(parentLookup, viewer._id) : 0;
 
-  let treeRoots = buildTree(parentLookup, "root");
-  if (treeRoots.length === 0 && viewer) {
-    treeRoots = buildTree(parentLookup, viewer._id);
+  let treeRoots: OrgTreeNode[] = [];
+  if (viewer) {
+    const isMasterUpline = viewer.parentMemberId === null || viewer.parentMemberId === undefined;
+    if (isMasterUpline) {
+      treeRoots = buildTree(parentLookup, "root");
+    } else {
+      treeRoots = buildTree(parentLookup, viewer._id);
+    }
+  } else {
+    treeRoots = buildTree(parentLookup, "root");
   }
 
   return {
