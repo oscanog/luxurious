@@ -19,6 +19,12 @@ export type OrgCardData = {
     directChildrenCount?: number;
     status: "joined" | "invited" | "pending" | "to-invite";
     allowAdd?: boolean;
+    latestAsset?: {
+      name: string;
+      value: number;
+      currency: string;
+      createdAt: number;
+    } | null;
   };
   isRoot?: boolean;
   branchColor?: string;
@@ -205,6 +211,11 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
             <div className="flex flex-col min-w-0">
               <span className="text-[hsl(var(--foreground))] font-bold text-lg leading-tight truncate">{member.name}</span>
               <span className="text-[hsl(var(--muted-foreground))] text-xs font-medium truncate">{member.rank}</span>
+              {member.latestAsset && (
+                <span className="text-[hsl(43,96%,48%)] text-[10px] font-black uppercase tracking-wider mt-0.5 truncate">
+                  Asset: {member.latestAsset.currency} {member.latestAsset.value.toLocaleString()}
+                </span>
+              )}
             </div>
           </div>
           {!isRoot && (

@@ -363,6 +363,16 @@ export default defineSchema({
     .index("by_profileId_and_status", ["profileId", "status"])
     .index("by_profileId_and_isViewer", ["profileId", "isViewer"]),
 
+  memberAssets: defineTable({
+    memberId: v.id("networkMembers"),
+    name: v.string(),
+    value: v.number(),
+    currency: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_memberId", ["memberId"])
+    .index("by_memberId_and_createdAt", ["memberId", "createdAt"]),
+
   invitations: defineTable({
     uplineId: v.id("users"),
     email: v.string(),

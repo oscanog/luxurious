@@ -102,6 +102,12 @@ type OrgTreeNode = {
   directChildrenCount: number;
   totalDownlineCount: number;
   allowAdd?: boolean;
+  latestAsset?: {
+    name: string;
+    value: number;
+    currency: string;
+    createdAt: number;
+  } | null;
   member: {
     id: Id<"users"> | Id<"networkMembers">;
     name: string;
@@ -115,6 +121,12 @@ type OrgTreeNode = {
     pendingCount: number;
     uplineId: Id<"networkMembers"> | null;
     allowAdd?: boolean;
+    latestAsset?: {
+      name: string;
+      value: number;
+      currency: string;
+      createdAt: number;
+    } | null;
   };
   children: OrgTreeNode[];
 };
@@ -168,10 +180,12 @@ function getRank(totalDownlines: number) {
 function buildTree(
   parentLookup: Map<Id<"networkMembers"> | "root", NetworkMember[]>,
   parentId: Id<"networkMembers"> | "root",
+  latestAssetsMap?: Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>
 ): OrgTreeNode[] {
   const children = parentLookup.get(parentId) ?? [];
   return children.map((member) => {
     const totalDownlines = countDescendants(parentLookup, member._id);
+    const latestAsset = latestAssetsMap?.get(member._id) ?? null;
     return {
       id: member._id,
       parentMemberId: member.parentMemberId ?? null,
@@ -182,6 +196,7 @@ function buildTree(
       directChildrenCount: (parentLookup.get(member._id) ?? []).length,
       totalDownlineCount: totalDownlines,
       allowAdd: true,
+      latestAsset,
       member: {
         id: member.userId ?? (member._id as any),
         name: member.name,
@@ -195,8 +210,9 @@ function buildTree(
         pendingCount: 0,
         uplineId: (member.parentMemberId as any),
         allowAdd: true,
+        latestAsset,
       },
-      children: buildTree(parentLookup, member._id),
+      children: buildTree(parentLookup, member._id, latestAssetsMap),
     };
   });
 }
@@ -481,7 +497,11 @@ async function purgeLinkedAccount(ctx: MutationCtx, userId: Id<"users">) {
   return 1;
 }
 
-function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | null) {
+function buildOverview(
+  members: NetworkMember[],
+  directUpline?: NetworkMember | null,
+  latestAssetsMap?: Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>
+) {
   const membersById = new Map<Id<"networkMembers">, NetworkMember>();
   const parentLookup = buildParentLookup(members);
 
@@ -511,6 +531,7 @@ function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | 
   let treeRoots: OrgTreeNode[] = [];
   if (viewer) {
     const totalDownlines = countDescendants(parentLookup, viewer._id);
+    const latestAsset = latestAssetsMap?.get(viewer._id) ?? null;
     const viewerNode: OrgTreeNode = {
       id: viewer._id,
       parentMemberId: viewer.parentMemberId ?? null,
@@ -521,6 +542,7 @@ function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | 
       directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
       totalDownlineCount: totalDownlines,
       allowAdd: true,
+      latestAsset,
       member: {
         id: viewer.userId ?? (viewer._id as any),
         name: viewer.name,
@@ -534,12 +556,14 @@ function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | 
         pendingCount: 0,
         uplineId: (viewer.parentMemberId as any),
         allowAdd: true,
+        latestAsset,
       },
-      children: buildTree(parentLookup, viewer._id),
+      children: buildTree(parentLookup, viewer._id, latestAssetsMap),
     };
 
     if (directUpline) {
       const uplineDownlines = totalDownlines + 1;
+      const uplineAsset = latestAssetsMap?.get(directUpline._id) ?? null;
       treeRoots = [{
         id: directUpline._id,
         parentMemberId: directUpline.parentMemberId ?? null,
@@ -550,6 +574,7 @@ function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | 
         directChildrenCount: 1,
         totalDownlineCount: uplineDownlines,
         allowAdd: false,
+        latestAsset: uplineAsset,
         member: {
           id: directUpline.userId ?? (directUpline._id as any),
           name: directUpline.name,
@@ -563,11 +588,12 @@ function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | 
           pendingCount: 0,
           uplineId: (directUpline.parentMemberId as any),
           allowAdd: false,
+          latestAsset: uplineAsset,
         },
         children: [viewerNode],
       }];
     } else {
-      treeRoots = buildTree(parentLookup, "root");
+      treeRoots = buildTree(parentLookup, "root", latestAssetsMap);
     }
   } else {
     treeRoots = buildTree(parentLookup, "root");
@@ -635,7 +661,29 @@ export const getDashboard = query({
         directUpline = await ctx.db.get(parentTreeMember.parentMemberId);
       }
     }
-    return buildOverview(members, directUpline);
+
+    const allAssets = await ctx.db.query("memberAssets").collect();
+    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
+    const assetsByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">[]>();
+    for (const asset of allAssets) {
+      const list = assetsByMember.get(asset.memberId) ?? [];
+      list.push(asset);
+      assetsByMember.set(asset.memberId, list);
+    }
+    for (const [memberId, list] of assetsByMember.entries()) {
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      const latest = list[0];
+      if (latest) {
+        latestAssetsMap.set(memberId, {
+          name: latest.name,
+          value: latest.value,
+          currency: latest.currency,
+          createdAt: latest.createdAt,
+        });
+      }
+    }
+
+    return buildOverview(members, directUpline, latestAssetsMap);
   },
 });
 
@@ -659,7 +707,29 @@ export const getTree = query({
         directUpline = await ctx.db.get(parentTreeMember.parentMemberId);
       }
     }
-    return buildOverview(members, directUpline).tree;
+
+    const allAssets = await ctx.db.query("memberAssets").collect();
+    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
+    const assetsByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">[]>();
+    for (const asset of allAssets) {
+      const list = assetsByMember.get(asset.memberId) ?? [];
+      list.push(asset);
+      assetsByMember.set(asset.memberId, list);
+    }
+    for (const [memberId, list] of assetsByMember.entries()) {
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      const latest = list[0];
+      if (latest) {
+        latestAssetsMap.set(memberId, {
+          name: latest.name,
+          value: latest.value,
+          currency: latest.currency,
+          createdAt: latest.createdAt,
+        });
+      }
+    }
+
+    return buildOverview(members, directUpline, latestAssetsMap).tree;
   },
 });
 
@@ -963,6 +1033,21 @@ export const getMember = query({
     const totalDownlines = countDescendants(parentLookup, member._id);
     const pendingCount = (parentLookup.get(member._id) ?? []).filter(c => c.status === "pending").length;
 
+    const latestAssetDoc = await ctx.db
+      .query("memberAssets")
+      .withIndex("by_memberId", (q) => q.eq("memberId", args.memberId))
+      .order("desc")
+      .first();
+
+    const latestAsset = latestAssetDoc
+      ? {
+          name: latestAssetDoc.name,
+          value: latestAssetDoc.value,
+          currency: latestAssetDoc.currency,
+          createdAt: latestAssetDoc.createdAt,
+        }
+      : null;
+
     return {
       id: member._id,
       userId: member.userId,
@@ -977,6 +1062,44 @@ export const getMember = query({
       invitedCount: 0, // Placeholder
       directChildrenCount: directChildrenCount,
       pendingCount: pendingCount,
+      latestAsset,
     };
   },
 });
+
+export const addMemberAsset = mutation({
+  args: {
+    memberId: v.id("networkMembers"),
+    name: v.string(),
+    value: v.number(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db.get(args.memberId);
+    if (!member) throw new Error("Member not found");
+
+    const now = Date.now();
+    const assetId = await ctx.db.insert("memberAssets", {
+      memberId: args.memberId,
+      name: args.name,
+      value: args.value,
+      currency: args.currency,
+      createdAt: now,
+    });
+    return assetId;
+  },
+});
+
+export const getMemberAssets = query({
+  args: {
+    memberId: v.id("networkMembers"),
+  },
+  handler: async (ctx, args) => {
+    const assets = await ctx.db
+      .query("memberAssets")
+      .withIndex("by_memberId", (q) => q.eq("memberId", args.memberId))
+      .collect();
+    return assets.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+

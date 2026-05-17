@@ -354,6 +354,11 @@ http.route({
         case "socialFeed:getMyActiveDraft":
           result = await ctx.runQuery(api.socialFeed.getMyActiveDraft, {});
           break;
+        case "network:getMemberAssets":
+          result = await ctx.runQuery(api.network.getMemberAssets, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+          });
+          break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
       }
@@ -820,8 +825,11 @@ http.route({
           break;
         case "socialFeed:publishDraft":
           await ctx.runMutation(api.mobile.bootstrap, {});
-          result = await ctx.runMutation(api.socialFeed.publishDraft, {
-            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+          result = await ctx.runMutation(api.network.addMemberAsset, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            name: typeof body.args?.name === "string" ? body.args.name : "Asset",
+            value: typeof body.args?.value === "number" ? body.args.value : 0,
+            currency: typeof body.args?.currency === "string" ? body.args.currency : "USD",
           });
           break;
         default:

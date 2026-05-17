@@ -51,6 +51,59 @@ export function MemberInspector({
   const updateStatus = useMutation(api.networkMembers.updateMemberStatus);
   const joinMember = useAction(api.networkMembers.joinExistingMember);
 
+  const assetLogs = useQuery(
+    api.network.getMemberAssets,
+    memberId ? { memberId: memberId as Id<"networkMembers"> } : "skip"
+  );
+  const addAsset = useMutation(api.network.addMemberAsset);
+
+  const [assetPage, setAssetPage] = useState(0);
+  const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
+  const [newAssetValue, setNewAssetValue] = useState("");
+  const [newAssetCurrency, setNewAssetCurrency] = useState("USD");
+  const [isAssetSaving, setIsAssetSaving] = useState(false);
+
+  const handleAddAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberId || !newAssetValue.trim()) return;
+    const value = parseFloat(newAssetValue);
+    if (isNaN(value)) {
+      toast.error("Please enter a valid numeric value");
+      return;
+    }
+    setIsAssetSaving(true);
+    try {
+      await addAsset({
+        memberId: memberId as Id<"networkMembers">,
+        name: "Asset",
+        value,
+        currency: newAssetCurrency,
+      });
+      toast.success("Asset log added successfully");
+      setIsAddAssetOpen(false);
+      setNewAssetValue("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add asset");
+    } finally {
+      setIsAssetSaving(false);
+    }
+  };
+
+  const formatRelativeTime = (timestamp: number) => {
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+    if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
+    if (diffWeeks < 4) return `${diffWeeks} ${diffWeeks === 1 ? "week" : "weeks"} ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
@@ -205,6 +258,20 @@ export function MemberInspector({
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {activeTab === "info" ? (
           <>
+            {member.latestAsset && (
+              <div className="p-4 rounded-2xl bg-[hsl(43_96%_48%/0.08)] border border-[hsl(43_96%_48%/0.2)] flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(43_96%_48%)] block mb-1">Latest Asset</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-black text-[hsl(var(--foreground))]">{member.latestAsset.currency} {member.latestAsset.value.toLocaleString()}</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] shrink-0">
+                  {formatRelativeTime(member.latestAsset.createdAt)}
+                </span>
+              </div>
+            )}
+
             <div className="space-y-4">
               <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">Member Status</label>
               <div className="relative">
@@ -254,6 +321,98 @@ export function MemberInspector({
                   <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Pending</p>
                   <p className="text-xl font-black mt-1">{member.pendingCount || 0}</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Asset Logs Section */}
+            <div className="space-y-4 pt-4 border-t border-[hsl(var(--border))]">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))]">Asset History Logs</label>
+                <button
+                  onClick={() => setIsAddAssetOpen(!isAddAssetOpen)}
+                  className="text-xs font-black uppercase tracking-widest text-[hsl(var(--primary))] hover:underline"
+                >
+                  {isAddAssetOpen ? "Cancel" : "Add Asset"}
+                </button>
+              </div>
+
+              {isAddAssetOpen && (
+                <form onSubmit={handleAddAsset} className="p-4 rounded-2xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] space-y-4">
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Value</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 5000"
+                      required
+                      value={newAssetValue}
+                      onChange={(e) => setNewAssetValue(e.target.value)}
+                      className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 text-xs outline-none focus:border-[hsl(var(--primary))]"
+                    />
+                  </div>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Currency</label>
+                      <select
+                        value={newAssetCurrency}
+                        onChange={(e) => setNewAssetCurrency(e.target.value)}
+                        className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 text-xs outline-none cursor-pointer focus:border-[hsl(var(--primary))]"
+                      >
+                        <option value="USD">USD</option>
+                        <option value="PHP">PHP</option>
+                        <option value="EUR">EUR</option>
+                        <option value="BTC">BTC</option>
+                        <option value="USDT">USDT</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isAssetSaving}
+                      className="px-5 py-3 bg-[hsl(var(--primary))] text-black font-black text-xs uppercase tracking-widest rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isAssetSaving ? "Saving..." : "Save Log"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Paginated Asset List */}
+              <div className="space-y-2">
+                {!assetLogs || assetLogs.length === 0 ? (
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] px-1 py-2 italic">No assets recorded yet.</p>
+                ) : (
+                  <>
+                    {assetLogs.slice(assetPage * 5, (assetPage + 1) * 5).map((log) => (
+                      <div key={log._id} className="p-3.5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] flex items-center justify-between text-xs">
+                        <span className="font-bold text-[hsl(var(--foreground))]">{log.currency} {log.value.toLocaleString()}</span>
+                        <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{formatRelativeTime(log.createdAt)}</span>
+                      </div>
+                    ))}
+
+                    {/* Pagination Controls */}
+                    {assetLogs.length > 5 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          disabled={assetPage === 0}
+                          onClick={() => setAssetPage(assetPage - 1)}
+                          className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))] rounded-lg hover:text-[hsl(var(--foreground))] disabled:opacity-30"
+                        >
+                          Prev
+                        </button>
+                        <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))]">
+                          Page {assetPage + 1} of {Math.ceil(assetLogs.length / 5)}
+                        </span>
+                        <button
+                          disabled={(assetPage + 1) * 5 >= assetLogs.length}
+                          onClick={() => setAssetPage(assetPage + 1)}
+                          className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))] rounded-lg hover:text-[hsl(var(--foreground))] disabled:opacity-30"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </>
