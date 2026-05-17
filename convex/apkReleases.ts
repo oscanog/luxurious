@@ -29,12 +29,19 @@ export const listActiveReleases = query({
       .order("desc")
       .collect();
 
-    // Augment with file URLs
+    // Augment with file URLs and strip sensitive admin info (e.g., uploadedBy)
     return await Promise.all(
       releases.map(async (release) => {
         const fileUrl = await ctx.storage.getUrl(release.storageId);
         return {
-          ...release,
+          _id: release._id,
+          _creationTime: release._creationTime,
+          version: release.version,
+          buildNumber: release.buildNumber,
+          releaseNotes: release.releaseNotes,
+          fileSize: release.fileSize,
+          fileName: release.fileName,
+          publishedAt: release.publishedAt,
           fileUrl,
         };
       })
