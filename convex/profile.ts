@@ -177,6 +177,9 @@ export const updateMe = mutation({
     };
 
     await ctx.db.patch("mobileProfiles", profile._id, patch);
+    if (displayName && displayName.length > 0) {
+      await ctx.db.patch(viewer._id, { name: displayName });
+    }
     return await buildProfilePayload(ctx);
   },
 });

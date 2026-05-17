@@ -1,4 +1,4 @@
-import { internalMutation, action, query } from "./_generated/server";
+import { internalMutation, action, query, mutation } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { createAccount } from "@convex-dev/auth/server";
@@ -347,5 +347,23 @@ export const listAllUsers = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("users").collect();
+  },
+});
+
+export const backfillProfileNames = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profiles = await ctx.db.query("mobileProfiles").collect();
+    let count = 0;
+    for (const profile of profiles) {
+      if (profile.userId) {
+        const user = await ctx.db.get(profile.userId);
+        if (user && user.name !== profile.displayName) {
+          await ctx.db.patch(profile.userId, { name: profile.displayName });
+          count++;
+        }
+      }
+    }
+    return { success: true, backfilledCount: count };
   },
 });
