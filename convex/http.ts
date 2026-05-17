@@ -289,6 +289,30 @@ http.route({
               typeof body.args?.limit === "number" ? body.args.limit : undefined,
           });
           break;
+        case "presentations:list":
+          result = await ctx.runQuery(api.presentations.list, {
+            search: readOptionalStringArg(body.args?.search),
+            sortBy:
+              body.args?.sortBy === "updatedAt" || body.args?.sortBy === "title"
+                ? body.args.sortBy
+                : undefined,
+            sortOrder:
+              body.args?.sortOrder === "asc" || body.args?.sortOrder === "desc"
+                ? body.args.sortOrder
+                : undefined,
+            includeArchived: body.args?.includeArchived === true ? true : undefined,
+          });
+          break;
+        case "presentations:get":
+          result = await ctx.runQuery(api.presentations.get, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "presentations:listTemplates":
+          result = await ctx.runQuery(api.presentations.listTemplates, {
+            category: readOptionalStringArg(body.args?.category),
+          });
+          break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
       }
@@ -553,6 +577,65 @@ http.route({
             to: readStringArg(body.args?.to),
             subject: readStringArg(body.args?.subject),
             text: readStringArg(body.args?.text),
+          });
+          break;
+        case "presentations:create":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.create, {
+            title: readStringArg(body.args?.title, "Untitled Presentation"),
+            description: readOptionalStringArg(body.args?.description),
+            templateId:
+              typeof body.args?.templateId === "string"
+                ? (body.args.templateId as any)
+                : undefined,
+            slideWidth:
+              typeof body.args?.slideWidth === "number" ? body.args.slideWidth : undefined,
+            slideHeight:
+              typeof body.args?.slideHeight === "number" ? body.args.slideHeight : undefined,
+          });
+          break;
+        case "presentations:update":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.update, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+            title: readOptionalStringArg(body.args?.title),
+            description: readOptionalStringArg(body.args?.description),
+            tags: Array.isArray(body.args?.tags) ? (body.args!.tags as string[]) : undefined,
+            slides: Array.isArray(body.args?.slides) ? (body.args!.slides as any) : undefined,
+          });
+          break;
+        case "presentations:duplicate":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.duplicate, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "presentations:archive":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.archive, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "presentations:hardDelete":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.hardDelete, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "presentations:generateUploadUrl":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.generateUploadUrl, {});
+          break;
+        case "presentations:saveThumbnail":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.presentations.saveThumbnail, {
+            presentationId:
+              typeof body.args?.presentationId === "string"
+                ? (body.args.presentationId as any)
+                : "",
+            slideId: readOptionalStringArg(body.args?.slideId),
+            storageId:
+              typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
           });
           break;
         default:
