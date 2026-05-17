@@ -98,7 +98,7 @@ export function SocialFeedPage() {
               Composer
             </p>
             <Link to="/social-feed/new" className="mt-2 block text-2xl font-black text-[hsl(var(--primary))]">
-              New Post
+              New Testimonial
             </Link>
             <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">
               Single active draft auto-resumes.
@@ -109,8 +109,8 @@ export function SocialFeedPage() {
 
       {posts.length === 0 ? (
         <DashboardEmptyState
-          title="No posts in feed."
-          description="Change scope, clear hashtag, or make first post."
+          title="No testimonials found."
+          description="Change scope, clear hashtag, or make first testimonial."
           icon={Camera}
         />
       ) : (

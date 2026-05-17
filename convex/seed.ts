@@ -276,10 +276,68 @@ export const clearAllUsers = internalMutation({
   },
 });
 
+export const clearDatabase = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ success: boolean; deletedCount: number }> => {
+    const tables = [
+      "users",
+      "wallets",
+      "trades",
+      "academyLevels",
+      "academyLessons",
+      "academyProgress",
+      "mobileProfiles",
+      "mobileNotificationStates",
+      "mobileDeviceTokens",
+      "socialMediaAssets",
+      "socialPosts",
+      "apkReleases",
+      "budgetPlans",
+      "debtPlans",
+      "events",
+      "financialAccounts",
+      "financialTransactions",
+      "installmentPlans",
+      "presentations",
+      "supportTickets",
+      "schedules",
+      "tradingSignals",
+      "authAccounts",
+      "authSessions",
+      "authRefreshTokens",
+      "authVerificationCodes",
+      "authVerifiers",
+      "authRateLimits",
+      "networkMembers"
+    ] as const;
+
+    let totalDeleted = 0;
+    for (const table of tables) {
+      try {
+        const docs = await ctx.db.query(table as any).collect();
+        for (const doc of docs) {
+          await ctx.db.delete(doc._id);
+          totalDeleted++;
+        }
+      } catch (err) {
+        console.error(`Failed to clear table ${table}:`, err);
+      }
+    }
+    return { success: true, deletedCount: totalDeleted };
+  },
+});
+
+export const wipeAll = action({
+  args: {},
+  handler: async (ctx): Promise<{ success: boolean; deletedCount: number }> => {
+    return await ctx.runMutation(internal.seed.clearDatabase, {});
+  },
+});
+
 export const seedAll = action({
   args: {},
   handler: async (ctx) => {
-    await ctx.runMutation(internal.seed.clearAllUsers, {});
+    await ctx.runMutation(internal.seed.clearDatabase, {});
     await ctx.runAction(api.seed.seedUsersWithPasswords, {});
     await ctx.runMutation(internal.seed.seedDemoHierarchy, {});
   },

@@ -28,15 +28,18 @@ Below is the comprehensive list of all application modules organized by their si
 
 ## c. Support & Tools
 1. Receipt Scanner
-2. Academy
-3. Calendar
-4. Shopping List
-5. Help & Support
-6. Promotions
+2. Promotions
+3. Academy
+4. Calendar
+5. Shopping List
+6. Learn to Trade
 
 ## d. Admin Workspace (Admin Only)
 1. Admin Panel
-2. Presentations (Presentation Studio)
+2. Academy Manager
+3. Trade Monitor
+4. APK Management
+5. Presentations (Presentation Studio)
 
 ## e. Profile
 1. My Profile

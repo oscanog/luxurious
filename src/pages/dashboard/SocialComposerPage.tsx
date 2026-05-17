@@ -299,13 +299,13 @@ export function SocialComposerPage() {
             <Link
               to="/social-feed"
               className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
-              aria-label="Back to social feed"
+              aria-label="Back to testimonials"
             >
               <ArrowLeft size={18} />
             </Link>
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
-                New Post
+                New Testimonial
               </p>
               <h1 className="mt-1 text-3xl font-black tracking-tight text-[hsl(var(--foreground))]">
                 Draft open
@@ -654,7 +654,7 @@ export function SocialComposerPage() {
                     : "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]",
                 )}
               >
-                Publish Post
+                Publish Testimonial
               </button>
             ) : (
               <button

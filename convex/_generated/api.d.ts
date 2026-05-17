@@ -32,6 +32,7 @@ import type * as receipts from "../receipts.js";
 import type * as schedules from "../schedules.js";
 import type * as seed from "../seed.js";
 import type * as seedTemplates from "../seedTemplates.js";
+import type * as seed_academy from "../seed_academy.js";
 import type * as shopping from "../shopping.js";
 import type * as signals from "../signals.js";
 import type * as simulation from "../simulation.js";
@@ -71,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   schedules: typeof schedules;
   seed: typeof seed;
   seedTemplates: typeof seedTemplates;
+  seed_academy: typeof seed_academy;
   shopping: typeof shopping;
   signals: typeof signals;
   simulation: typeof simulation;

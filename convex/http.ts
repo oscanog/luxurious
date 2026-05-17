@@ -278,9 +278,40 @@ http.route({
         case "academy:list":
           result = await ctx.runQuery(api.academy.getLevels, {});
           break;
+        case "academy:getLevels":
+          result = await ctx.runQuery(api.academy.getLevels, {});
+          break;
+        case "academy:getLessons":
+          result = await ctx.runQuery(api.academy.getLessons, {
+            levelId: typeof body.args?.levelId === "string" ? (body.args.levelId as any) : "",
+          });
+          break;
         case "academy:get":
           result = await ctx.runQuery(api.academy.getLesson, {
             slug: typeof body.args?.slug === "string" ? body.args.slug : "",
+          });
+          break;
+        case "admin:isAdmin":
+          result = await ctx.runQuery(api.admin.isAdmin, {});
+          break;
+        case "admin:getPlatformStats":
+          result = await ctx.runQuery(api.admin.getPlatformStats, {});
+          break;
+        case "admin:getUsers":
+          result = await ctx.runQuery(api.admin.getUsers, {});
+          break;
+        case "admin:getAllTrades":
+          result = await ctx.runQuery(api.admin.getAllTrades, {});
+          break;
+        case "apkReleases:listActiveReleases":
+          result = await ctx.runQuery(api.apkReleases.listActiveReleases, {});
+          break;
+        case "apkReleases:getLatestRelease":
+          result = await ctx.runQuery(api.apkReleases.getLatestRelease, {});
+          break;
+        case "apkReleases:checkForUpdate":
+          result = await ctx.runQuery(api.apkReleases.checkForUpdate, {
+            currentBuildNumber: typeof body.args?.currentBuildNumber === "number" ? body.args.currentBuildNumber : 0,
           });
           break;
         case "transactions:listHistory":
@@ -312,6 +343,16 @@ http.route({
           result = await ctx.runQuery(api.presentations.listTemplates, {
             category: readOptionalStringArg(body.args?.category),
           });
+          break;
+        case "socialFeed:getHomeFeed":
+          result = await ctx.runQuery(api.socialFeed.getHomeFeed, {
+            scope: (body.args?.scope === "all" || body.args?.scope === "mine" || body.args?.scope === "saved") ? body.args.scope : "all",
+            hashtag: readOptionalStringArg(body.args?.hashtag),
+            limit: typeof body.args?.limit === "number" ? body.args.limit : 15,
+          });
+          break;
+        case "socialFeed:getMyActiveDraft":
+          result = await ctx.runQuery(api.socialFeed.getMyActiveDraft, {});
           break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
@@ -636,6 +677,134 @@ http.route({
             slideId: readOptionalStringArg(body.args?.slideId),
             storageId:
               typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
+          });
+          break;
+        case "academy:upsertLevel":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.academy.upsertLevel, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : undefined,
+            order: typeof body.args?.order === "number" ? body.args.order : 1,
+            title: readStringArg(body.args?.title),
+            subtitle: readStringArg(body.args?.subtitle),
+            color: readStringArg(body.args?.color),
+            description: readStringArg(body.args?.description),
+          });
+          break;
+        case "academy:deleteLevel":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.academy.deleteLevel, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "academy:upsertLesson":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.academy.upsertLesson, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : undefined,
+            levelId: typeof body.args?.levelId === "string" ? (body.args.levelId as any) : "",
+            order: typeof body.args?.order === "number" ? body.args.order : 1,
+            slug: readStringArg(body.args?.slug),
+            title: readStringArg(body.args?.title),
+            duration: readStringArg(body.args?.duration),
+            content: readStringArg(body.args?.content),
+          });
+          break;
+        case "academy:deleteLesson":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.academy.deleteLesson, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+          });
+          break;
+        case "admin:resetBalance":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.admin.resetBalance, {
+            userId: typeof body.args?.userId === "string" ? (body.args.userId as any) : "",
+            amount: typeof body.args?.amount === "number" ? body.args.amount : 100000.0,
+          });
+          break;
+        case "admin:setAdminStatus":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.admin.setAdminStatus, {
+            userId: typeof body.args?.userId === "string" ? (body.args.userId as any) : "",
+            status: body.args?.status === true || body.args?.isAdmin === true,
+          });
+          break;
+        case "apkReleases:generateUploadUrl":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.apkReleases.generateUploadUrl, {});
+          break;
+        case "apkReleases:publishRelease":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.apkReleases.publishRelease, {
+            version: readStringArg(body.args?.version),
+            buildNumber: typeof body.args?.buildNumber === "number" ? body.args.buildNumber : 1,
+            releaseNotes: readStringArg(body.args?.releaseNotes),
+            storageId: typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
+            fileSize: typeof body.args?.fileSize === "number" ? body.args.fileSize : 0,
+            fileName: readStringArg(body.args?.fileName),
+          });
+          break;
+        case "apkReleases:deleteRelease":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.apkReleases.deleteRelease, {
+            id: typeof body.args?.id === "string" ? (body.args.id as any) : "",
+            hardDelete: body.args?.hardDelete === true || body.args?.hardDelete === undefined,
+          });
+          break;
+        case "socialFeed:toggleLike":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.toggleLike, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+          });
+          break;
+        case "socialFeed:toggleSave":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.toggleSave, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+          });
+          break;
+        case "socialFeed:createDraft":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.createDraft, {});
+          break;
+        case "socialFeed:updateDraft":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.updateDraft, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+            caption: readOptionalStringArg(body.args?.caption),
+            visibility: (body.args?.visibility === "public" || body.args?.visibility === "private") ? body.args.visibility : undefined,
+          });
+          break;
+        case "socialFeed:discardDraft":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.discardDraft, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+          });
+          break;
+        case "socialFeed:generateMediaUploadUrl":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.generateMediaUploadUrl, {});
+          break;
+        case "socialFeed:attachDraftMedia":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.attachDraftMedia, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+            storageId: typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
+            kind: (body.args?.kind === "image" || body.args?.kind === "video") ? body.args.kind : "image",
+            mimeType: typeof body.args?.mimeType === "string" ? body.args.mimeType : "application/octet-stream",
+            fileName: typeof body.args?.fileName === "string" ? body.args.fileName : "upload",
+          });
+          break;
+        case "socialFeed:removeDraftMedia":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.removeDraftMedia, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+            assetId: typeof body.args?.assetId === "string" ? (body.args.assetId as any) : "",
+          });
+          break;
+        case "socialFeed:publishDraft":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.publishDraft, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
           });
           break;
         default:

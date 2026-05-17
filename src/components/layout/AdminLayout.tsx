@@ -33,6 +33,7 @@ import {
   Users,
   Wallet,
   Zap,
+  Lock,
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
@@ -69,7 +70,6 @@ export type NavPath =
   | "/learn-to-trade"
   | "/academy"
   | "/admin"
-  | "/admin/users"
   | "/admin/academy"
   | "/admin/trades"
   | "/admin/apk-management"
@@ -79,8 +79,7 @@ const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
   { path: "/", label: "Home", icon: Home },
   { path: "/org-chart", label: "Org Chart", icon: Network },
   { path: "/members", label: "Members", icon: Users },
-  { path: "/social-feed", label: "Social Feed", icon: Clapperboard },
-  { path: "/activity-feed", label: "Activity Feed", icon: Bell },
+  { path: "/social-feed", label: "Members Testimonal", icon: Clapperboard },
   { path: "/trading-signals", label: "Trading Signals", icon: Zap },
 ];
 
@@ -132,7 +131,6 @@ const SUPPORT_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
 
 const ADMIN_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
   { path: "/admin", label: "Admin Panel", icon: ShieldCheck },
-  { path: "/admin/users", label: "User Manager", icon: Users },
   { path: "/admin/academy", label: "Academy Manager", icon: BookOpen },
   { path: "/admin/trades", label: "Trade Monitor", icon: TrendingUp },
   { path: "/admin/apk-management", label: "APK Management", icon: ShieldCheck },
@@ -144,8 +142,8 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/dashboard": "Dashboard",
   "/org-chart": "Organization Chart",
   "/members": "Members",
-  "/social-feed": "Social Feed",
-  "/social-feed/new": "New Post",
+  "/social-feed": "Members Testimonal",
+  "/social-feed/new": "New Testimonial",
   "/activity-feed": "Activity Feed",
   "/trading-signals": "Trading Signals",
   "/accounts": "Accounts",
@@ -167,7 +165,6 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/learn-to-trade": "Learn to Trade",
   "/academy": "Academy",
   "/admin": "Admin Panel",
-  "/admin/users": "User Manager",
   "/admin/academy": "Academy Manager",
   "/admin/trades": "Trade Monitor",
   "/admin/apk-management": "APK Management",
@@ -352,6 +349,15 @@ export function AdminLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  
+  // OTP Lock state
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpTarget, setOtpTarget] = useState<"finance" | "support" | null>(null);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpError, setOtpError] = useState(false);
+  const [isFinanceUnlocked, setIsFinanceUnlocked] = useState(false);
+  const [isSupportUnlocked, setIsSupportUnlocked] = useState(false);
+
   const mobileStatus = useQuery(api.mobile.status);
   const profile = useQuery(api.profile.getMe);
   const notificationSummary = useQuery(api.notifications.getSummary);
@@ -455,20 +461,53 @@ export function AdminLayout({
                 notificationCount={unreadCount}
                 promotionCount={promotionCount}
               />
-              <SidebarSection
-                title="Finance"
-                financeGroups={FINANCE_GROUPS}
-                collapsed={collapsed}
-                onSelect={() => setMobileMenuOpen(false)}
-              />
-              <SidebarSection
-                title="Support"
-                items={SUPPORT_ITEMS}
-                collapsed={collapsed}
-                onSelect={() => setMobileMenuOpen(false)}
-                notificationCount={unreadCount}
-                promotionCount={promotionCount}
-              />
+              <div className="relative">
+                <SidebarSection
+                  title="Finance"
+                  financeGroups={FINANCE_GROUPS}
+                  collapsed={collapsed}
+                  onSelect={() => setMobileMenuOpen(false)}
+                />
+                {!isFinanceUnlocked && (
+                  <div 
+                    onClick={() => {
+                      setOtpTarget("finance");
+                      setShowOtpModal(true);
+                    }}
+                    className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-[6px] border border-border/40 cursor-pointer transition-all hover:bg-card/40"
+                  >
+                    <div className="flex flex-col items-center gap-1.5 p-3 text-center">
+                      <Lock className="h-5 w-5 text-primary animate-pulse" />
+                      {!collapsed && <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Locked</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <SidebarSection
+                  title="Support"
+                  items={SUPPORT_ITEMS}
+                  collapsed={collapsed}
+                  onSelect={() => setMobileMenuOpen(false)}
+                  notificationCount={unreadCount}
+                  promotionCount={promotionCount}
+                />
+                {!isSupportUnlocked && (
+                  <div 
+                    onClick={() => {
+                      setOtpTarget("support");
+                      setShowOtpModal(true);
+                    }}
+                    className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-[6px] border border-border/40 cursor-pointer transition-all hover:bg-card/40"
+                  >
+                    <div className="flex flex-col items-center gap-1.5 p-3 text-center">
+                      <Lock className="h-5 w-5 text-primary animate-pulse" />
+                      {!collapsed && <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Locked</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
               <SidebarSection
                 title="Profile"
                 items={[{ path: "/profile", label: "My Profile", icon: CircleUserRound }]}
@@ -626,6 +665,77 @@ export function AdminLayout({
         )}
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
+
+      {/* Frosted Glass OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-[32px] border border-[hsl(var(--border))] bg-[hsl(var(--background))]/80 p-6 shadow-2xl backdrop-blur-xl text-center relative">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Lock size={24} className="animate-bounce" />
+            </div>
+            <h3 className="text-lg font-black text-foreground">Unlock Category</h3>
+            <p className="mt-2 text-xs font-medium text-muted-foreground">
+              Enter the 6-digit OTP passcode to grant access.
+            </p>
+            
+            <div className="mt-6 flex justify-center gap-2 relative">
+              {Array.from({ length: 6 }).map((_, i) => {
+                const char = otpInput[i] ?? "";
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex h-12 w-10 items-center justify-center rounded-xl border-2 text-lg font-black transition-all",
+                      char ? "border-primary bg-primary/5 text-foreground" : "border-border bg-card text-muted-foreground",
+                      otpError && "border-red-500 bg-red-500/5 text-red-500"
+                    )}
+                  >
+                    {char}
+                  </div>
+                );
+              })}
+              
+              <input
+                autoFocus
+                type="text"
+                maxLength={6}
+                value={otpInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setOtpInput(val);
+                  setOtpError(false);
+                  if (val.length === 6) {
+                    if (val === "123456") {
+                      if (otpTarget === "finance") setIsFinanceUnlocked(true);
+                      if (otpTarget === "support") setIsSupportUnlocked(true);
+                      setShowOtpModal(false);
+                      setOtpInput("");
+                    } else {
+                      setOtpError(true);
+                      setOtpInput("");
+                      setTimeout(() => setOtpError(false), 500);
+                    }
+                  }
+                }}
+                className="absolute inset-0 h-full w-full opacity-0 cursor-default"
+              />
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowOtpModal(false);
+                  setOtpInput("");
+                  setOtpError(false);
+                }}
+                className="flex-1 rounded-xl py-3 text-xs font-bold text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

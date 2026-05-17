@@ -3,7 +3,7 @@
 After a complete audit of the desktop `AdminLayout.tsx` and the mobile `dashboard_drawer.dart`, the vast majority of the 22+ modules are perfectly synced. Below are the only remaining discrepancies between the two platforms:
 
 ## 1. Missing in Mobile (Present in Desktop)
-*   **Admin Sub-modules:** The desktop application has dedicated management views for `User Manager`, `Academy Manager`, `Trade Monitor`, and `APK Management`. These are currently missing from the mobile Admin workspace.
+*   **Admin Sub-modules:** The desktop application has dedicated management views for `Academy Manager`, `Trade Monitor`, and `APK Management`. These are currently missing from the mobile Admin workspace.
 *   **Support / Tools:** Desktop has a `Learn to Trade` module which is absent in Mobile.
 *   **Social Feed (Placeholder):** Mobile has the button for Parity, but the `SocialFeedPage` does not exist yet (M016).
 
