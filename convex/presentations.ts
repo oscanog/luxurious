@@ -13,13 +13,11 @@ async function requireAdmin(ctx: { auth: { getUserIdentity: () => Promise<unknow
   return userId;
 }
 
-function blankSlideJson(width: number, height: number): string {
+function blankSlideJson(): string {
   return JSON.stringify({
     version: "6.0.0",
     objects: [],
     background: "#ffffff",
-    width,
-    height,
   });
 }
 
@@ -80,6 +78,8 @@ export const list = query({
         title: p.title,
         description: p.description,
         slideCount: p.slides.length,
+        slideWidth: p.slideWidth,
+        slideHeight: p.slideHeight,
         updatedAt: p.updatedAt,
         isArchived: p.isArchived,
         tags: p.tags,
@@ -161,14 +161,16 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAdmin(ctx);
-    const w = args.slideWidth ?? 1920;
-    const h = args.slideHeight ?? 1080;
+    let w = args.slideWidth ?? 1920;
+    let h = args.slideHeight ?? 1080;
 
     let slides: Array<{ id: string; canvasJson: string; order: number }> = [];
 
     if (args.templateId) {
       const tmpl = await ctx.db.get(args.templateId);
       if (tmpl) {
+        w = tmpl.slideWidth;
+        h = tmpl.slideHeight;
         slides = tmpl.slides.map((s, i) => ({
           id: crypto.randomUUID(),
           canvasJson: s.canvasJson,
@@ -178,7 +180,7 @@ export const create = mutation({
     }
 
     if (slides.length === 0) {
-      slides = [{ id: crypto.randomUUID(), canvasJson: blankSlideJson(w, h), order: 0 }];
+      slides = [{ id: crypto.randomUUID(), canvasJson: blankSlideJson(), order: 0 }];
     }
 
     const id = await ctx.db.insert("presentations", {
