@@ -70,7 +70,8 @@ export type NavPath =
   | "/admin"
   | "/admin/users"
   | "/admin/academy"
-  | "/admin/trades";
+  | "/admin/trades"
+  | "/admin/apk-management";
 
 const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
   { path: "/", label: "Home", icon: Home },
@@ -132,6 +133,7 @@ const ADMIN_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType
   { path: "/admin/users", label: "User Manager", icon: Users },
   { path: "/admin/academy", label: "Academy Manager", icon: BookOpen },
   { path: "/admin/trades", label: "Trade Monitor", icon: TrendingUp },
+  { path: "/admin/apk-management", label: "APK Management", icon: ShieldCheck },
 ];
 
 const PATH_LABELS: Record<NavPath, string> = {
@@ -165,6 +167,7 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/admin/users": "User Manager",
   "/admin/academy": "Academy Manager",
   "/admin/trades": "Trade Monitor",
+  "/admin/apk-management": "APK Management",
 };
 
 function SidebarLink({

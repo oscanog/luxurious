@@ -23,16 +23,16 @@ Since we are not deploying to the Google Play Store for this release, we require
 - [x] T07 Create admin-only mutations to upload, edit, and delete/archive APK builds.
 
 ### Phase 3: Admin Management Interface
-- [ ] T08 Build admin upload modal/page with fields for Version, Release Notes (markdown), and the File itself.
-- [ ] T09 Implement admin-side paginated data table for managing existing releases.
-- [ ] T10 Add delete/archive actions with confirmation prompts.
+- [x] T08 Build admin upload modal/page with fields for Version, Release Notes (markdown), and the File itself.
+- [x] T09 Implement admin-side paginated data table for managing existing releases.
+- [x] T10 Add delete/archive actions with confirmation prompts.
 
 ### Phase 4: Public Distribution Page
-- [ ] T11 Build the public-facing `/download` route accessible without authentication.
-- [ ] T12 Implement a searchable, sortable, and filterable paginated list of available APKs.
-- [ ] T13 Add "Download" action that retrieves the file securely from Convex storage.
-- [ ] T14 Render release notes beautifully in the list or a collapsible accordion.
-- [ ] T15 Add icon-only share button to easily copy/share specific APK download link.
+- [x] T11 Build the public-facing `/download` route accessible without authentication.
+- [x] T12 Implement a searchable, sortable, and filterable paginated list of available APKs.
+- [x] T13 Add "Download" action that retrieves the file securely from Convex storage.
+- [x] T14 Render release notes beautifully in the list or a collapsible accordion.
+- [x] T15 Add icon-only share button to easily copy/share specific APK download link.
 
 ### Phase 5: Polish & Testing
 - [ ] T16 Test upload constraints (file size limits, APK mime type).

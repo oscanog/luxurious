@@ -6,6 +6,7 @@ import { api } from "../convex/_generated/api";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminPortalPage } from "@/pages/admin/AdminPortalPage";
+import { ApkManagementPage } from "@/pages/admin/ApkManagementPage";
 import { AcademyManagerPage } from "@/pages/admin/AcademyManagerPage";
 import { TradeMonitorPage } from "@/pages/admin/TradeMonitorPage";
 import { UserManagerPage } from "@/pages/admin/UserManagerPage";
@@ -35,6 +36,7 @@ import { SocialFeedPage } from "@/pages/dashboard/SocialFeedPage";
 import { SocialPostDetailPage } from "@/pages/dashboard/SocialPostDetailPage";
 import { StatisticsPage } from "@/pages/dashboard/StatisticsPage";
 import { TradingSignalsPage } from "@/pages/dashboard/TradingSignalsPage";
+import { ApkDownloadPage } from "@/pages/ApkDownloadPage";
 import {
   ThemeMode,
   applyThemeMode,
@@ -122,6 +124,7 @@ function AuthenticatedApp({
         <Route path="/admin/users" element={<UserManagerPage />} />
         <Route path="/admin/academy" element={<AcademyManagerPage />} />
         <Route path="/admin/trades" element={<TradeMonitorPage />} />
+        <Route path="/admin/apk-management" element={<ApkManagementPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AdminLayout>
@@ -149,6 +152,7 @@ export default function App() {
       <Unauthenticated>
         <Routes>
           <Route path="/" element={<LoginPage themeMode={themeMode} onToggleTheme={toggleTheme} />} />
+          <Route path="/download" element={<ApkDownloadPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Unauthenticated>
