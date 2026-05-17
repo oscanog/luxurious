@@ -52,7 +52,11 @@ export function useFabricCanvas(
       selection: true,
       preserveObjectStacking: true,
       enableRetinaScaling: true,
+      renderOnAddRemove: true,
     });
+    
+    // Enable global object caching for performance
+    fabric.Object.prototype.objectCaching = true;
     fabricRef.current = canvas;
 
     const onChange = () => {

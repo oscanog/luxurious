@@ -25,12 +25,13 @@ function ToolBtn({ icon: Icon, label, onClick, active = false, danger = false }:
     <button
       onClick={onClick}
       title={label}
+      aria-label={label}
       className={`flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-bold transition-colors w-full
         ${active ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]" :
           danger ? "hover:bg-red-500/10 text-[hsl(var(--muted-foreground))] hover:text-red-500" :
           "hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]"}`}
     >
-      <Icon size={18} />
+      <Icon size={18} aria-hidden="true" />
       <span className="hidden lg:block leading-none">{label}</span>
     </button>
   );
