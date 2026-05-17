@@ -35,6 +35,24 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
   const isFull = (member.directChildrenCount ?? 0) >= 6;
   const isMasterNode = isRoot || member.uplineId == null;
   const isClickable = !isRoot && member.totalDownlines > 0;
+  const chipStyles = {
+    joined: {
+      bg: "bg-[hsl(221_83%_53%/0.14)] dark:bg-[#273B7A] text-[hsl(43,96%,48%)] dark:text-[#FFD700]",
+      icon: <Check size={14} className="stroke-[3]" />,
+    },
+    invited: {
+      bg: "bg-[#FFD700] text-[#1A2235]",
+      icon: <Mail size={14} />,
+    },
+    pending: {
+      bg: "bg-[#4B5563]/25 dark:bg-[#4B5563] text-white",
+      icon: <div className="w-2 h-2 rounded-full bg-white shrink-0" />,
+    },
+    "to-invite": {
+      bg: "bg-[#374151]/25 dark:bg-[#374151] text-white",
+      icon: <UserPlus size={14} />,
+    },
+  } as const;
   const statusBorderColor = {
     joined: "#2E7D32",
     invited: "#E65100",
@@ -200,12 +218,9 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
 
         {/* Middle Section: Status & Children Count */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-1.5 bg-[hsl(var(--muted))] dark:bg-[#273B7A] px-3 py-1.5 rounded-full">
-            {member.status === "joined" && <Check size={14} className="text-[hsl(43,96%,48%)] stroke-[3]" />}
-            {member.status === "invited" && <Mail size={14} className="text-[hsl(43,96%,48%)]" />}
-            {member.status === "pending" && <div className="w-2 h-2 rounded-full bg-[hsl(43,96%,48%)] shrink-0" />}
-            {member.status === "to-invite" && <UserPlus size={14} className="text-[hsl(43,96%,48%)]" />}
-            <span className="text-[hsl(43,96%,48%)] text-xs font-bold uppercase tracking-wider">
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${chipStyles[member.status].bg}`}>
+            {chipStyles[member.status].icon}
+            <span className="text-xs font-bold uppercase tracking-wider">
               {member.status}
             </span>
           </div>
