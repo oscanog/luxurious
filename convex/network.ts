@@ -869,6 +869,7 @@ export const getMember = query({
 
     return {
       id: member._id,
+      userId: member.userId,
       name: member.name,
       roleTitle: member.roleTitle,
       status: member.status,

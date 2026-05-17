@@ -48,8 +48,59 @@ export function MemberInspector({
   const resetPassword = useAction(api.networkMembers.resetMemberPassword);
   const updateEmail = useAction(api.networkMembers.updateMemberEmail);
   const deleteMember = useMutation(api.network.deleteMember);
+  const updateStatus = useMutation(api.networkMembers.updateMemberStatus);
+  const joinMember = useAction(api.networkMembers.joinExistingMember);
+
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   if (!memberId || !member) return null;
+
+  const handleStatusChange = async (newStatus: "joined" | "invited" | "pending" | "to-invite") => {
+    if (newStatus === member.status) return;
+
+    if (newStatus === "joined" && !member.userId) {
+      // member has no linked account
+      setIsJoinDialogOpen(true);
+      return;
+    }
+
+    setIsStatusUpdating(true);
+    try {
+      await updateStatus({
+        memberId: memberId as Id<"networkMembers">,
+        status: newStatus,
+      });
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update status");
+    } finally {
+      setIsStatusUpdating(false);
+    }
+  };
+
+  const handleJoinMemberConfirm = async (email: string) => {
+    setIsJoinDialogOpen(false);
+    setIsStatusUpdating(true);
+    try {
+      const result = await joinMember({
+        memberId: memberId as Id<"networkMembers">,
+        email,
+      });
+      if (result.success && result.credentials) {
+        setCredentials({
+          email: result.credentials.username,
+          password: result.credentials.password,
+          name: member.name,
+        });
+        toast.success("Member successfully joined & user account created!");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to join member");
+    } finally {
+      setIsStatusUpdating(false);
+    }
+  };
 
   const directChildrenCount =
     networkStats?.directChildrenCount ?? member.directChildrenCount ?? 0;
@@ -154,6 +205,26 @@ export function MemberInspector({
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {activeTab === "info" ? (
           <>
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">Member Status</label>
+              <div className="relative">
+                <select 
+                  value={member.status} 
+                  disabled={isStatusUpdating}
+                  onChange={(e) => handleStatusChange(e.target.value as any)}
+                  className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-4 pr-10 text-sm font-bold text-[hsl(var(--foreground))] outline-none appearance-none cursor-pointer focus:border-[hsl(var(--primary))] transition-all disabled:opacity-50"
+                >
+                  <option value="joined">Joined</option>
+                  <option value="invited">Invited</option>
+                  <option value="pending">Pending</option>
+                  <option value="to-invite">To-Invite</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[hsl(var(--muted-foreground))]">
+                  <ChevronRight size={16} className="rotate-90" />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">Details</label>
               <InfoItem icon={<Mail size={16} />} label="Email" value={member.email || "No email"} />
@@ -265,6 +336,21 @@ export function MemberInspector({
         email={credentials?.email || ""}
         password={credentials?.password}
         onClose={() => setCredentials(null)}
+      />
+
+      <InputDialog
+        isOpen={isJoinDialogOpen}
+        title="Join Member"
+        label="Enter Email for Credentials"
+        defaultValue={member.email || ""}
+        placeholder="user@example.com"
+        validate={(v) => {
+          if (!v) return "Email is required";
+          if (!/^\S+@\S+\.\S+$/.test(v)) return "Invalid email format";
+          return null;
+        }}
+        onConfirm={handleJoinMemberConfirm}
+        onCancel={() => setIsJoinDialogOpen(false)}
       />
     </div>
   );

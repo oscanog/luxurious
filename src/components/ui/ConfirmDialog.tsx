@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[28px] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-6">
@@ -61,6 +62,7 @@ export function ConfirmDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

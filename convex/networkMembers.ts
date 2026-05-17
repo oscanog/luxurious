@@ -619,3 +619,209 @@ export const patchUserEmailAfterChange = internalMutation({
     }
   },
 });
+
+export const getMemberDetailsForJoin = internalQuery({
+  args: {
+    memberId: v.id("networkMembers"),
+    viewerUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const profile = await getMobileProfileByUserId(ctx, args.viewerUserId);
+    if (!profile) throw new Error("Viewer mobile profile not found");
+
+    const member = await ctx.db.get(args.memberId);
+    if (!member) throw new Error("Member not found");
+    if (member.profileId !== profile._id) throw new Error("Unauthorized access");
+    if (member.userId) throw new Error("Member is already joined");
+
+    return {
+      name: member.name,
+      firstName: member.firstName ?? member.name.split(" ")[0] ?? "",
+      lastName: member.lastName ?? member.name.split(" ")[1] ?? "",
+      birthday: member.birthday,
+      bonchatId: member.bonchatId,
+      bonchatUsername: member.bonchatUsername,
+      yepbitId: member.yepbitId,
+      yepbitUsername: member.yepbitUsername,
+    };
+  },
+});
+
+export const completeMemberJoin = internalMutation({
+  args: {
+    memberId: v.id("networkMembers"),
+    authUserId: v.id("users"),
+    email: v.string(),
+    viewerUserId: v.id("users"),
+    birthday: v.optional(v.string()),
+    bonchatId: v.optional(v.string()),
+    bonchatUsername: v.optional(v.string()),
+    yepbitId: v.optional(v.string()),
+    yepbitUsername: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db.get(args.memberId);
+    if (!member) throw new Error("Member not found");
+
+    const now = Date.now();
+    await ctx.db.patch(args.memberId, {
+      userId: args.authUserId,
+      status: "joined",
+      email: args.email,
+      roleTitle: "Active Member",
+      joinedAt: now,
+      updatedAt: now,
+    });
+
+    const authUser = await ctx.db.get(args.authUserId);
+    if (authUser) {
+      await ctx.db.patch(args.authUserId, {
+        role: "member",
+        uplineId: args.viewerUserId,
+        lastUplineId: authUser.uplineId ?? null,
+      });
+
+      const existingProfile = await getMobileProfileByUserId(ctx, authUser._id);
+      if (!existingProfile) {
+        await ctx.db.insert("mobileProfiles", {
+          userId: authUser._id,
+          viewerKey: `auth_${authUser._id}`,
+          displayName: member.name,
+          preferredCurrencyCode: "USD",
+          birthday: args.birthday,
+          bonchatId: args.bonchatId,
+          bonchatUsername: args.bonchatUsername,
+          yepbitId: args.yepbitId,
+          yepbitUsername: args.yepbitUsername,
+          avatarFilter: "natural",
+          avatarMirror: false,
+          avatarOffsetX: 0,
+          avatarOffsetY: 0,
+          avatarRotationQuarterTurns: 0,
+          avatarScale: 1,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+  },
+});
+
+export const joinExistingMember = action({
+  args: {
+    memberId: v.id("networkMembers"),
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const viewerUserId = await getAuthUserId(ctx);
+    if (!viewerUserId) {
+      throw new Error("Not authenticated");
+    }
+
+    const email = args.email.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      throw new Error("Valid email required to join member.");
+    }
+
+    // Check availability
+    const emailAvailability: { exists: boolean } = await ctx.runQuery(
+      api.networkMembers.checkEmailAvailability,
+      { email },
+    );
+    if (emailAvailability.exists) {
+      throw new Error("Email already used.");
+    }
+
+    // Retrieve the member details first
+    const memberDetails: {
+      name: string;
+      firstName: string;
+      lastName: string;
+      birthday?: string;
+      bonchatId?: string;
+      bonchatUsername?: string;
+      yepbitId?: string;
+      yepbitUsername?: string;
+    } = await ctx.runQuery(internal.networkMembers.getMemberDetailsForJoin, {
+      memberId: args.memberId,
+      viewerUserId,
+    });
+
+    const password = generateTemporaryPassword();
+    const created = await createAccount(ctx, {
+      provider: "password",
+      account: {
+        id: email,
+        secret: password,
+      },
+      profile: {
+        name: memberDetails.name,
+        email,
+        role: "member",
+      },
+      shouldLinkViaEmail: false,
+    });
+
+    const authUserId = created.user._id;
+
+    await ctx.runMutation(internal.networkMembers.completeMemberJoin, {
+      memberId: args.memberId,
+      authUserId,
+      email,
+      viewerUserId,
+      birthday: memberDetails.birthday,
+      bonchatId: memberDetails.bonchatId,
+      bonchatUsername: memberDetails.bonchatUsername,
+      yepbitId: memberDetails.yepbitId,
+      yepbitUsername: memberDetails.yepbitUsername,
+    });
+
+    return {
+      success: true,
+      credentials: {
+        username: email,
+        password,
+      },
+    };
+  },
+});
+
+export const updateMemberStatus = mutation({
+  args: {
+    memberId: v.id("networkMembers"),
+    status: v.union(
+      v.literal("joined"),
+      v.literal("invited"),
+      v.literal("pending"),
+      v.literal("to-invite"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const member = await ctx.db.get(args.memberId);
+    if (!member) throw new Error("Member not found");
+    if (member.profileId !== profile._id) throw new Error("Unauthorized");
+
+    // If status is joined but no userId is set, client must call joinExistingMember action instead!
+    if (args.status === "joined" && !member.userId) {
+      throw new Error("Cannot change status to joined without creating auth credentials. Use joinExistingMember action.");
+    }
+
+    const updates: any = {
+      status: args.status,
+      updatedAt: Date.now(),
+    };
+
+    if (args.status === "joined") {
+      updates.roleTitle = "Active Member";
+      if (!member.joinedAt) {
+        updates.joinedAt = Date.now();
+      }
+    } else {
+      updates.roleTitle = "Prospect";
+    }
+
+    await ctx.db.patch(args.memberId, updates);
+  },
+});
+
