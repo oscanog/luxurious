@@ -225,7 +225,8 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
             </span>
           </div>
           <span className="text-[hsl(var(--muted-foreground))] text-sm font-medium">
-            {member.directChildrenCount || 0} children
+            {member.directChildrenCount || 0}{" "}
+            {member.directChildrenCount === 1 ? "LuxTrader" : "LuxTraders"}
           </span>
         </div>
 
