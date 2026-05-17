@@ -92,7 +92,7 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
   const updateMut = useMutation(api.presentations.update);
 
   const [activeSlide, setActiveSlide] = useState(0);
-  const [zoom, setZoom] = useState(0.5);
+  const [zoom, setZoom] = useState(0.4);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [slides, setSlides] = useState<Array<{ id: string; canvasJson: string; order: number }>>([]);

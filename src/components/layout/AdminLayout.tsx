@@ -368,6 +368,7 @@ export function AdminLayout({
         ? "Author Feed"
         : PATH_LABELS[(location.pathname as NavPath) ?? "/"] ?? PATH_LABELS["/"];
   const unreadCount = notificationSummary?.unreadCount ?? 0;
+  const isPresentationEditor = location.pathname.includes("/admin/presentations/") && location.pathname.endsWith("/edit");
   const promotionCount = notificationSummary?.activePromotionCount ?? 0;
   const initials = (mobileStatus?.user.name ?? "User")
     .split(" ")
@@ -504,8 +505,9 @@ export function AdminLayout({
       </>
 
       <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.94)] backdrop-blur">
-          <div className="flex min-h-[88px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:items-center">
+        {!isPresentationEditor && (
+          <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.94)] backdrop-blur">
+            <div className="flex min-h-[88px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:items-center">
             <div className="flex items-center gap-3 xl:justify-self-start shrink-0">
               <button onClick={() => setMobileMenuOpen(true)} className="rounded-md p-1.5 hover:bg-[hsl(var(--muted))] md:hidden">
                 <Menu size={20} />
@@ -621,6 +623,7 @@ export function AdminLayout({
             </div>
           </div>
         </header>
+        )}
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
     </div>
