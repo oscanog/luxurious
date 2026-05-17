@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "react-hot-toast";
@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import * as fabric from "fabric";
 
 type SortBy = "updatedAt" | "title";
 type SortOrder = "asc" | "desc";
@@ -16,6 +17,40 @@ function formatDate(ts: number) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short", day: "numeric", year: "numeric",
   }).format(new Date(ts));
+}
+
+function CoverThumbnail({ json, className }: { json: string; className?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    // Assuming 16:9 ratio, width is clientWidth
+    const width = el.parentElement!.clientWidth;
+    const height = el.parentElement!.clientHeight;
+    
+    // The slide width is typically 1920x1080. We need to scale.
+    const SLIDE_W = 1920;
+    const scale = width / SLIDE_W;
+    
+    const staticCanvas = new fabric.StaticCanvas(el, {
+      width: width,
+      height: height,
+      backgroundColor: "#ffffff",
+    });
+    staticCanvas.setZoom(scale);
+    
+    try {
+      staticCanvas.loadFromJSON(json, () => {
+        staticCanvas.renderAll();
+      });
+    } catch(e) {}
+    
+    return () => {
+      staticCanvas.dispose();
+    };
+  }, [json]);
+
+  return <canvas ref={ref} className={className} />;
 }
 
 function CreateModal({ onClose }: { onClose: () => void }) {
@@ -116,6 +151,7 @@ function PresentationCard({
     slideCount: number;
     updatedAt: number;
     coverThumbnailUrl: string | null;
+    coverJson?: string;
     tags?: string[];
   };
   viewMode: "grid" | "list";
@@ -128,10 +164,14 @@ function PresentationCard({
   if (viewMode === "list") {
     return (
       <div className="group flex items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-5 py-4 hover:border-[hsl(var(--primary)/0.3)] transition-all">
-        <div className="h-12 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-[hsl(var(--muted)/0.5)] flex items-center justify-center">
-          {item.coverThumbnailUrl
-            ? <img src={item.coverThumbnailUrl} alt="" className="h-full w-full object-cover" />
-            : <Presentation size={16} className="text-[hsl(var(--muted-foreground))]" />}
+        <div className="h-12 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-[hsl(var(--muted)/0.5)] flex items-center justify-center relative">
+          {item.coverJson ? (
+            <CoverThumbnail json={item.coverJson} className="absolute inset-0 w-full h-full object-cover" />
+          ) : item.coverThumbnailUrl ? (
+            <img src={item.coverThumbnailUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Presentation size={16} className="text-[hsl(var(--muted-foreground))]" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-bold text-sm text-[hsl(var(--foreground))] truncate">{item.title}</div>
@@ -152,15 +192,17 @@ function PresentationCard({
   return (
     <div className="group relative rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden hover:border-[hsl(var(--primary)/0.4)] hover:shadow-lg transition-all cursor-pointer">
       {/* Thumbnail */}
-      <div className="aspect-video bg-gradient-to-br from-[hsl(var(--muted)/0.6)] to-[hsl(var(--muted)/0.2)] flex items-center justify-center overflow-hidden" onClick={onEdit}>
-        {item.coverThumbnailUrl
-          ? <img src={item.coverThumbnailUrl} alt="" className="w-full h-full object-cover" />
-          : (
-            <div className="flex flex-col items-center gap-2 text-[hsl(var(--muted-foreground))]">
-              <Presentation size={32} className="opacity-40" />
-              <span className="text-xs opacity-40">{item.slideCount} slides</span>
-            </div>
-          )}
+      <div className="aspect-video bg-gradient-to-br from-[hsl(var(--muted)/0.6)] to-[hsl(var(--muted)/0.2)] flex items-center justify-center overflow-hidden relative" onClick={onEdit}>
+        {item.coverJson ? (
+          <CoverThumbnail json={item.coverJson} className="absolute inset-0 w-full h-full object-cover" />
+        ) : item.coverThumbnailUrl ? (
+          <img src={item.coverThumbnailUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-[hsl(var(--muted-foreground))]">
+            <Presentation size={32} className="opacity-40" />
+            <span className="text-xs opacity-40">{item.slideCount} slides</span>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

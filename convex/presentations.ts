@@ -83,6 +83,7 @@ export const list = query({
         updatedAt: p.updatedAt,
         isArchived: p.isArchived,
         tags: p.tags,
+        coverJson: p.slides[0]?.canvasJson,
         coverThumbnailUrl: p.coverThumbnail
           ? await ctx.storage.getUrl(p.coverThumbnail)
           : null,

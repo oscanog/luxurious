@@ -13,6 +13,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { useFabricCanvas, useCanvasHistory } from "./useFabricCanvas";
 import { exportToPptx, exportToPdf } from "./exportUtils";
 import { parsePptx } from "./pptxImport";
+import * as fabric from "fabric";
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -47,17 +48,27 @@ function SlideThumbnail({ json, width, height, isActive, index, onClick, onDelet
     if (!ref.current) return;
     const el = ref.current;
     const scale = el.parentElement!.clientWidth / width;
-    el.width = width * scale;
-    el.height = height * scale;
-    // Draw placeholder gradient
-    const ctx = el.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = isActive ? "#1e40af22" : "#f1f5f9";
-    ctx.fillRect(0, 0, el.width, el.height);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = `${12 * scale}px Inter`;
-    ctx.textAlign = "center";
-    ctx.fillText(`Slide ${index + 1}`, el.width / 2, el.height / 2);
+    
+    // Create a temporary static canvas to render the JSON
+    const staticCanvas = new fabric.StaticCanvas(el, {
+      width: width * scale,
+      height: height * scale,
+      backgroundColor: isActive ? "#f8fafc" : "#ffffff",
+    });
+
+    staticCanvas.setZoom(scale);
+
+    try {
+      staticCanvas.loadFromJSON(json, () => {
+        staticCanvas.renderAll();
+      });
+    } catch (e) {
+      console.error("Failed to render slide thumbnail", e);
+    }
+
+    return () => {
+      staticCanvas.dispose();
+    };
   }, [json, isActive, width, height, index]);
 
   return (
