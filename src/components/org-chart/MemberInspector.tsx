@@ -11,7 +11,8 @@ import {
   Mail as MailIcon,
   Globe,
   Settings,
-  ChevronRight
+  ChevronRight,
+  Pencil
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -56,12 +57,53 @@ export function MemberInspector({
     memberId ? { memberId: memberId as Id<"networkMembers"> } : "skip"
   );
   const addAsset = useMutation(api.network.addMemberAsset);
+  const deleteAsset = useMutation(api.network.deleteMemberAsset);
+  const updateAsset = useMutation(api.network.updateMemberAsset);
 
   const [assetPage, setAssetPage] = useState(0);
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [newAssetValue, setNewAssetValue] = useState("");
   const [newAssetCurrency, setNewAssetCurrency] = useState("USD");
   const [isAssetSaving, setIsAssetSaving] = useState(false);
+
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [editAssetValue, setEditAssetValue] = useState("");
+  const [editAssetCurrency, setEditAssetCurrency] = useState("USD");
+  const [isEditAssetOpen, setIsEditAssetOpen] = useState(false);
+  const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+
+  const handleDeleteAsset = async () => {
+    if (!deletingAssetId) return;
+    try {
+      await deleteAsset({ assetId: deletingAssetId as Id<"memberAssets"> });
+      toast.success("Asset log deleted successfully");
+      setDeletingAssetId(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete asset log");
+    }
+  };
+
+  const handleEditAssetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAssetId || !editAssetValue.trim()) return;
+    const value = parseFloat(editAssetValue);
+    if (isNaN(value)) {
+      toast.error("Please enter a valid numeric value");
+      return;
+    }
+    try {
+      await updateAsset({
+        assetId: editingAssetId as Id<"memberAssets">,
+        value,
+        currency: editAssetCurrency,
+      });
+      toast.success("Asset log updated successfully");
+      setIsEditAssetOpen(false);
+      setEditingAssetId(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update asset log");
+    }
+  };
 
   const handleAddAsset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -383,9 +425,32 @@ export function MemberInspector({
                 ) : (
                   <>
                     {assetLogs.slice(assetPage * 5, (assetPage + 1) * 5).map((log) => (
-                      <div key={log._id} className="p-3.5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] flex items-center justify-between text-xs">
-                        <span className="font-bold text-[hsl(var(--foreground))]">{log.currency} {log.value.toLocaleString()}</span>
-                        <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{formatRelativeTime(log.createdAt)}</span>
+                      <div key={log._id} className="p-3.5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] flex items-center justify-between text-xs group">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-[hsl(var(--foreground))]">{log.currency} {log.value.toLocaleString()}</span>
+                          <span className="text-[9px] text-[hsl(var(--muted-foreground))] mt-0.5">{formatRelativeTime(log.createdAt)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => {
+                              setEditingAssetId(log._id);
+                              setEditAssetValue(log.value.toString());
+                              setEditAssetCurrency(log.currency);
+                              setIsEditAssetOpen(true);
+                            }}
+                            className="p-1 rounded-lg hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                            title="Edit Log"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            onClick={() => setDeletingAssetId(log._id)}
+                            className="p-1 rounded-lg hover:bg-red-500/10 text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-colors"
+                            title="Delete Log"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
                       </div>
                     ))}
 
@@ -511,6 +576,75 @@ export function MemberInspector({
         onConfirm={handleJoinMemberConfirm}
         onCancel={() => setIsJoinDialogOpen(false)}
       />
+
+      <ConfirmDialog
+        isOpen={!!deletingAssetId}
+        title="Delete Asset Log"
+        description="Are you sure you want to delete this asset log? This cannot be undone."
+        variant="danger"
+        onConfirm={handleDeleteAsset}
+        onCancel={() => setDeletingAssetId(null)}
+      />
+
+      {isEditAssetOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-6">
+              <h3 className="text-base font-black uppercase tracking-wider mb-2">Edit Asset Log</h3>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mb-6 leading-relaxed">
+                Update this logged asset value and currency.
+              </p>
+              
+              <form onSubmit={handleEditAssetSubmit} className="space-y-4">
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Value</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={editAssetValue}
+                    onChange={(e) => setEditAssetValue(e.target.value)}
+                    className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 text-xs outline-none focus:border-[hsl(var(--primary))]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">Currency</label>
+                  <select
+                    value={editAssetCurrency}
+                    onChange={(e) => setEditAssetCurrency(e.target.value)}
+                    className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 text-xs outline-none cursor-pointer focus:border-[hsl(var(--primary))]"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="PHP">PHP</option>
+                    <option value="EUR">EUR</option>
+                    <option value="BTC">BTC</option>
+                    <option value="USDT">USDT</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-4 border-t border-[hsl(var(--border))]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditAssetOpen(false);
+                      setEditingAssetId(null);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] text-xs font-black uppercase tracking-widest hover:bg-[hsl(var(--muted))] active:scale-95 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 rounded-xl bg-[hsl(var(--primary))] text-black text-xs font-black uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

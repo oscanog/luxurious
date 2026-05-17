@@ -1103,3 +1103,30 @@ export const getMemberAssets = query({
   },
 });
 
+export const deleteMemberAsset = mutation({
+  args: {
+    assetId: v.id("memberAssets"),
+  },
+  handler: async (ctx, args) => {
+    const asset = await ctx.db.get(args.assetId);
+    if (!asset) throw new Error("Asset not found");
+    await ctx.db.delete(args.assetId);
+  },
+});
+
+export const updateMemberAsset = mutation({
+  args: {
+    assetId: v.id("memberAssets"),
+    value: v.number(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const asset = await ctx.db.get(args.assetId);
+    if (!asset) throw new Error("Asset not found");
+    await ctx.db.patch(args.assetId, {
+      value: args.value,
+      currency: args.currency,
+    });
+  },
+});
+

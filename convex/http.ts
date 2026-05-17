@@ -825,9 +825,29 @@ http.route({
           break;
         case "socialFeed:publishDraft":
           await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.socialFeed.publishDraft, {
+            postId: typeof body.args?.postId === "string" ? (body.args.postId as any) : "",
+          });
+          break;
+        case "network:addMemberAsset":
+          await ctx.runMutation(api.mobile.bootstrap, {});
           result = await ctx.runMutation(api.network.addMemberAsset, {
             memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
             name: typeof body.args?.name === "string" ? body.args.name : "Asset",
+            value: typeof body.args?.value === "number" ? body.args.value : 0,
+            currency: typeof body.args?.currency === "string" ? body.args.currency : "USD",
+          });
+          break;
+        case "network:deleteMemberAsset":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.deleteMemberAsset, {
+            assetId: typeof body.args?.assetId === "string" ? (body.args.assetId as any) : "",
+          });
+          break;
+        case "network:updateMemberAsset":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.updateMemberAsset, {
+            assetId: typeof body.args?.assetId === "string" ? (body.args.assetId as any) : "",
             value: typeof body.args?.value === "number" ? body.args.value : 0,
             currency: typeof body.args?.currency === "string" ? body.args.currency : "USD",
           });
