@@ -8,7 +8,7 @@ import {
   requireMobileViewer,
 } from "./mobileHelpers";
 
-const MAX_DIRECT_DOWNLINES = 6;
+const MAX_DIRECT_DOWNLINES = 1000000;
 
 async function countDirectChildren(
   ctx: QueryCtx | MutationCtx,

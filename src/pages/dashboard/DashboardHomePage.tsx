@@ -24,7 +24,7 @@ function StatTile({
   onClick,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   accentClassName: string;
   onClick?: () => void;
 }) {
@@ -270,7 +270,7 @@ export function DashboardHomePage() {
           <StatTile
             key={item.key}
             label={item.label}
-            value={dashboard.stats[item.key]}
+            value={item.key === "toInviteCount" ? "∞" : dashboard.stats[item.key]}
             accentClassName={item.accentClassName}
             onClick={() => {
               setInitialNetworkTab(item.tab as any);

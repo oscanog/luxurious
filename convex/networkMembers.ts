@@ -111,11 +111,7 @@ export const createMemberRecord = internalMutation({
       .withIndex("by_profileId_and_parentMemberId", (q) =>
         q.eq("profileId", profile._id).eq("parentMemberId", args.parentId),
       )
-      .take(7);
-
-    if (existingChildren.length >= 6) {
-      throw new Error("Node already has 6 direct downlines.");
-    }
+      .take(1000);
 
     const now = Date.now();
     const name = buildMemberName(args);
@@ -207,11 +203,7 @@ export const validateAddMemberTarget = internalQuery({
       .withIndex("by_profileId_and_parentMemberId", (q) =>
         q.eq("profileId", profile._id).eq("parentMemberId", args.parentId),
       )
-      .take(7);
-
-    if (existingChildren.length >= 6) {
-      throw new Error("Node already has 6 direct downlines.");
-    }
+      .take(1000);
 
     return { profileId: profile._id };
   },
