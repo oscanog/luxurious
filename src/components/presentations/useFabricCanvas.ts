@@ -39,7 +39,7 @@ export function useCanvasHistory(maxSteps = 50) {
 
 export function useFabricCanvas(
   canvasElRef: React.RefObject<HTMLCanvasElement | null>,
-  options: { width: number; height: number; onModified?: (json: string) => void }
+  options: { width: number; height: number; onModified?: (json: string) => void; onSelect?: (obj: any) => void }
 ) {
   const fabricRef = useRef<fabric.Canvas | null>(null);
 
@@ -61,14 +61,26 @@ export function useFabricCanvas(
       }
     };
 
+    const onSelect = () => {
+      if (options.onSelect) {
+        options.onSelect(canvas.getActiveObject());
+      }
+    };
+
     canvas.on("object:modified", onChange);
     canvas.on("object:added", onChange);
     canvas.on("object:removed", onChange);
+    canvas.on("selection:created", onSelect);
+    canvas.on("selection:updated", onSelect);
+    canvas.on("selection:cleared", onSelect);
 
     return () => {
       canvas.off("object:modified", onChange);
       canvas.off("object:added", onChange);
       canvas.off("object:removed", onChange);
+      canvas.off("selection:created", onSelect);
+      canvas.off("selection:updated", onSelect);
+      canvas.off("selection:cleared", onSelect);
       canvas.dispose();
       fabricRef.current = null;
     };
@@ -198,11 +210,42 @@ export function useFabricCanvas(
     return fabricRef.current?.toDataURL({ format: "png", multiplier: 1 }) ?? "";
   }, []);
 
+  const updateActiveObject = useCallback((key: string, value: any) => {
+    if (!fabricRef.current) return;
+    const active = fabricRef.current.getActiveObject();
+    if (active) {
+      active.set(key, value);
+      fabricRef.current.renderAll();
+      // Trigger modified event to save state
+      fabricRef.current.fire("object:modified", { target: active });
+    }
+  }, []);
+
+  const getActiveObjectProps = useCallback(() => {
+    if (!fabricRef.current) return null;
+    const active = fabricRef.current.getActiveObject() as any;
+    if (!active) return null;
+    return {
+      type: active.type,
+      fill: active.fill,
+      stroke: active.stroke,
+      strokeWidth: active.strokeWidth,
+      opacity: active.opacity,
+      fontFamily: active.fontFamily,
+      fontSize: active.fontSize,
+      fontWeight: active.fontWeight,
+      fontStyle: active.fontStyle,
+      textAlign: active.textAlign,
+      underline: active.underline,
+    };
+  }, []);
+
   return {
     fabricRef,
     loadJson, getJson,
     addRect, addCircle, addTriangle, addText, addLine, addImageUrl,
     deleteSelected, bringForward, sendBackward, duplicateSelected,
     setBackground, zoomTo, fitToContainer, toDataUrl,
+    updateActiveObject, getActiveObjectProps,
   };
 }

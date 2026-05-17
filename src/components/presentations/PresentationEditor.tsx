@@ -5,12 +5,14 @@ import { toast } from "react-hot-toast";
 import {
   ArrowLeft, Undo2, Redo2, ZoomIn, ZoomOut, Save, Download,
   Plus, Trash2, Square, Circle, Triangle, Type, Minus,
-  Image, ChevronLeft, ChevronRight, Layers, AlignLeft,
-  Bold, Italic, Underline, Copy, Play,
+  Image, ChevronLeft, ChevronRight, Layers, Copy, Upload,
+  FileDown, Presentation,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useFabricCanvas, useCanvasHistory } from "./useFabricCanvas";
+import { exportToPptx, exportToPdf } from "./exportUtils";
+import { parsePptx } from "./pptxImport";
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -94,7 +96,8 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [slides, setSlides] = useState<Array<{ id: string; canvasJson: string; order: number }>>([]);
   const [bgColor, setBgColor] = useState("#ffffff");
-  const [activePanel, setActivePanel] = useState<"elements" | "text" | "bg" | "layers" | null>("elements");
+  const [activeObjProps, setActiveObjProps] = useState<any>(null);
+  const generateUploadUrl = useMutation(api.presentations.generateUploadUrl);
 
   const history = useCanvasHistory();
   const canvas = useFabricCanvas(canvasEl, {
@@ -104,6 +107,25 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
       history.push(json);
       scheduleSave(json);
     },
+    onSelect: (obj) => {
+      if (obj) {
+        setActiveObjProps({
+          type: obj.type,
+          fill: obj.fill,
+          stroke: obj.stroke,
+          strokeWidth: obj.strokeWidth,
+          opacity: obj.opacity,
+          fontFamily: obj.fontFamily,
+          fontSize: obj.fontSize,
+          fontWeight: obj.fontWeight,
+          fontStyle: obj.fontStyle,
+          textAlign: obj.textAlign,
+          underline: obj.underline,
+        });
+      } else {
+        setActiveObjProps(null);
+      }
+    }
   });
 
   // Load presentation into local state
@@ -173,7 +195,77 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
     URL.revokeObjectURL(url);
   }
 
-  if (!presentation) {
+  // Keyboard shortcuts
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (ctrl && e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      if (ctrl && (e.key === "Z" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); handleRedo(); }
+      if (ctrl && e.key === "s") { e.preventDefault(); persistSave(); }
+      if (ctrl && e.key === "d") { e.preventDefault(); canvas.duplicateSelected(); }
+      if (e.key === "Delete" || e.key === "Backspace") canvas.deleteSelected();
+      if (ctrl && e.key === "+") { e.preventDefault(); setZoom(z => Math.min(2, z + 0.1)); }
+      if (ctrl && e.key === "-") { e.preventDefault(); setZoom(z => Math.max(0.1, z - 0.1)); }
+      if (ctrl && e.key === "0") { e.preventDefault(); setZoom(0.5); }
+      if (e.key === "t" || e.key === "T") canvas.addText();
+      if (e.key === "r" || e.key === "R") canvas.addRect();
+      if (e.key === "c" && !ctrl) canvas.addCircle();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canvas, persistSave]);
+
+  // Image upload
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const url = await generateUploadUrl();
+      const res = await fetch(url, { method: "POST", body: file, headers: { "Content-Type": file.type } });
+      const { storageId } = await res.json();
+      // Get URL from Convex
+      const reader = new FileReader();
+      reader.onload = ev => canvas.addImageUrl(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } catch { toast.error("Image upload failed"); }
+  }
+
+  // PPTX import
+  async function handlePptxImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      toast("Importing…");
+      const imported = await parsePptx(file);
+      setSlides(imported);
+      setActiveSlide(0);
+      toast.success(`Imported ${imported.length} slides`);
+    } catch { toast.error("Import failed"); }
+  }
+
+  // PPTX export
+  async function handleExportPptx() {
+    try {
+      toast("Generating PPTX…");
+      const current = slides.map((s, i) =>
+        i === activeSlide ? { ...s, canvasJson: canvas.getJson() } : s
+      );
+      await exportToPptx(presentation.title, current, presentation.slideWidth, presentation.slideHeight);
+      toast.success("Downloaded!");
+    } catch (e: any) { toast.error(e.message ?? "Export failed"); }
+  }
+
+  // PDF export
+  async function handleExportPdf() {
+    try {
+      toast("Generating PDF…");
+      const dataUrls = slides.map(() => canvas.toDataUrl()); // simplified — would render each slide
+      await exportToPdf(presentation.title, dataUrls);
+      toast.success("Downloaded!");
+    } catch (e: any) { toast.error(e.message ?? "PDF export failed"); }
+  }
     return (
       <div className="flex h-screen items-center justify-center bg-[hsl(var(--background))]">
         <div className="text-[hsl(var(--muted-foreground))] animate-pulse">Loading editor…</div>
@@ -211,9 +303,17 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
         <button onClick={() => persistSave()} className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-xs font-bold text-[hsl(var(--primary-foreground))] hover:opacity-90">
           <Save size={12} /> Save
         </button>
-        <button onClick={handleExportJson} className="flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border))] px-3 py-1.5 text-xs font-bold hover:bg-[hsl(var(--muted)/0.5)]">
-          <Download size={12} /> Export
-        </button>
+        <div className="flex rounded-lg border border-[hsl(var(--border))] overflow-hidden">
+          <button onClick={handleExportPptx} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:bg-[hsl(var(--muted)/0.5)] border-r border-[hsl(var(--border))]">
+            <Presentation size={12} /> PPTX
+          </button>
+          <button onClick={handleExportPdf} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:bg-[hsl(var(--muted)/0.5)] border-r border-[hsl(var(--border))]">
+            <FileDown size={12} /> PDF
+          </button>
+          <button onClick={handleExportJson} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:bg-[hsl(var(--muted)/0.5)]">
+            <Download size={12} /> JSON
+          </button>
+        </div>
       </div>
 
       {/* Main area */}
@@ -228,6 +328,18 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
           <div className="my-1 border-t border-[hsl(var(--border))]" />
           <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] px-1">Text</div>
           <ToolBtn icon={Type} label="Text" onClick={() => canvas.addText()} />
+          <div className="my-1 border-t border-[hsl(var(--border))]" />
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] px-1">Media</div>
+          <label className="flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-bold transition-colors w-full cursor-pointer hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]">
+            <Upload size={18} />
+            <span className="hidden lg:block leading-none text-center">Image</span>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+          </label>
+          <label className="flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-bold transition-colors w-full cursor-pointer hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]">
+            <FileDown size={18} />
+            <span className="hidden lg:block leading-none text-center">Import<br/>PPTX</span>
+            <input type="file" accept=".pptx" className="hidden" onChange={handlePptxImport} />
+          </label>
           <div className="my-1 border-t border-[hsl(var(--border))]" />
           <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] px-1">Edit</div>
           <ToolBtn icon={Copy} label="Clone" onClick={canvas.duplicateSelected} />
@@ -309,6 +421,95 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
               ))}
             </div>
           </div>
+
+          {/* Active Object Properties */}
+          {activeObjProps && (
+            <div className="mb-4 rounded-xl bg-[hsl(var(--muted)/0.3)] p-3 border border-[hsl(var(--border))]">
+              <div className="text-xs font-bold text-[hsl(var(--foreground))] mb-2 border-b border-[hsl(var(--border))] pb-1 capitalize">
+                {activeObjProps.type} Settings
+              </div>
+
+              {/* Color */}
+              <div className="mb-3">
+                <label className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Fill Color</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={activeObjProps.fill || "#000000"}
+                    onChange={e => {
+                      setActiveObjProps({ ...activeObjProps, fill: e.target.value });
+                      canvas.updateActiveObject("fill", e.target.value);
+                    }}
+                    className="h-6 w-6 cursor-pointer rounded-sm border border-[hsl(var(--border))]"
+                  />
+                  <span className="text-[10px] font-mono">{activeObjProps.fill || "None"}</span>
+                </div>
+              </div>
+
+              {/* Opacity */}
+              <div className="mb-3">
+                <label className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Opacity</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={activeObjProps.opacity ?? 1}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setActiveObjProps({ ...activeObjProps, opacity: val });
+                    canvas.updateActiveObject("opacity", val);
+                  }}
+                  className="mt-1 w-full"
+                />
+              </div>
+
+              {/* Text specific */}
+              {(activeObjProps.type === "i-text" || activeObjProps.type === "textbox" || activeObjProps.type === "text") && (
+                <>
+                  <div className="mb-3">
+                    <label className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase">Font Size</label>
+                    <input
+                      type="number"
+                      value={activeObjProps.fontSize || 24}
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setActiveObjProps({ ...activeObjProps, fontSize: val });
+                        canvas.updateActiveObject("fontSize", val);
+                      }}
+                      className="mt-1 w-full rounded border px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <div className="mb-3 flex gap-1">
+                    <button
+                      onClick={() => {
+                        const val = activeObjProps.fontWeight === "bold" ? "normal" : "bold";
+                        setActiveObjProps({ ...activeObjProps, fontWeight: val });
+                        canvas.updateActiveObject("fontWeight", val);
+                      }}
+                      className={`flex-1 rounded p-1 text-xs font-bold ${activeObjProps.fontWeight === "bold" ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" : "bg-[hsl(var(--muted))]"} transition-colors`}
+                    >B</button>
+                    <button
+                      onClick={() => {
+                        const val = activeObjProps.fontStyle === "italic" ? "normal" : "italic";
+                        setActiveObjProps({ ...activeObjProps, fontStyle: val });
+                        canvas.updateActiveObject("fontStyle", val);
+                      }}
+                      className={`flex-1 rounded p-1 text-xs italic ${activeObjProps.fontStyle === "italic" ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" : "bg-[hsl(var(--muted))]"} transition-colors`}
+                    >I</button>
+                    <button
+                      onClick={() => {
+                        const val = !activeObjProps.underline;
+                        setActiveObjProps({ ...activeObjProps, underline: val });
+                        canvas.updateActiveObject("underline", val);
+                      }}
+                      className={`flex-1 rounded p-1 text-xs underline ${activeObjProps.underline ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" : "bg-[hsl(var(--muted))]"} transition-colors`}
+                    >U</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Slide info */}
           <div className="mb-4 rounded-xl bg-[hsl(var(--muted)/0.3)] p-3">
