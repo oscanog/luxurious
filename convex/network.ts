@@ -544,6 +544,8 @@ function buildOverview(members: NetworkMember[]) {
       bonchatUsername: member.bonchatUsername,
       yepbitId: member.yepbitId,
       yepbitUsername: member.yepbitUsername,
+      userId: member.userId,
+      email: member.email,
     })),
     tree: treeRoots,
   };
