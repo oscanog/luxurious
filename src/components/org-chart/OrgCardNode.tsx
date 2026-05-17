@@ -1,6 +1,6 @@
 import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { Users, User, Trash2, Link2, Plus, Minus, CheckCircle, Network } from "lucide-react";
+import { Users, User, Trash2, Link2, Plus, Minus, Check, Mail, UserPlus, Network } from "lucide-react";
 import { type DummyMember } from "@/data/dummyMembers";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -201,7 +201,10 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
         {/* Middle Section: Status & Children Count */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1.5 bg-[hsl(var(--muted))] dark:bg-[#273B7A] px-3 py-1.5 rounded-full">
-            <CheckCircle size={14} className="text-[hsl(43,96%,48%)]" />
+            {member.status === "joined" && <Check size={14} className="text-[hsl(43,96%,48%)] stroke-[3]" />}
+            {member.status === "invited" && <Mail size={14} className="text-[hsl(43,96%,48%)]" />}
+            {member.status === "pending" && <div className="w-2 h-2 rounded-full bg-[hsl(43,96%,48%)] shrink-0" />}
+            {member.status === "to-invite" && <UserPlus size={14} className="text-[hsl(43,96%,48%)]" />}
             <span className="text-[hsl(43,96%,48%)] text-xs font-bold uppercase tracking-wider">
               {member.status}
             </span>
