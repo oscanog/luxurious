@@ -44,10 +44,12 @@ export function useFabricCanvas(
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const [isReady, setIsReady] = useState(false);
   const isDisposedRef = useRef(false);
+  const isHydratingRef = useRef(false);
 
   useEffect(() => {
-    if (!canvasElRef.current) return;
-    const canvas = new fabric.Canvas(canvasElRef.current, {
+    const element = canvasElRef.current;
+    if (!element || fabricRef.current) return;
+    const canvas = new fabric.Canvas(element, {
       width: options.width,
       height: options.height,
       backgroundColor: "#ffffff",
@@ -64,6 +66,7 @@ export function useFabricCanvas(
     setIsReady(true);
 
     const onChange = () => {
+      if (isHydratingRef.current) return;
       if (options.onModified) {
         options.onModified(JSON.stringify(canvas.toJSON()));
       }
@@ -90,23 +93,27 @@ export function useFabricCanvas(
       canvas.off("selection:updated", onSelect);
       canvas.off("selection:cleared", onSelect);
       isDisposedRef.current = true;
+      isHydratingRef.current = false;
       setIsReady(false);
       canvas.dispose();
       fabricRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasElRef.current]);
+  }, [canvasElRef, options.height, options.width]);
 
   const loadJson = useCallback(async (json: string) => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
     try {
+      isHydratingRef.current = true;
       await canvas.loadFromJSON(JSON.parse(json));
       if (!isDisposedRef.current) {
         canvas.renderAll();
       }
     } catch (e) {
       console.error("useFabricCanvas loadJson error", e);
+    } finally {
+      isHydratingRef.current = false;
     }
   }, []);
 

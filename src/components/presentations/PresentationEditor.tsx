@@ -118,6 +118,10 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
   const [bgColor, setBgColor] = useState("#ffffff");
   const [activeObjProps, setActiveObjProps] = useState<any>(null);
   const generateUploadUrl = useMutation(api.presentations.generateUploadUrl);
+  const activeSlideId = slides[activeSlide]?.id;
+  const activeSlideJson = slides[activeSlide]?.canvasJson;
+  const activeSlideJsonRef = useRef<string | undefined>(undefined);
+  activeSlideJsonRef.current = activeSlideJson;
 
   const history = useCanvasHistory();
   const canvas = useFabricCanvas(canvasEl, {
@@ -147,6 +151,9 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
       }
     }
   });
+  const pushHistory = history.push;
+  const loadCanvasJson = canvas.loadJson;
+  const canvasReady = canvas.isReady;
 
   // Load presentation into local state
   useEffect(() => {
@@ -157,15 +164,16 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
 
   // Load active slide into canvas
   useEffect(() => {
-    const slide = slides[activeSlide];
-    if (slide && canvas.isReady && canvas.fabricRef.current) {
-      canvas.loadJson(slide.canvasJson);
-      history.push(slide.canvasJson);
+    const json = activeSlideJsonRef.current;
+    if (json && canvasReady && canvas.fabricRef.current) {
+      void loadCanvasJson(json);
+      pushHistory(json);
     }
-  }, [activeSlide, slides, canvas.isReady]);
+  }, [activeSlideId, canvasReady, canvas.fabricRef, loadCanvasJson, pushHistory]);
 
   function scheduleSave(json: string) {
     clearTimeout(saveTimer.current);
+    if (activeSlideJson === json) return;
     // Update local slides state
     setSlides(prev => prev.map((s, i) => i === activeSlide ? { ...s, canvasJson: json } : s));
     saveTimer.current = setTimeout(() => persistSave(), DEBOUNCE_MS);
