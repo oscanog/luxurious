@@ -422,6 +422,39 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
             </div>
           </div>
 
+          {/* Brand Kit */}
+          <div className="mb-4">
+            <label className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Brand Kit</label>
+            <div className="mt-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2">
+              <div className="flex gap-1 mb-2">
+                {["#0f172a", "#D4AF37", "#334155", "#ffffff"].map(c => (
+                  <button
+                    key={c}
+                    title={c}
+                    onClick={() => { setBgColor(c); canvas.setBackground(c); }}
+                    className="h-6 w-6 rounded-sm border border-[hsl(var(--border))]"
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  const objs = canvas.fabricRef.current?.getObjects() || [];
+                  objs.forEach(obj => {
+                    if (obj.type === "i-text" || obj.type === "textbox" || obj.type === "text") {
+                      obj.set("fontFamily", "Inter");
+                    }
+                  });
+                  canvas.fabricRef.current?.renderAll();
+                  toast.success("Brand fonts applied");
+                }}
+                className="w-full rounded text-[10px] font-bold bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] py-1.5 hover:bg-[hsl(var(--primary)/0.2)] transition-colors"
+              >
+                Apply Brand Fonts
+              </button>
+            </div>
+          </div>
+
           {/* Active Object Properties */}
           {activeObjProps && (
             <div className="mb-4 rounded-xl bg-[hsl(var(--muted)/0.3)] p-3 border border-[hsl(var(--border))]">
