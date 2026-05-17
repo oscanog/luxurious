@@ -4,7 +4,6 @@ import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   getMobileProfileForViewerOrThrow,
-  listNetworkMembersForProfile,
   listUnifiedNetworkMembers,
   requireMobileViewer,
 } from "./mobileHelpers";
@@ -511,69 +510,64 @@ function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | 
 
   let treeRoots: OrgTreeNode[] = [];
   if (viewer) {
-    const isMasterUpline = viewer.parentMemberId === null || viewer.parentMemberId === undefined;
-    if (isMasterUpline) {
-      treeRoots = buildTree(parentLookup, "root");
-    } else {
-      const totalDownlines = countDescendants(parentLookup, viewer._id);
-      const viewerNode: OrgTreeNode = {
-        id: viewer._id,
-        parentMemberId: viewer.parentMemberId ?? null,
+    const totalDownlines = countDescendants(parentLookup, viewer._id);
+    const viewerNode: OrgTreeNode = {
+      id: viewer._id,
+      parentMemberId: viewer.parentMemberId ?? null,
+      name: viewer.name,
+      roleTitle: viewer.roleTitle,
+      status: viewer.status,
+      isViewer: viewer.isViewer,
+      directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
+      totalDownlineCount: totalDownlines,
+      allowAdd: true,
+      member: {
+        id: viewer.userId ?? (viewer._id as any),
         name: viewer.name,
+        email: viewer.email ?? "",
         roleTitle: viewer.roleTitle,
+        rank: getRank(totalDownlines),
         status: viewer.status,
-        isViewer: viewer.isViewer,
-        directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
-        totalDownlineCount: totalDownlines,
+        avatarInitials: viewer.name.substring(0, 2).toUpperCase(),
+        totalDownlines: totalDownlines,
+        invitedCount: 0,
+        pendingCount: 0,
+        uplineId: (viewer.parentMemberId as any),
         allowAdd: true,
+      },
+      children: buildTree(parentLookup, viewer._id),
+    };
+
+    if (directUpline) {
+      const uplineDownlines = totalDownlines + 1;
+      treeRoots = [{
+        id: directUpline._id,
+        parentMemberId: directUpline.parentMemberId ?? null,
+        name: directUpline.name,
+        roleTitle: directUpline.roleTitle,
+        status: directUpline.status,
+        isViewer: false,
+        directChildrenCount: 1,
+        totalDownlineCount: uplineDownlines,
+        allowAdd: false,
         member: {
-          id: viewer.userId ?? (viewer._id as any),
-          name: viewer.name,
-          email: viewer.email ?? "",
-          roleTitle: viewer.roleTitle,
-          rank: getRank(totalDownlines),
-          status: viewer.status,
-          avatarInitials: viewer.name.substring(0, 2).toUpperCase(),
-          totalDownlines: totalDownlines,
+          id: directUpline.userId ?? (directUpline._id as any),
+          name: directUpline.name,
+          email: directUpline.email ?? "",
+          roleTitle: directUpline.roleTitle,
+          rank: getRank(uplineDownlines),
+          status: directUpline.status,
+          avatarInitials: directUpline.name.substring(0, 2).toUpperCase(),
+          totalDownlines: uplineDownlines,
           invitedCount: 0,
           pendingCount: 0,
-          uplineId: (viewer.parentMemberId as any),
-          allowAdd: true,
-        },
-        children: buildTree(parentLookup, viewer._id),
-      };
-
-      if (directUpline) {
-        const uplineDownlines = totalDownlines + 1;
-        treeRoots = [{
-          id: directUpline._id,
-          parentMemberId: directUpline.parentMemberId ?? null,
-          name: directUpline.name,
-          roleTitle: directUpline.roleTitle,
-          status: directUpline.status,
-          isViewer: false,
-          directChildrenCount: 1,
-          totalDownlineCount: uplineDownlines,
+          uplineId: (directUpline.parentMemberId as any),
           allowAdd: false,
-          member: {
-            id: directUpline.userId ?? (directUpline._id as any),
-            name: directUpline.name,
-            email: directUpline.email ?? "",
-            roleTitle: directUpline.roleTitle,
-            rank: getRank(uplineDownlines),
-            status: directUpline.status,
-            avatarInitials: directUpline.name.substring(0, 2).toUpperCase(),
-            totalDownlines: uplineDownlines,
-            invitedCount: 0,
-            pendingCount: 0,
-            uplineId: (directUpline.parentMemberId as any),
-            allowAdd: false,
-          },
-          children: [viewerNode],
-        }];
-      } else {
-        treeRoots = [viewerNode];
-      }
+        },
+        children: [viewerNode],
+      }];
+    } else {
+      treeRoots = buildTree(parentLookup, "root");
     }
   } else {
     treeRoots = buildTree(parentLookup, "root");
@@ -626,14 +620,13 @@ export const getDashboard = query({
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
-    const viewer = members.find((m) => m.isViewer);
     let directUpline: Doc<"networkMembers"> | null = null;
-    if (viewer && viewer.userId) {
+    if (profile.userId) {
       const parentTreeMember = await ctx.db
         .query("networkMembers")
         .filter((q) =>
           q.and(
-            q.eq(q.field("userId"), viewer.userId),
+            q.eq(q.field("userId"), profile.userId),
             q.eq(q.field("isViewer"), false)
           )
         )
@@ -651,14 +644,13 @@ export const getTree = query({
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
-    const viewer = members.find((m) => m.isViewer);
     let directUpline: Doc<"networkMembers"> | null = null;
-    if (viewer && viewer.userId) {
+    if (profile.userId) {
       const parentTreeMember = await ctx.db
         .query("networkMembers")
         .filter((q) =>
           q.and(
-            q.eq(q.field("userId"), viewer.userId),
+            q.eq(q.field("userId"), profile.userId),
             q.eq(q.field("isViewer"), false)
           )
         )
