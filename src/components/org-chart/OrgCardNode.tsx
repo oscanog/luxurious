@@ -18,6 +18,7 @@ export type OrgCardData = {
     lastUplineId?: Id<"networkMembers"> | null;
     directChildrenCount?: number;
     status: "joined" | "invited" | "pending" | "to-invite";
+    allowAdd?: boolean;
   };
   isRoot?: boolean;
   branchColor?: string;
@@ -238,22 +239,24 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
       </div>
 
       {/* Add Button (Floating) */}
-      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            (window as any).triggerAddMember?.(member.id);
-          }}
-          disabled={isFull}
-          className={`flex w-10 h-10 items-center justify-center rounded-full shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-transform ${
-            isFull 
-              ? "bg-gray-600 cursor-not-allowed opacity-50 shadow-none"
-              : "bg-[#FFD700] hover:scale-110 active:scale-95 cursor-pointer"
-          }`}
-        >
-          <Plus size={20} className="text-black" strokeWidth={3} />
-        </button>
-      </div>
+      {member.allowAdd !== false && (
+        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              (window as any).triggerAddMember?.(member.id);
+            }}
+            disabled={isFull}
+            className={`flex w-10 h-10 items-center justify-center rounded-full shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-transform ${
+              isFull 
+                ? "bg-gray-600 cursor-not-allowed opacity-50 shadow-none"
+                : "bg-[#FFD700] hover:scale-110 active:scale-95 cursor-pointer"
+            }`}
+          >
+            <Plus size={20} className="text-black" strokeWidth={3} />
+          </button>
+        </div>
+      )}
     </div>
     {ContextMenuComponent}
     

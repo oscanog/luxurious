@@ -102,6 +102,7 @@ type OrgTreeNode = {
   isViewer: boolean;
   directChildrenCount: number;
   totalDownlineCount: number;
+  allowAdd?: boolean;
   member: {
     id: Id<"users"> | Id<"networkMembers">;
     name: string;
@@ -114,6 +115,7 @@ type OrgTreeNode = {
     invitedCount: number;
     pendingCount: number;
     uplineId: Id<"networkMembers"> | null;
+    allowAdd?: boolean;
   };
   children: OrgTreeNode[];
 };
@@ -180,6 +182,7 @@ function buildTree(
       isViewer: member.isViewer,
       directChildrenCount: (parentLookup.get(member._id) ?? []).length,
       totalDownlineCount: totalDownlines,
+      allowAdd: true,
       member: {
         id: member.userId ?? (member._id as any),
         name: member.name,
@@ -192,6 +195,7 @@ function buildTree(
         invitedCount: 0,
         pendingCount: 0,
         uplineId: (member.parentMemberId as any),
+        allowAdd: true,
       },
       children: buildTree(parentLookup, member._id),
     };
@@ -478,7 +482,7 @@ async function purgeLinkedAccount(ctx: MutationCtx, userId: Id<"users">) {
   return 1;
 }
 
-function buildOverview(members: NetworkMember[]) {
+function buildOverview(members: NetworkMember[], directUpline?: NetworkMember | null) {
   const membersById = new Map<Id<"networkMembers">, NetworkMember>();
   const parentLookup = buildParentLookup(members);
 
@@ -512,7 +516,7 @@ function buildOverview(members: NetworkMember[]) {
       treeRoots = buildTree(parentLookup, "root");
     } else {
       const totalDownlines = countDescendants(parentLookup, viewer._id);
-      treeRoots = [{
+      const viewerNode: OrgTreeNode = {
         id: viewer._id,
         parentMemberId: viewer.parentMemberId ?? null,
         name: viewer.name,
@@ -521,6 +525,7 @@ function buildOverview(members: NetworkMember[]) {
         isViewer: viewer.isViewer,
         directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
         totalDownlineCount: totalDownlines,
+        allowAdd: true,
         member: {
           id: viewer.userId ?? (viewer._id as any),
           name: viewer.name,
@@ -533,9 +538,42 @@ function buildOverview(members: NetworkMember[]) {
           invitedCount: 0,
           pendingCount: 0,
           uplineId: (viewer.parentMemberId as any),
+          allowAdd: true,
         },
         children: buildTree(parentLookup, viewer._id),
-      }];
+      };
+
+      if (directUpline) {
+        const uplineDownlines = totalDownlines + 1;
+        treeRoots = [{
+          id: directUpline._id,
+          parentMemberId: directUpline.parentMemberId ?? null,
+          name: directUpline.name,
+          roleTitle: directUpline.roleTitle,
+          status: directUpline.status,
+          isViewer: false,
+          directChildrenCount: 1,
+          totalDownlineCount: uplineDownlines,
+          allowAdd: false,
+          member: {
+            id: directUpline.userId ?? (directUpline._id as any),
+            name: directUpline.name,
+            email: directUpline.email ?? "",
+            roleTitle: directUpline.roleTitle,
+            rank: getRank(uplineDownlines),
+            status: directUpline.status,
+            avatarInitials: directUpline.name.substring(0, 2).toUpperCase(),
+            totalDownlines: uplineDownlines,
+            invitedCount: 0,
+            pendingCount: 0,
+            uplineId: (directUpline.parentMemberId as any),
+            allowAdd: false,
+          },
+          children: [viewerNode],
+        }];
+      } else {
+        treeRoots = [viewerNode];
+      }
     }
   } else {
     treeRoots = buildTree(parentLookup, "root");
@@ -588,7 +626,23 @@ export const getDashboard = query({
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
-    return buildOverview(members);
+    const viewer = members.find((m) => m.isViewer);
+    let directUpline: Doc<"networkMembers"> | null = null;
+    if (viewer && viewer.userId) {
+      const parentTreeMember = await ctx.db
+        .query("networkMembers")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("userId"), viewer.userId),
+            q.eq(q.field("isViewer"), false)
+          )
+        )
+        .first();
+      if (parentTreeMember && parentTreeMember.parentMemberId) {
+        directUpline = await ctx.db.get(parentTreeMember.parentMemberId);
+      }
+    }
+    return buildOverview(members, directUpline);
   },
 });
 
@@ -597,7 +651,23 @@ export const getTree = query({
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
-    return buildOverview(members).tree;
+    const viewer = members.find((m) => m.isViewer);
+    let directUpline: Doc<"networkMembers"> | null = null;
+    if (viewer && viewer.userId) {
+      const parentTreeMember = await ctx.db
+        .query("networkMembers")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("userId"), viewer.userId),
+            q.eq(q.field("isViewer"), false)
+          )
+        )
+        .first();
+      if (parentTreeMember && parentTreeMember.parentMemberId) {
+        directUpline = await ctx.db.get(parentTreeMember.parentMemberId);
+      }
+    }
+    return buildOverview(members, directUpline).tree;
   },
 });
 
