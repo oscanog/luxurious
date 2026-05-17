@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import * as fabric from "fabric";
 
 export interface CanvasState {
@@ -42,6 +42,8 @@ export function useFabricCanvas(
   options: { width: number; height: number; onModified?: (json: string) => void; onSelect?: (obj: any) => void }
 ) {
   const fabricRef = useRef<fabric.Canvas | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const isDisposedRef = useRef(false);
 
   useEffect(() => {
     if (!canvasElRef.current) return;
@@ -58,6 +60,8 @@ export function useFabricCanvas(
     // Enable global object caching for performance
     fabric.Object.prototype.objectCaching = true;
     fabricRef.current = canvas;
+    isDisposedRef.current = false;
+    setIsReady(true);
 
     const onChange = () => {
       if (options.onModified) {
@@ -85,6 +89,8 @@ export function useFabricCanvas(
       canvas.off("selection:created", onSelect);
       canvas.off("selection:updated", onSelect);
       canvas.off("selection:cleared", onSelect);
+      isDisposedRef.current = true;
+      setIsReady(false);
       canvas.dispose();
       fabricRef.current = null;
     };
@@ -93,8 +99,15 @@ export function useFabricCanvas(
 
   const loadJson = useCallback(async (json: string) => {
     if (!fabricRef.current) return;
-    await fabricRef.current.loadFromJSON(JSON.parse(json));
-    fabricRef.current.renderAll();
+    const canvas = fabricRef.current;
+    try {
+      await canvas.loadFromJSON(JSON.parse(json));
+      if (!isDisposedRef.current) {
+        canvas.renderAll();
+      }
+    } catch (e) {
+      console.error("useFabricCanvas loadJson error", e);
+    }
   }, []);
 
   const getJson = useCallback(() => {
@@ -245,7 +258,7 @@ export function useFabricCanvas(
   }, []);
 
   return {
-    fabricRef,
+    fabricRef, isReady,
     loadJson, getJson,
     addRect, addCircle, addTriangle, addText, addLine, addImageUrl,
     deleteSelected, bringForward, sendBackward, duplicateSelected,

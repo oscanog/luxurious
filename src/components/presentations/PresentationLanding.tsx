@@ -32,6 +32,8 @@ function CoverThumbnail({ json, className }: { json: string; className?: string 
     const SLIDE_W = 1920;
     const scale = width / SLIDE_W;
     
+    let isDisposed = false;
+    
     const staticCanvas = new fabric.StaticCanvas(el, {
       width: width,
       height: height,
@@ -39,13 +41,21 @@ function CoverThumbnail({ json, className }: { json: string; className?: string 
     });
     staticCanvas.setZoom(scale);
     
-    try {
-      staticCanvas.loadFromJSON(json, () => {
-        staticCanvas.renderAll();
-      });
-    } catch(e) {}
+    const loadAndRender = async () => {
+      try {
+        await staticCanvas.loadFromJSON(JSON.parse(json));
+        if (!isDisposed) {
+          staticCanvas.renderAll();
+        }
+      } catch(e) {
+        console.error("Failed to render cover thumbnail", e);
+      }
+    };
+    
+    loadAndRender();
     
     return () => {
+      isDisposed = true;
       staticCanvas.dispose();
     };
   }, [json]);

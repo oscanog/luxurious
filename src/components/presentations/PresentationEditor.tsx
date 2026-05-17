@@ -49,6 +49,8 @@ function SlideThumbnail({ json, width, height, isActive, index, onClick, onDelet
     const el = ref.current;
     const scale = el.parentElement!.clientWidth / width;
     
+    let isDisposed = false;
+
     // Create a temporary static canvas to render the JSON
     const staticCanvas = new fabric.StaticCanvas(el, {
       width: width * scale,
@@ -58,15 +60,21 @@ function SlideThumbnail({ json, width, height, isActive, index, onClick, onDelet
 
     staticCanvas.setZoom(scale);
 
-    try {
-      staticCanvas.loadFromJSON(json, () => {
-        staticCanvas.renderAll();
-      });
-    } catch (e) {
-      console.error("Failed to render slide thumbnail", e);
-    }
+    const loadAndRender = async () => {
+      try {
+        await staticCanvas.loadFromJSON(JSON.parse(json));
+        if (!isDisposed) {
+          staticCanvas.renderAll();
+        }
+      } catch (e) {
+        console.error("Failed to render slide thumbnail", e);
+      }
+    };
+    
+    loadAndRender();
 
     return () => {
+      isDisposed = true;
       staticCanvas.dispose();
     };
   }, [json, isActive, width, height, index]);
@@ -150,11 +158,11 @@ export function PresentationEditor({ presentationId }: { presentationId: string 
   // Load active slide into canvas
   useEffect(() => {
     const slide = slides[activeSlide];
-    if (slide && canvas.fabricRef.current) {
+    if (slide && canvas.isReady && canvas.fabricRef.current) {
       canvas.loadJson(slide.canvasJson);
       history.push(slide.canvasJson);
     }
-  }, [activeSlide, canvas.fabricRef.current]);
+  }, [activeSlide, slides, canvas.isReady]);
 
   function scheduleSave(json: string) {
     clearTimeout(saveTimer.current);
