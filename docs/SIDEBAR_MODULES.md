@@ -13,17 +13,17 @@ Below is the comprehensive list of all application modules organized by their si
 ## b. Finance
 1. Banking & Assets
    - Accounts
-   - Cashflow
    - Currency
-2. Planning
+2. Ledger & Activity
+   - Cashflow
+   - Income
+   - Expense
+   - History
+3. Financial Planning
    - Budgets
    - Debt Tracker
-   - Installment Schedule
-3. Transactions
-   - Income Entry
-   - Expense Entry
+   - Installments
 4. Analytics
-   - History
    - Statistics
 
 ## c. Support & Tools

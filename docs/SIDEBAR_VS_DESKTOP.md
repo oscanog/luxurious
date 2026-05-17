@@ -1,33 +1,17 @@
 # Sidebar Parity: Mobile (Flutter) vs. Desktop (React)
 
-This document outlines the differences between the pages available in the Desktop sidebar and the Mobile application drawer.
+After a complete audit of the desktop `AdminLayout.tsx` and the mobile `dashboard_drawer.dart`, the vast majority of the 22+ modules are perfectly synced. Below are the only remaining discrepancies between the two platforms:
 
 ## 1. Missing in Mobile (Present in Desktop)
-*   **Social Feed:** The desktop application has a dedicated `Social Feed` module under the `NETWORK` category. This page has been planned for mobile (Milestone `M016-SOCIAL-POSTING-PARITY`), but the actual Flutter page implementation (`SocialFeedPage`) does not exist in the mobile repository yet. 
-*   *(Note: The "Home" link was also missing from the mobile drawer as mobile uses bottom-nav for Home, but I have added it to the drawer for strict parity).*
+*   **Admin Sub-modules:** The desktop application has dedicated management views for `User Manager`, `Academy Manager`, `Trade Monitor`, and `APK Management`. These are currently missing from the mobile Admin workspace.
+*   **Support / Tools:** Desktop has a `Learn to Trade` module which is absent in Mobile.
+*   **Social Feed (Placeholder):** Mobile has the button for Parity, but the `SocialFeedPage` does not exist yet (M016).
 
 ## 2. Missing in Desktop (Present in Mobile)
-The Desktop reference screenshot cuts off after "Banking & Assets". If the Desktop sidebar does not contain the following modules, it is currently missing:
-*   **Finance Category:**
-    *   Cashflow
-    *   Budgets
-    *   Debt Tracker
-    *   Installment Schedule
-    *   Income / Expense Entry
-    *   History / Statistics
-*   **Support Category:**
-    *   Receipt Scanner
-    *   Academy
-    *   Calendar
-    *   Shopping List
-    *   Help & Support
-    *   Promotions
-*   **Admin Workspace:**
-    *   Admin Panel
-    *   Presentations (Presentation Studio)
-*   **Settings / Profile:**
-    *   My Profile
-    *   Theme Switcher
+*   **Support / Tools:** Mobile has a `Help & Support` module which is absent in Desktop.
+
+## 3. Structural Differences
+*   **Finance Grouping:** Desktop nests Finance modules into accordions (`Banking & Assets`, `Ledger & Activity`, `Financial Planning`, `Analytics`). Mobile currently displays all 10 Finance modules as a flat, scrollable list.
 
 ## 3. Icon Parity
 The mobile app has been updated to use the exact iconography specified in the Desktop UI for the matched items:
