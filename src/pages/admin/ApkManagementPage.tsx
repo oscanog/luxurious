@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "react-hot-toast";
 import { api } from "../../../convex/_generated/api";
-import { Download, Plus, Trash2, ShieldCheck, File, Archive } from "lucide-react";
+import { Download, Plus, Trash2, ShieldCheck, File, Archive, Search, Share2, ArrowDownUp } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 
 export function ApkManagementPage() {
@@ -17,6 +17,19 @@ export function ApkManagementPage() {
   const [buildNumber, setBuildNumber] = useState("");
   const [releaseNotes, setReleaseNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const filteredAndSortedReleases = releases ? releases.filter((r) => {
+    const vMatch = r.version.toLowerCase().includes(search.toLowerCase());
+    const notesMatch = r.releaseNotes.toLowerCase().includes(search.toLowerCase());
+    return vMatch || notesMatch;
+  }).sort((a, b) => {
+    if (sortOrder === "desc") {
+      return b.publishedAt - a.publishedAt;
+    }
+    return a.publishedAt - b.publishedAt;
+  }) : undefined;
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +96,35 @@ export function ApkManagementPage() {
     }
   };
 
+  const handleShare = async (version: string) => {
+    const url = `${window.location.origin}/download?v=${version}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Luxurious App v${version}`,
+          text: `Download Luxurious App v${version}`,
+          url: url,
+        });
+        toast.success("Link shared!");
+        return;
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+           copyToClipboard(url);
+        }
+      }
+    } else {
+      copyToClipboard(url);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Link copied to clipboard!");
+    }).catch(() => {
+      toast.error("Failed to copy link");
+    });
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -94,10 +136,30 @@ export function ApkManagementPage() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[hsl(var(--primary)/0.9)] shadow-sm"
+          className="flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-[hsl(var(--primary)/0.9)] shadow-sm shrink-0"
         >
           <Plus size={18} />
           New Release
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
+          <input
+            type="text"
+            placeholder="Search versions or release notes..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-2.5 pl-11 pr-4 text-sm font-medium text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] shadow-sm"
+          />
+        </div>
+        <button
+          onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+          className="flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-5 py-2.5 text-sm font-bold shadow-sm transition-colors hover:bg-[hsl(var(--muted))]"
+        >
+          <ArrowDownUp size={16} />
+          Sort {sortOrder === "desc" ? "Newest" : "Oldest"}
         </button>
       </div>
 
@@ -113,23 +175,23 @@ export function ApkManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[hsl(var(--border))]">
-              {releases === undefined ? (
+              {filteredAndSortedReleases === undefined ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-8 text-center text-[hsl(var(--muted-foreground))]">
                     Loading releases...
                   </td>
                 </tr>
-              ) : releases.length === 0 ? (
+              ) : filteredAndSortedReleases.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-8 text-center text-[hsl(var(--muted-foreground))]">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <Archive size={32} className="text-[hsl(var(--muted-foreground)/0.5)]" />
-                      <p>No active releases found.</p>
+                      <p>No releases found.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                releases.map((release) => (
+                filteredAndSortedReleases.map((release) => (
                   <tr key={release._id} className="transition-colors hover:bg-[hsl(var(--muted)/0.5)]">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -150,6 +212,13 @@ export function ApkManagementPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleShare(release.version)}
+                          className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors"
+                          title="Share Link"
+                        >
+                          <Share2 size={18} />
+                        </button>
                         {release.fileUrl && (
                           <a
                             href={release.fileUrl}
