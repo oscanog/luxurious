@@ -15,6 +15,11 @@ export function ApkDownloadPage() {
 
   const filteredAndSorted = useMemo(() => {
     if (!releases) return [];
+    
+    if (highlightedVersion) {
+      return releases.filter(r => r.version === highlightedVersion);
+    }
+
     let list = releases.filter((r) => {
       const vMatch = r.version.toLowerCase().includes(search.toLowerCase());
       const notesMatch = r.releaseNotes.toLowerCase().includes(search.toLowerCase());
@@ -29,7 +34,7 @@ export function ApkDownloadPage() {
     });
 
     return list;
-  }, [releases, search, sortOrder]);
+  }, [releases, search, sortOrder, highlightedVersion]);
 
   const handleShare = async (version: string) => {
     const url = `${window.location.origin}/download?v=${version}`;
@@ -78,9 +83,11 @@ export function ApkDownloadPage() {
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         
         <div className="mb-12 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] text-3xl font-black text-white shadow-[0_24px_60px_-24px_hsl(221_83%_53%)]">
-            L
-          </div>
+          <img 
+            src="/luxurious_logo.png" 
+            alt="Luxurious Logo" 
+            className="mx-auto mb-6 h-24 w-24 object-contain drop-shadow-[0_24px_60px_hsl(221_83%_53%/0.5)]"
+          />
           <h1 className="text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
             Luxurious for Android
           </h1>
@@ -89,25 +96,27 @@ export function ApkDownloadPage() {
           </p>
         </div>
 
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
-            <input
-              type="text"
-              placeholder="Search versions or release notes..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-11 pr-4 text-sm font-medium text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] shadow-sm"
-            />
+        {!highlightedVersion && (
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
+              <input
+                type="text"
+                placeholder="Search versions or release notes..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3 pl-11 pr-4 text-sm font-medium text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] shadow-sm"
+              />
+            </div>
+            <button
+              onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-5 py-3 text-sm font-bold shadow-sm transition-colors hover:bg-[hsl(var(--muted))]"
+            >
+              <ArrowDownUp size={16} />
+              Sort {sortOrder === "desc" ? "Newest" : "Oldest"}
+            </button>
           </div>
-          <button
-            onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-5 py-3 text-sm font-bold shadow-sm transition-colors hover:bg-[hsl(var(--muted))]"
-          >
-            <ArrowDownUp size={16} />
-            Sort {sortOrder === "desc" ? "Newest" : "Oldest"}
-          </button>
-        </div>
+        )}
 
         <div className="space-y-4">
           {releases === undefined ? (
