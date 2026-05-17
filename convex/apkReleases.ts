@@ -49,6 +49,63 @@ export const listActiveReleases = query({
   },
 });
 
+// Public: lightweight endpoint for mobile app version checking
+export const getLatestRelease = query({
+  args: {},
+  handler: async (ctx) => {
+    const releases = await ctx.db
+      .query("apkReleases")
+      .withIndex("by_isActive", (q) => q.eq("isActive", true))
+      .order("desc")
+      .first();
+
+    if (!releases) return null;
+
+    const fileUrl = await ctx.storage.getUrl(releases.storageId);
+    return {
+      version: releases.version,
+      buildNumber: releases.buildNumber,
+      releaseNotes: releases.releaseNotes,
+      fileSize: releases.fileSize,
+      fileName: releases.fileName,
+      publishedAt: releases.publishedAt,
+      fileUrl,
+    };
+  },
+});
+
+// Public: check if update is available given current build number
+export const checkForUpdate = query({
+  args: {
+    currentBuildNumber: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const latest = await ctx.db
+      .query("apkReleases")
+      .withIndex("by_isActive", (q) => q.eq("isActive", true))
+      .order("desc")
+      .first();
+
+    if (!latest) return { updateAvailable: false };
+
+    if (latest.buildNumber > args.currentBuildNumber) {
+      const fileUrl = await ctx.storage.getUrl(latest.storageId);
+      return {
+        updateAvailable: true,
+        version: latest.version,
+        buildNumber: latest.buildNumber,
+        releaseNotes: latest.releaseNotes,
+        fileSize: latest.fileSize,
+        fileName: latest.fileName,
+        publishedAt: latest.publishedAt,
+        fileUrl,
+      };
+    }
+
+    return { updateAvailable: false };
+  },
+});
+
 export const publishRelease = mutation({
   args: {
     version: v.string(),
