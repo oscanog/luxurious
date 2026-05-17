@@ -5,6 +5,7 @@
 **Objective:** Build a full-featured, Canva-inspired presentation design studio inside the Luxurious admin dashboard. Admins create, edit, duplicate, and delete branded pitch decks for future prospects — all backed by Convex real-time storage, with PPTX/PPT import support and multi-format export.
 
 **Technical Spec:** [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)
+**Bug Investigation:** [LIGHT-MODE-CRASH-IDENTIFICATION.md](./LIGHT-MODE-CRASH-IDENTIFICATION.md)
 
 ---
 
