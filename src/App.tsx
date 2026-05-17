@@ -148,7 +148,10 @@ export default function App() {
     <BrowserRouter>
       <Toaster position="top-right" />
       <Authenticated>
-        <AuthenticatedApp themeMode={themeMode} onToggleTheme={toggleTheme} />
+        <Routes>
+          <Route path="/download" element={<ApkDownloadPage />} />
+          <Route path="*" element={<AuthenticatedApp themeMode={themeMode} onToggleTheme={toggleTheme} />} />
+        </Routes>
       </Authenticated>
       <Unauthenticated>
         <Routes>
