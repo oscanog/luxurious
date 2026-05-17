@@ -11,6 +11,7 @@
 import type * as academy from "../academy.js";
 import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
+import type * as apkReleases from "../apkReleases.js";
 import type * as auth from "../auth.js";
 import type * as email from "../email.js";
 import type * as financials from "../financials.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   academy: typeof academy;
   admin: typeof admin;
   analytics: typeof analytics;
+  apkReleases: typeof apkReleases;
   auth: typeof auth;
   email: typeof email;
   financials: typeof financials;

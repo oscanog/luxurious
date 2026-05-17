@@ -17,10 +17,10 @@ Since we are not deploying to the Google Play Store for this release, we require
 - [ ] T03 Ensure design aligns with Luxurious aesthetic, excluding unnecessary banners to keep the interface clean and functional.
 
 ### Phase 2: Convex Backend & Storage
-- [ ] T04 Define Convex schema for `apkReleases` (version string, build number, release notes, storage ID, release date, isActive flag).
-- [ ] T05 Implement secure file upload API using Convex storage.
-- [ ] T06 Create public, unauthenticated query to fetch active APK releases.
-- [ ] T07 Create admin-only mutations to upload, edit, and delete/archive APK builds.
+- [x] T04 Define Convex schema for `apkReleases` (version string, build number, release notes, storage ID, release date, isActive flag).
+- [x] T05 Implement secure file upload API using Convex storage.
+- [x] T06 Create public, unauthenticated query to fetch active APK releases.
+- [x] T07 Create admin-only mutations to upload, edit, and delete/archive APK builds.
 
 ### Phase 3: Admin Management Interface
 - [ ] T08 Build admin upload modal/page with fields for Version, Release Notes (markdown), and the File itself.

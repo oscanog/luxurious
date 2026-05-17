@@ -491,4 +491,19 @@ export default defineSchema({
     attended: v.boolean(),
   }).index("by_date_and_user", ["date", "userId"])
     .index("by_userId", ["userId"]),
+
+  apkReleases: defineTable({
+    version: v.string(), // e.g., "1.0.4"
+    buildNumber: v.number(), // e.g., 42
+    releaseNotes: v.string(), // Markdown formatted
+    storageId: v.id("_storage"), // Convex storage reference
+    fileSize: v.number(), // Size in bytes
+    fileName: v.string(),
+    isActive: v.boolean(), // Soft delete or visibility toggle
+    publishedAt: v.number(), // Timestamp
+    uploadedBy: v.optional(v.id("users")), // Admin reference
+  })
+    .index("by_publishedAt", ["publishedAt"])
+    .index("by_buildNumber", ["buildNumber"])
+    .index("by_isActive", ["isActive", "publishedAt"]),
 });
