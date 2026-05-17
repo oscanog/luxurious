@@ -506,4 +506,48 @@ export default defineSchema({
     .index("by_publishedAt", ["publishedAt"])
     .index("by_buildNumber", ["buildNumber"])
     .index("by_isActive", ["isActive", "publishedAt"]),
+
+  // ── M014: Presentation Studio ──────────────────────────────────────────────
+  presentations: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    // Each slide: id (uuid), serialized Fabric.js canvas JSON, display order, optional thumbnail
+    slides: v.array(
+      v.object({
+        id: v.string(),
+        canvasJson: v.string(),
+        order: v.number(),
+        thumbnail: v.optional(v.id("_storage")),
+        transition: v.optional(v.string()),       // "fade"|"slide-left"|"slide-right"|"zoom"|"none"
+        transitionDuration: v.optional(v.number()), // ms
+      })
+    ),
+    slideWidth: v.number(),    // default 1920
+    slideHeight: v.number(),   // default 1080
+    coverThumbnail: v.optional(v.id("_storage")),
+    createdBy: v.id("users"),
+    updatedAt: v.number(),
+    isArchived: v.boolean(),
+    tags: v.optional(v.array(v.string())),
+  })
+    .index("by_createdBy", ["createdBy"])
+    .index("by_isArchived", ["isArchived"])
+    .index("by_updatedAt", ["updatedAt"]),
+
+  presentationTemplates: defineTable({
+    name: v.string(),
+    category: v.string(), // "pitch-deck"|"report"|"proposal"|"blank"
+    slides: v.array(
+      v.object({
+        id: v.string(),
+        canvasJson: v.string(),
+        order: v.number(),
+      })
+    ),
+    slideWidth: v.number(),
+    slideHeight: v.number(),
+    thumbnail: v.optional(v.id("_storage")),
+    isSystem: v.boolean(), // true = shipped with app
+  })
+    .index("by_category", ["category"]),
 });

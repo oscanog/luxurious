@@ -23,6 +23,7 @@ import {
   PieChart,
   ReceiptText,
   Settings,
+  Presentation,
   ShieldCheck,
   ShoppingCart,
   Sigma,
@@ -71,7 +72,8 @@ export type NavPath =
   | "/admin/users"
   | "/admin/academy"
   | "/admin/trades"
-  | "/admin/apk-management";
+  | "/admin/apk-management"
+  | "/admin/presentations";
 
 const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
   { path: "/", label: "Home", icon: Home },
@@ -134,6 +136,7 @@ const ADMIN_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType
   { path: "/admin/academy", label: "Academy Manager", icon: BookOpen },
   { path: "/admin/trades", label: "Trade Monitor", icon: TrendingUp },
   { path: "/admin/apk-management", label: "APK Management", icon: ShieldCheck },
+  { path: "/admin/presentations", label: "Presentations", icon: Presentation },
 ];
 
 const PATH_LABELS: Record<NavPath, string> = {
@@ -168,6 +171,7 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/admin/academy": "Academy Manager",
   "/admin/trades": "Trade Monitor",
   "/admin/apk-management": "APK Management",
+  "/admin/presentations": "Presentation Studio",
 };
 
 function SidebarLink({

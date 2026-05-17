@@ -53,3 +53,6 @@ dist-ssr
 # Session-specific interrupted-work markers
 .gsd/milestones/**/continue.md
 .gsd/milestones/**/*-CONTINUE.md
+
+# Reference repos — open-source clones for study only, not tracked
+reference/
