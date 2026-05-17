@@ -179,6 +179,14 @@ export const updateMe = mutation({
     await ctx.db.patch("mobileProfiles", profile._id, patch);
     if (displayName && displayName.length > 0) {
       await ctx.db.patch(viewer._id, { name: displayName });
+      
+      const viewerMember = await ctx.db
+        .query("networkMembers")
+        .withIndex("by_profileId_and_isViewer", (q) => q.eq("profileId", profile._id).eq("isViewer", true))
+        .unique();
+      if (viewerMember) {
+        await ctx.db.patch(viewerMember._id, { name: displayName });
+      }
     }
     return await buildProfilePayload(ctx);
   },

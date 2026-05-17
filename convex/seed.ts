@@ -354,16 +354,26 @@ export const backfillProfileNames = mutation({
   args: {},
   handler: async (ctx) => {
     const profiles = await ctx.db.query("mobileProfiles").collect();
-    let count = 0;
+    let userCount = 0;
+    let memberCount = 0;
     for (const profile of profiles) {
       if (profile.userId) {
         const user = await ctx.db.get(profile.userId);
         if (user && user.name !== profile.displayName) {
           await ctx.db.patch(profile.userId, { name: profile.displayName });
-          count++;
+          userCount++;
         }
       }
+      
+      const viewerMember = await ctx.db
+        .query("networkMembers")
+        .withIndex("by_profileId_and_isViewer", (q) => q.eq("profileId", profile._id).eq("isViewer", true))
+        .unique();
+      if (viewerMember && viewerMember.name !== profile.displayName) {
+        await ctx.db.patch(viewerMember._id, { name: profile.displayName });
+        memberCount++;
+      }
     }
-    return { success: true, backfilledCount: count };
+    return { success: true, backfilledUsers: userCount, backfilledMembers: memberCount };
   },
 });
