@@ -10,7 +10,6 @@ import {
   Phone, 
   Globe, 
   Check, 
-  Send,
   Zap,
   UserPlus
 } from "lucide-react";
