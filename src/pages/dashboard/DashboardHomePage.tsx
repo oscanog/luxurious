@@ -137,8 +137,13 @@ export function DashboardHomePage() {
 
     async function fetchQuote() {
       const CACHE_KEY = "luxxurie_daily_quote";
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       try {
-        const res = await fetch("https://api.allorigins.win/raw?url=https://zenquotes.io/api/random");
+        const res = await fetch("https://api.allorigins.win/raw?url=https://zenquotes.io/api/random", {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
         const data = await res.json();
         if (data && data[0]) {
           const newQuote = { text: data[0].q, author: "Luxxurie" };
@@ -147,8 +152,11 @@ export function DashboardHomePage() {
             quote: newQuote,
             date: new Date().toISOString().split('T')[0]
           }));
+        } else {
+          setQuote({ text: "The path to luxury is paved with consistent focus.", author: "Luxxurie" });
         }
       } catch (e) {
+        clearTimeout(timeoutId);
         setQuote({ text: "The path to luxury is paved with consistent focus.", author: "Luxxurie" });
       }
     }
@@ -251,6 +259,15 @@ export function DashboardHomePage() {
               </p>
               <p className="mt-3 text-[14px] font-black uppercase tracking-[0.18em] text-[hsl(var(--primary))] dark:text-blue-300">
                 — {quote?.author ?? "Luxxurie"}
+              </p>
+            </div>
+
+            <div className="mt-2">
+              <p className="text-[24px] font-bold leading-none text-[hsl(var(--foreground))] dark:text-white">
+                {dashboard.viewer?.name ?? "Trader"}
+              </p>
+              <p className="mt-1.5 text-[13px] font-bold text-[hsl(43_76%_32%)] dark:text-[hsl(var(--secondary))]">
+                {dashboard.viewer?.roleTitle ?? "Network Lead"}
               </p>
             </div>
           </div>

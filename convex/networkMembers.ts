@@ -29,6 +29,7 @@ const addMemberArgs = {
   birthday: v.optional(v.string()),
   currentWork: v.optional(v.string()),
   investmentStartedAt: v.optional(v.number()),
+  role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
 } as const;
 
 function buildMemberName(args: {
@@ -116,6 +117,11 @@ export const createMemberRecord = internalMutation({
     const now = Date.now();
     const name = buildMemberName(args);
 
+    const memberRole = args.role ?? "member";
+    const defaultRoleTitle = args.type === "joined" 
+      ? (memberRole === "admin" ? "Admin Lead" : "Active Member")
+      : "Prospect";
+
     const memberId = await ctx.db.insert("networkMembers", {
       profileId: profile._id,
       userId: args.authUserId,
@@ -124,7 +130,7 @@ export const createMemberRecord = internalMutation({
       lastName: args.lastName.trim(),
       middleName: args.middleName?.trim() || undefined,
       name,
-      roleTitle: args.type === "joined" ? "Active Member" : "Prospect",
+      roleTitle: defaultRoleTitle,
       status: args.type === "joined" ? "joined" : "to-invite",
       isViewer: false,
       sortOrder: existingChildren.length,
@@ -149,7 +155,7 @@ export const createMemberRecord = internalMutation({
       }
 
       await ctx.db.patch(authUser._id, {
-        role: "member",
+        role: memberRole,
         uplineId: args.viewerUserId,
         lastUplineId: authUser.uplineId ?? null,
       });
@@ -266,7 +272,7 @@ export const addMember = action({
           name: buildMemberName(args),
           email,
           phone: args.phone?.trim() || undefined,
-          role: "member",
+          role: args.role ?? "member",
         },
         shouldLinkViaEmail: false,
       });
