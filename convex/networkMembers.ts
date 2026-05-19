@@ -831,3 +831,21 @@ export const updateMemberStatus = mutation({
   },
 });
 
+export const updateMemberInvestmentDate = mutation({
+  args: {
+    memberId: v.id("networkMembers"),
+    investmentStartedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const member = await ctx.db.get(args.memberId);
+    if (!member) throw new Error("Member not found");
+    if (member.profileId !== profile._id) throw new Error("Unauthorized");
+
+    await ctx.db.patch(args.memberId, {
+      investmentStartedAt: args.investmentStartedAt,
+      updatedAt: Date.now(),
+    });
+  },
+});
+

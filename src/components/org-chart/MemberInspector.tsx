@@ -50,6 +50,7 @@ export function MemberInspector({
   const updateEmail = useAction(api.networkMembers.updateMemberEmail);
   const deleteMember = useMutation(api.network.deleteMember);
   const updateStatus = useMutation(api.networkMembers.updateMemberStatus);
+  const updateInvestmentDate = useMutation(api.networkMembers.updateMemberInvestmentDate);
   const joinMember = useAction(api.networkMembers.joinExistingMember);
 
   const assetLogs = useQuery(
@@ -164,8 +165,25 @@ export function MemberInspector({
 
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+  const [isDateUpdating, setIsDateUpdating] = useState(false);
 
   if (!memberId || !member) return null;
+
+  const handleInvestmentDateChange = async (dateStr: string) => {
+    setIsDateUpdating(true);
+    try {
+      const timestamp = dateStr ? new Date(dateStr).getTime() : undefined;
+      await updateInvestmentDate({
+        memberId: memberId as Id<"networkMembers">,
+        investmentStartedAt: timestamp,
+      });
+      toast.success("Investment start date updated");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update investment start date");
+    } finally {
+      setIsDateUpdating(false);
+    }
+  };
 
   const handleStatusChange = async (newStatus: "joined" | "invited" | "pending" | "to-invite") => {
     if (newStatus === member.status) return;
@@ -347,6 +365,19 @@ export function MemberInspector({
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[hsl(var(--muted-foreground))]">
                   <ChevronRight size={16} className="rotate-90" />
                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">Investment Start Date</label>
+              <div className="relative">
+                <input 
+                  type="date"
+                  value={member.investmentStartedAt ? new Date(member.investmentStartedAt).toISOString().split('T')[0] : ""}
+                  onChange={(e) => handleInvestmentDateChange(e.target.value)}
+                  disabled={isDateUpdating}
+                  className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-4 text-sm font-bold text-[hsl(var(--foreground))] outline-none appearance-none cursor-pointer focus:border-[hsl(var(--primary))] transition-all disabled:opacity-50 min-h-[52px]"
+                />
               </div>
             </div>
 
