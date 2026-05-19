@@ -127,6 +127,7 @@ type OrgTreeNode = {
       currency: string;
       createdAt: number;
     } | null;
+    investmentStartedAt?: number;
   };
   children: OrgTreeNode[];
 };
