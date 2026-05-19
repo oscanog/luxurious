@@ -376,13 +376,14 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
 
           {step === "work" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-              <InputGroup 
-                label={memberType === "joined" ? "Investment Start Date *" : "Investment Start Date"}
-                type="date"
-                value={formData.investmentStartedAt} 
-                onChange={v => setFormData(p => ({ ...p, investmentStartedAt: v }))}
-                placeholder={memberType === "to-invite" ? "(optional)" : undefined}
-              />
+              {memberType === "joined" && (
+                <InputGroup 
+                  label="Investment Start Date *"
+                  type="date"
+                  value={formData.investmentStartedAt} 
+                  onChange={v => setFormData(p => ({ ...p, investmentStartedAt: v }))}
+                />
+              )}
               <InputGroup 
                 label="Work Occupation" 
                 value={formData.currentWork} 
@@ -411,7 +412,9 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                   </>
                 )}
                 <SummaryItem label="Work Occupation" value={formData.currentWork} />
-                <SummaryItem label="Investment Start Date" value={formData.investmentStartedAt} />
+                {memberType === "joined" && (
+                  <SummaryItem label="Investment Start Date" value={formData.investmentStartedAt} />
+                )}
               </div>
 
               {memberType === "joined" && (
