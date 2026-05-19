@@ -211,6 +211,7 @@ function buildTree(
         uplineId: (member.parentMemberId as any),
         allowAdd: true,
         latestAsset,
+        investmentStartedAt: member.investmentStartedAt,
       },
       children: buildTree(parentLookup, member._id, latestAssetsMap),
     };
@@ -557,6 +558,7 @@ function buildOverview(
         uplineId: (viewer.parentMemberId as any),
         allowAdd: true,
         latestAsset,
+        investmentStartedAt: viewer.investmentStartedAt,
       },
       children: buildTree(parentLookup, viewer._id, latestAssetsMap),
     };
@@ -589,6 +591,7 @@ function buildOverview(
           uplineId: (directUpline.parentMemberId as any),
           allowAdd: false,
           latestAsset: uplineAsset,
+          investmentStartedAt: directUpline.investmentStartedAt,
         },
         children: [viewerNode],
       }];
@@ -636,6 +639,7 @@ function buildOverview(
       yepbitUsername: member.yepbitUsername,
       userId: member.userId,
       email: member.email,
+      investmentStartedAt: member.investmentStartedAt,
     })),
     tree: treeRoots,
   };
@@ -1131,6 +1135,7 @@ export const getMember = query({
       directChildrenCount: directChildrenCount,
       pendingCount: pendingCount,
       latestAsset,
+      investmentStartedAt: member.investmentStartedAt,
     };
   },
 });

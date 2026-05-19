@@ -146,6 +146,22 @@ export function MemberInspector({
     return new Date(timestamp).toLocaleDateString();
   };
 
+  const formatTimeSinceJoined = (timestamp?: number): string | null => {
+    if (!timestamp) return null;
+    const diffMs = Date.now() - timestamp;
+    if (diffMs < 0) return "Joined just now";
+    
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Joined just now";
+    if (diffMins < 60) return `Joined ${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `Joined ${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `Joined ${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  };
+
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
@@ -477,6 +493,13 @@ export function MemberInspector({
                       </div>
                     )}
                   </>
+                )}
+
+                {member.investmentStartedAt && (
+                  <div className="pt-3 mt-2 flex items-center justify-between text-[10px] text-[hsl(var(--muted-foreground))] font-semibold border-t border-[hsl(var(--border)/0.5)]">
+                    <span>Start Date: {new Date(member.investmentStartedAt).toLocaleDateString()}</span>
+                    <span className="text-[hsl(var(--primary))] font-bold">{formatTimeSinceJoined(member.investmentStartedAt)}</span>
+                  </div>
                 )}
               </div>
             </div>

@@ -25,10 +25,27 @@ export type OrgCardData = {
       currency: string;
       createdAt: number;
     } | null;
+    investmentStartedAt?: number;
   };
   isRoot?: boolean;
   branchColor?: string;
 };
+
+export function formatTimeSinceJoined(timestamp?: number): string | null {
+  if (!timestamp) return null;
+  const diffMs = Date.now() - timestamp;
+  if (diffMs < 0) return "Joined just now";
+  
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Joined just now";
+  if (diffMins < 60) return `Joined ${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Joined ${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `Joined ${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+}
 
 export type OrgCardNode = Node<OrgCardData, "orgCard">;
 
@@ -212,8 +229,13 @@ export const OrgCardNode = memo(function OrgCardNode({ data, selected }: NodePro
               <span className="text-[hsl(var(--foreground))] font-bold text-lg leading-tight truncate">{member.name}</span>
               <span className="text-[hsl(var(--muted-foreground))] text-xs font-medium truncate">{member.rank}</span>
               {member.latestAsset && (
-                <span className="text-[hsl(43,96%,48%)] text-[10px] font-black uppercase tracking-wider mt-0.5 truncate">
+                <span className="text-[hsl(43,96%,48%)] text-[10px] font-black uppercase tracking-wider mt-0.5 truncate block">
                   Asset: {member.latestAsset.currency} {member.latestAsset.value.toLocaleString()}
+                </span>
+              )}
+              {member.latestAsset && member.investmentStartedAt && (
+                <span className="text-[hsl(var(--muted-foreground))] text-[9px] font-semibold mt-0.5 truncate block">
+                  {formatTimeSinceJoined(member.investmentStartedAt)}
                 </span>
               )}
             </div>
