@@ -96,7 +96,11 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
         toast.error("Invalid email format");
         return;
       }
-      setStep("platform");
+      if (memberType === "joined") {
+        setStep("platform");
+      } else {
+        setStep("work");
+      }
     }
     else if (step === "platform") {
       setStep("work");
@@ -114,7 +118,13 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     if (step === "identity") setStep("type");
     else if (step === "contact") setStep("identity");
     else if (step === "platform") setStep("contact");
-    else if (step === "work") setStep("platform");
+    else if (step === "work") {
+      if (memberType === "joined") {
+        setStep("platform");
+      } else {
+        setStep("contact");
+      }
+    }
     else if (step === "summary") setStep("work");
   };
 
@@ -194,7 +204,11 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
             <div>
               <h3 className="font-black uppercase tracking-tight text-sm">Add New Member</h3>
               <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
-                {step === "type" ? "select flow" : step === "success" ? "Success" : `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "platform" ? 3 : step === "work" ? 4 : 5} of 5`}
+                {step === "type" ? "select flow" : step === "success" ? "Success" : (
+                  memberType === "joined" 
+                    ? `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "platform" ? 3 : step === "work" ? 4 : 5} of 5`
+                    : `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "work" ? 3 : 4} of 4`
+                )}
               </p>
             </div>
           </div>
@@ -388,10 +402,14 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                 <SummaryItem label="Role Title" value={formData.role === "admin" ? "Admin" : "Member"} />
                 <SummaryItem label="Email" value={formData.email} />
                 <SummaryItem label="Phone" value={formData.phone} />
-                <SummaryItem label="Bonchat ID" value={formData.bonchatId} />
-                <SummaryItem label="Bonchat Username" value={formData.bonchatUsername} />
-                <SummaryItem label="Yepbit ID" value={formData.yepbitId} />
-                <SummaryItem label="Yepbit Username" value={formData.yepbitUsername} />
+                {memberType === "joined" && (
+                  <>
+                    <SummaryItem label="Bonchat ID" value={formData.bonchatId} />
+                    <SummaryItem label="Bonchat Username" value={formData.bonchatUsername} />
+                    <SummaryItem label="Yepbit ID" value={formData.yepbitId} />
+                    <SummaryItem label="Yepbit Username" value={formData.yepbitUsername} />
+                  </>
+                )}
                 <SummaryItem label="Work Occupation" value={formData.currentWork} />
                 <SummaryItem label="Investment Start Date" value={formData.investmentStartedAt} />
               </div>
