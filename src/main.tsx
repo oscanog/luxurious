@@ -8,6 +8,20 @@ import App from "./App.tsx";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
+// Suppress known Recharts ResponsiveContainer initial layout warnings
+const originalConsoleWarn = console.warn;
+console.warn = (...args: any[]) => {
+  if (
+    typeof args[0] === "string" &&
+    args[0].includes("The width") &&
+    args[0].includes("and height") &&
+    args[0].includes("should be greater than 0")
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ConvexAuthProvider client={convex}>

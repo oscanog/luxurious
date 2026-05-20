@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useQuery } from "convex/react";
 import {
   ReactFlow,
@@ -245,13 +245,16 @@ function flattenOrgTree(roots: OrgTreeNode[]): OrgTreeNode[] {
 function FitViewOnLoad({ isReady }: { isReady: boolean }) {
   const { fitView } = useReactFlow();
 
+  const hasFitted = useRef(false);
+
   useEffect(() => {
-    if (!isReady) {
+    if (!isReady || hasFitted.current) {
       return;
     }
 
     const timer = window.setTimeout(() => {
       void fitView({ duration: 500, padding: 0.28, minZoom: 0.2, maxZoom: 1.15 });
+      hasFitted.current = true;
     }, 80);
     return () => window.clearTimeout(timer);
   }, [fitView, isReady]);
@@ -326,8 +329,6 @@ function OrgChartCanvas({
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
-      fitView
-      fitViewOptions={{ padding: 0.28, minZoom: 0.2, maxZoom: 1.15 }}
       minZoom={0.2}
       maxZoom={1.15}
       nodesDraggable={false}
@@ -403,7 +404,6 @@ function OrgChartContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [pendingCenterNodeId, setPendingCenterNodeId] = useState<string | null>(null);
 
   const { fitView, setCenter } = useReactFlow();
   const { handleContextMenu, ContextMenuComponent } = useContextMenu();
@@ -518,6 +518,25 @@ function OrgChartContent() {
     };
   }), [edges, effectiveSelectedId]);
 
+
+  const flowNodesRef = useRef(flowNodes);
+  useEffect(() => {
+    flowNodesRef.current = flowNodes;
+  }, [flowNodes]);
+
+  const triggerFocusNode = useCallback((nodeId: string) => {
+    // We do NOT store X/Y in Convex DB. They are mathematically calculated
+    // client-side in buildFlowTree. 
+    // Wait 350ms for the sidebar slide transition to complete so the React Flow
+    // wrapper dimension stabilizes before we force the camera translation.
+    setTimeout(() => {
+      const node = flowNodesRef.current.find(n => n.id === nodeId);
+      if (node) {
+        void setCenter(node.position.x + 120, node.position.y + 100, { duration: 800, zoom: 0.8 });
+      }
+    }, 350);
+  }, [setCenter]);
+
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
 
@@ -545,26 +564,8 @@ function OrgChartContent() {
     }
 
     setSelectedId(match.id);
-    setPendingCenterNodeId(match.id);
-  }, [allTreeNodes, isProjectionView, statusFilter]);
-
-  useEffect(() => {
-    if (!pendingCenterNodeId) {
-      return;
-    }
-
-    const match = nodes.find(
-      (node) =>
-        node.id === pendingCenterNodeId
-    );
-
-    if (!match) {
-      return;
-    }
-
-    void setCenter(match.position.x + 120, match.position.y + 100, { duration: 500, zoom: 0.8 });
-    setPendingCenterNodeId(null);
-  }, [nodes, pendingCenterNodeId, setCenter]);
+    triggerFocusNode(match.id);
+  }, [allTreeNodes, isProjectionView, statusFilter, triggerFocusNode]);
 
   if (dashboard === undefined || dashboard === null) {
     return (
@@ -606,6 +607,20 @@ function OrgChartContent() {
         targetManagerId={targetManagerId}
         setTargetManagerId={setTargetManagerId}
         onSuccess={() => setIsSidebarOpen(false)}
+        onFocusNode={(id) => {
+          setIsSidebarOpen(false);
+          const match = allTreeNodes.find((node) => node.id === id);
+          if (match) {
+            if (!isProjectionView && match.status !== "joined" && !match.isViewer) {
+              setIsProjectionView(true);
+            }
+            if (statusFilter !== "All" && statusFilter.toLowerCase() !== match.status) {
+              setStatusFilter("All");
+            }
+            setSelectedId(match.id);
+            triggerFocusNode(match.id);
+          }
+        }}
       />
       <div className="flex items-center justify-between gap-4 pb-6">
         <Link
@@ -771,7 +786,13 @@ function OrgChartContent() {
       </div>
 
       <div className="relative h-[760px] w-full rounded-[36px] overflow-hidden">
-        <OrgChartCanvas nodes={flowNodes} edges={flowEdges} onSelect={setSelectedId} onPaneContextMenu={handlePaneRightClick} showMinimap={showMinimap} />
+        <OrgChartCanvas 
+          nodes={flowNodes} 
+          edges={flowEdges} 
+          onSelect={setSelectedId} 
+          onPaneContextMenu={handlePaneRightClick} 
+          showMinimap={showMinimap} 
+        />
       </div>
 
       <MemberInspector 

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { Search, UserPlus, X, ChevronLeft, ChevronRight, User, TrendingUp, PieChart as PieIcon, BarChart3, BarChart2, Activity, DollarSign, Layers } from "lucide-react";
+import { Search, X, ChevronLeft, ChevronRight, User, TrendingUp, PieChart as PieIcon, BarChart3, BarChart2, Activity, DollarSign, Layers, Focus } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 
@@ -23,10 +23,10 @@ interface MemberSidebarProps {
   targetManagerId: string;
   setTargetManagerId: (id: string) => void;
   onSuccess?: () => void;
+  onFocusNode?: (id: string) => void;
 }
 
 export function MemberSidebar({ 
-  currentPivotId, 
   isOpen, 
   onToggle, 
   visibleMembers, 
@@ -34,7 +34,8 @@ export function MemberSidebar({
   setSelectedMember,
   targetManagerId,
   setTargetManagerId,
-  onSuccess 
+  onSuccess,
+  onFocusNode
 }: MemberSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [heatmapType, setHeatmapType] = useState<"joins" | "investments">("joins");
@@ -510,7 +511,7 @@ export function MemberSidebar({
                           <span className="text-[8px] font-bold text-[hsl(var(--muted-foreground))] uppercase">{currency} Equivalent</span>
                         </div>
                         <div className="h-64 w-full mt-1">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                             <LineChart data={assetHistoryData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                               <XAxis 
                                 dataKey="month" 
@@ -681,7 +682,7 @@ export function MemberSidebar({
                     No active growth logs recorded
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <AreaChart data={growthChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                       <defs>
                         <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
@@ -847,13 +848,13 @@ export function MemberSidebar({
                     </button>
                     <button
                       onClick={() => {
-                        setSelectedMember(member);
-                        setTargetManagerId(currentPivotId);
+                        toast.success(`Zooming in for ${member.name ?? "Member"}`);
+                        onFocusNode?.(member._id);
                       }}
-                      className="p-1.5 rounded-md bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[hsl(var(--primary))] hover:text-white"
-                      title="Connect member"
+                      className="p-1.5 rounded-md bg-[hsl(43,96%,48%)/0.1] text-[hsl(43,96%,48%)] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[hsl(43,96%,48%)] hover:text-[#1A2235]"
+                      title="Focus Member on Canvas"
                     >
-                      <UserPlus size={16} />
+                      <Focus size={16} />
                     </button>
                   </div>
                 ))
