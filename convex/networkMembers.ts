@@ -837,7 +837,7 @@ export const updateMemberInvestmentDate = mutation({
     investmentStartedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    await getMobileProfileForViewerOrThrow(ctx);
     const member = await ctx.db.get(args.memberId);
     if (!member) throw new Error("Member not found");
     
@@ -852,7 +852,7 @@ export const updateMemberInvestmentDate = mutation({
   },
 });
 
-export const getHeatmapStats = query({
+export const getAnalyticsStats = query({
   args: {},
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
@@ -865,6 +865,8 @@ export const getHeatmapStats = query({
 
     const joinsByDate: Record<string, number> = {};
     const investmentsByDate: Record<string, number> = {};
+    const statusDistribution: Record<string, number> = {};
+    const roleDistribution: Record<string, number> = {};
 
     for (const member of members) {
       if (member.joinedAt) {
@@ -877,12 +879,20 @@ export const getHeatmapStats = query({
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         investmentsByDate[key] = (investmentsByDate[key] || 0) + 1;
       }
+      
+      const status = member.status || 'unknown';
+      statusDistribution[status] = (statusDistribution[status] || 0) + 1;
+      
+      const role = member.roleTitle || 'Prospect';
+      roleDistribution[role] = (roleDistribution[role] || 0) + 1;
     }
 
     return {
       totalMembers: members.length,
       joinsByDate,
       investmentsByDate,
+      statusDistribution,
+      roleDistribution,
       members: members.map(m => ({
         id: m._id,
         name: m.name,

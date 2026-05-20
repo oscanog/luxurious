@@ -468,6 +468,8 @@ function OrgChartContent() {
         id: n.id,
         name: n.data.name,
         role: n.data.roleTitle,
+        uplineId: n.data.member.uplineId,
+        latestAsset: n.data.member.latestAsset,
       })),
     [nodes]
   );
