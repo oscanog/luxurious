@@ -108,6 +108,7 @@ type OrgTreeNode = {
     currency: string;
     createdAt: number;
   } | null;
+  investmentStartedAt?: number;
   member: {
     id: Id<"users"> | Id<"networkMembers">;
     name: string;
@@ -198,6 +199,7 @@ function buildTree(
       totalDownlineCount: totalDownlines,
       allowAdd: true,
       latestAsset,
+      investmentStartedAt: member.investmentStartedAt,
       member: {
         id: member.userId ?? (member._id as any),
         name: member.name,
@@ -545,6 +547,7 @@ function buildOverview(
       totalDownlineCount: totalDownlines,
       allowAdd: true,
       latestAsset,
+      investmentStartedAt: viewer.investmentStartedAt,
       member: {
         id: viewer.userId ?? (viewer._id as any),
         name: viewer.name,
@@ -578,6 +581,7 @@ function buildOverview(
         totalDownlineCount: uplineDownlines,
         allowAdd: false,
         latestAsset: uplineAsset,
+        investmentStartedAt: directUpline.investmentStartedAt,
         member: {
           id: directUpline.userId ?? (directUpline._id as any),
           name: directUpline.name,

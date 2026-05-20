@@ -852,6 +852,13 @@ http.route({
             currency: typeof body.args?.currency === "string" ? body.args.currency : "USD",
           });
           break;
+        case "networkMembers:updateMemberInvestmentDate":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.networkMembers.updateMemberInvestmentDate, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            investmentStartedAt: typeof body.args?.investmentStartedAt === "number" ? body.args.investmentStartedAt : undefined,
+          });
+          break;
         default:
           return jsonResponse({ error: `Unknown mobile mutation: ${body.name}` }, 404);
       }

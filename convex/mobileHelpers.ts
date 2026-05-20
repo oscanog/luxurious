@@ -581,6 +581,30 @@ export async function listUnifiedNetworkMembers(
     }
   }
 
+  const userIdToInvestmentDate = new Map<Id<"users">, number>();
+  const allDbMembers = await ctx.db.query("networkMembers").collect();
+  for (const m of allDbMembers) {
+    if (m.userId && m.investmentStartedAt !== undefined && m.investmentStartedAt !== null) {
+      const existing = userIdToInvestmentDate.get(m.userId);
+      if (existing === undefined || m.investmentStartedAt < existing) {
+        userIdToInvestmentDate.set(m.userId, m.investmentStartedAt);
+      }
+    }
+  }
+
+  for (let i = 0; i < allMembers.length; i++) {
+    const m = allMembers[i];
+    if (m && m.userId) {
+      const canonicalDate = userIdToInvestmentDate.get(m.userId);
+      if (canonicalDate !== undefined && m.investmentStartedAt !== canonicalDate) {
+        allMembers[i] = {
+          ...m,
+          investmentStartedAt: canonicalDate,
+        };
+      }
+    }
+  }
+
   return allMembers;
 }
 
