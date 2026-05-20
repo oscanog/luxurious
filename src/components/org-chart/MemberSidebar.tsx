@@ -58,7 +58,7 @@ export function MemberSidebar({
     <>
       <div 
         className={`fixed right-0 top-0 h-full bg-[hsl(var(--card))] border-l border-[hsl(var(--border))] transition-all duration-300 z-50 flex flex-col ${
-          isOpen ? "w-80" : "w-0"
+          isOpen ? "w-[450px]" : "w-0"
         }`}
       >
         {/* Toggle Button */}

@@ -359,6 +359,9 @@ http.route({
             memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
           });
           break;
+        case "networkMembers:getHeatmapStats":
+          result = await ctx.runQuery(api.networkMembers.getHeatmapStats, {});
+          break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
       }

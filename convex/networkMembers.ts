@@ -852,3 +852,45 @@ export const updateMemberInvestmentDate = mutation({
   },
 });
 
+export const getHeatmapStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    
+    // Fetch all members for the profile
+    const members = await ctx.db
+      .query("networkMembers")
+      .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+      .collect();
+
+    const joinsByDate: Record<string, number> = {};
+    const investmentsByDate: Record<string, number> = {};
+
+    for (const member of members) {
+      if (member.joinedAt) {
+        const d = new Date(member.joinedAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        joinsByDate[key] = (joinsByDate[key] || 0) + 1;
+      }
+      if (member.investmentStartedAt) {
+        const d = new Date(member.investmentStartedAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        investmentsByDate[key] = (investmentsByDate[key] || 0) + 1;
+      }
+    }
+
+    return {
+      totalMembers: members.length,
+      joinsByDate,
+      investmentsByDate,
+      members: members.map(m => ({
+        id: m._id,
+        name: m.name,
+        roleTitle: m.roleTitle,
+        status: m.status,
+        joinedAt: m.joinedAt,
+        investmentStartedAt: m.investmentStartedAt,
+      })),
+    };
+  },
+});
