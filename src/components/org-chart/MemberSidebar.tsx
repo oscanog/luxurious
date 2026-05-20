@@ -62,7 +62,7 @@ export function MemberSidebar({
   }, [inspectingMember]);
   
   const members = useQuery(api.users.listWithHierarchy) ?? [];
-  const heatmapStats = useQuery(api.networkMembers.getAnalyticsStats) ?? { 
+  const heatmapStats = useQuery(api.networkMembers.getAnalyticsStats, {}) ?? { 
     joinsByDate: {}, 
     investmentsByDate: {}, 
     statusDistribution: {}, 

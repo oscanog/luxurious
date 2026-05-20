@@ -863,6 +863,19 @@ export const getAnalyticsStats = query({
       .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
       .collect();
 
+    const allAssets = await ctx.db.query("memberAssets").collect();
+    const latestAssetByMember = new Map<string, { value: number; currency: string }>();
+    for (const asset of allAssets) {
+      const existing = latestAssetByMember.get(asset.memberId);
+      if (!existing || asset.createdAt > (existing as any).createdAt) {
+        latestAssetByMember.set(asset.memberId, {
+          value: asset.value,
+          currency: asset.currency,
+          createdAt: asset.createdAt,
+        } as any);
+      }
+    }
+
     let filteredMembers = members;
     if (args.rootMemberId) {
       const rootId = args.rootMemberId;
@@ -931,6 +944,7 @@ export const getAnalyticsStats = query({
         status: m.status,
         joinedAt: m.joinedAt,
         investmentStartedAt: m.investmentStartedAt,
+        latestAsset: latestAssetByMember.get(m._id) || null,
       })),
     };
   },
