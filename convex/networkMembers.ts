@@ -853,8 +853,8 @@ export const updateMemberInvestmentDate = mutation({
 });
 
 export const getAnalyticsStats = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { rootMemberId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     
     // Fetch all members for the profile
@@ -863,12 +863,43 @@ export const getAnalyticsStats = query({
       .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
       .collect();
 
+    let filteredMembers = members;
+    if (args.rootMemberId) {
+      const rootId = args.rootMemberId;
+      const descendants = new Set<string>([rootId]);
+      
+      const parentToChildren = new Map<string, string[]>();
+      for (const m of members) {
+        if (m.parentMemberId) {
+          const parentId = m.parentMemberId;
+          if (!parentToChildren.has(parentId)) {
+            parentToChildren.set(parentId, []);
+          }
+          parentToChildren.get(parentId)!.push(m._id);
+        }
+      }
+
+      const queue = [rootId];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        const children = parentToChildren.get(current) || [];
+        for (const childId of children) {
+          if (!descendants.has(childId)) {
+            descendants.add(childId);
+            queue.push(childId);
+          }
+        }
+      }
+
+      filteredMembers = members.filter(m => descendants.has(m._id));
+    }
+
     const joinsByDate: Record<string, number> = {};
     const investmentsByDate: Record<string, number> = {};
     const statusDistribution: Record<string, number> = {};
     const roleDistribution: Record<string, number> = {};
 
-    for (const member of members) {
+    for (const member of filteredMembers) {
       if (member.joinedAt) {
         const d = new Date(member.joinedAt);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -888,12 +919,12 @@ export const getAnalyticsStats = query({
     }
 
     return {
-      totalMembers: members.length,
+      totalMembers: filteredMembers.length,
       joinsByDate,
       investmentsByDate,
       statusDistribution,
       roleDistribution,
-      members: members.map(m => ({
+      members: filteredMembers.map(m => ({
         id: m._id,
         name: m.name,
         roleTitle: m.roleTitle,

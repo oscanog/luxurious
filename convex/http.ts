@@ -360,7 +360,9 @@ http.route({
           });
           break;
         case "networkMembers:getAnalyticsStats":
-          result = await ctx.runQuery(api.networkMembers.getAnalyticsStats, {});
+          result = await ctx.runQuery(api.networkMembers.getAnalyticsStats, {
+            rootMemberId: typeof body.args?.rootMemberId === "string" ? body.args.rootMemberId : undefined,
+          });
           break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
