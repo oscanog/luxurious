@@ -54,9 +54,7 @@ export function LoginPage({
         localStorage.removeItem("lux_saved_remember");
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Invalid credentials. Please try again.";
-      setError(message);
+      setError("Invalid email or password. Please try again.");
       toast.error("Sign-in failed");
     } finally {
       setLoading(false);
