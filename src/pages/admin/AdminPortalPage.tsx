@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Users, BarChart3, Activity, ShieldAlert, ChevronRight } from "lucide-react";
+import { Users, BarChart3, Activity, ShieldAlert, ChevronRight, Bot } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function AdminPortalPage() {
@@ -54,6 +54,7 @@ export function AdminPortalPage() {
           <div className="space-y-3">
             {[
               { title: "Academy Content Manager", desc: "Edit levels, lessons, and slugs.", path: "/admin/academy" },
+              { title: "AI Agent Settings", desc: "Manage DeepSeek V4, keys, limits, skills, and scope.", path: "/admin/ai-settings", icon: Bot },
               { title: "User Directory", desc: "Manage roles and virtual balances.", path: "/admin/users" },
               { title: "Global Trade Monitor", desc: "View all live and past trades.", path: "/admin/trades" },
               { title: "Profile + Security", desc: "Review profile, rank, and password workflow.", path: "/profile" },

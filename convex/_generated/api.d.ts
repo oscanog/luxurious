@@ -10,6 +10,13 @@
 
 import type * as academy from "../academy.js";
 import type * as admin from "../admin.js";
+import type * as aiAgent from "../aiAgent.js";
+import type * as aiContext from "../aiContext.js";
+import type * as aiCrypto from "../aiCrypto.js";
+import type * as aiEmbeddings from "../aiEmbeddings.js";
+import type * as aiPgvector from "../aiPgvector.js";
+import type * as aiSecrets from "../aiSecrets.js";
+import type * as aiSettings from "../aiSettings.js";
 import type * as analytics from "../analytics.js";
 import type * as apkReleases from "../apkReleases.js";
 import type * as auth from "../auth.js";
@@ -50,6 +57,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   academy: typeof academy;
   admin: typeof admin;
+  aiAgent: typeof aiAgent;
+  aiContext: typeof aiContext;
+  aiCrypto: typeof aiCrypto;
+  aiEmbeddings: typeof aiEmbeddings;
+  aiPgvector: typeof aiPgvector;
+  aiSecrets: typeof aiSecrets;
+  aiSettings: typeof aiSettings;
   analytics: typeof analytics;
   apkReleases: typeof apkReleases;
   auth: typeof auth;

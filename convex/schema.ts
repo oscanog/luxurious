@@ -560,4 +560,68 @@ export default defineSchema({
     isSystem: v.boolean(), // true = shipped with app
   })
     .index("by_category", ["category"]),
+
+  aiSettings: defineTable({
+    key: v.literal("default"),
+    provider: v.literal("deepseek"),
+    baseUrl: v.string(),
+    defaultModel: v.union(
+      v.literal("deepseek-v4-flash"),
+      v.literal("deepseek-v4-pro"),
+    ),
+    encryptedApiKey: v.optional(v.string()),
+    apiKeyPreview: v.optional(v.string()),
+    apiKeyRotatedAt: v.optional(v.number()),
+    temperature: v.number(),
+    maxOutputTokens: v.number(),
+    dailyUserMessageLimit: v.number(),
+    monthlyUserTokenLimit: v.number(),
+    enabledScopes: v.array(v.string()),
+    enabledSkills: v.array(v.string()),
+    isEnabled: v.boolean(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  }).index("by_key", ["key"]),
+
+  aiChatThreads: defineTable({
+    userId: v.id("users"),
+    title: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_updatedAt", ["userId", "updatedAt"]),
+
+  aiChatMessages: defineTable({
+    threadId: v.id("aiChatThreads"),
+    userId: v.id("users"),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
+    content: v.string(),
+    model: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    totalTokens: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_threadId_and_createdAt", ["threadId", "createdAt"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+
+  aiUsageEvents: defineTable({
+    userId: v.id("users"),
+    provider: v.string(),
+    model: v.string(),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    status: v.union(v.literal("success"), v.literal("error"), v.literal("blocked")),
+    createdAt: v.number(),
+  })
+    .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+
+  aiSettingsAuditEvents: defineTable({
+    adminUserId: v.id("users"),
+    action: v.string(),
+    safeDetails: v.string(),
+    createdAt: v.number(),
+  }).index("by_createdAt", ["createdAt"]),
 });

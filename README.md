@@ -52,3 +52,6 @@ This project uses [caveman](file:///c:/projects/ai/caveman) for efficient develo
 - **Trigger**: Say "talk like caveman" or type `/caveman`.
 - **Stop**: Say "normal mode".
 - **Rule**: Keep documentation compressed to save input tokens.
+
+## TODOs
+- **Org Chart Canvas Focus Bug**: The canvas zoom-in for specific members fails due to React Flow limitations. Blueprint and history of failed attempts are documented in `docs/org-chart-focus-bug.md`. Wait for future fix.

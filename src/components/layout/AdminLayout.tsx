@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
+  Bot,
   BookOpen,
   BriefcaseBusiness,
   CalendarDays,
@@ -39,6 +40,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
+import { AiChatBadge } from "@/components/ai/AiChatBadge";
 import { ThemeMode } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +72,7 @@ export type NavPath =
   | "/learn-to-trade"
   | "/academy"
   | "/admin"
+  | "/admin/ai-settings"
   | "/admin/academy"
   | "/admin/trades"
   | "/admin/apk-management"
@@ -131,6 +134,7 @@ const SUPPORT_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
 
 const ADMIN_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
   { path: "/admin", label: "Admin Panel", icon: ShieldCheck },
+  { path: "/admin/ai-settings", label: "AI Settings", icon: Bot },
   { path: "/admin/academy", label: "Academy Manager", icon: BookOpen },
   { path: "/admin/trades", label: "Trade Monitor", icon: TrendingUp },
   { path: "/admin/apk-management", label: "APK Management", icon: ShieldCheck },
@@ -165,6 +169,7 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/learn-to-trade": "Learn to Trade",
   "/academy": "Academy",
   "/admin": "Admin Panel",
+  "/admin/ai-settings": "AI Settings",
   "/admin/academy": "Academy Manager",
   "/admin/trades": "Trade Monitor",
   "/admin/apk-management": "APK Management",
@@ -736,6 +741,7 @@ export function AdminLayout({
           </div>
         </div>
       )}
+      <AiChatBadge />
     </div>
   );
 }

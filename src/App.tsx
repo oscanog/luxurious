@@ -8,6 +8,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { AdminPortalPage } from "@/pages/admin/AdminPortalPage";
 import { ApkManagementPage } from "@/pages/admin/ApkManagementPage";
 import { AcademyManagerPage } from "@/pages/admin/AcademyManagerPage";
+import { AiSettingsPage } from "@/pages/admin/AiSettingsPage";
 import { TradeMonitorPage } from "@/pages/admin/TradeMonitorPage";
 import { PresentationStudioPage } from "@/pages/admin/PresentationStudioPage";
 import { AcademyPage } from "@/pages/dashboard/AcademyPage";
@@ -121,6 +122,7 @@ function AuthenticatedApp({
         <Route path="/learn-to-trade" element={<LearnToTradePage />} />
         <Route path="/academy" element={<AcademyPage />} />
         <Route path="/admin" element={<AdminPortalPage />} />
+        <Route path="/admin/ai-settings" element={<AiSettingsPage />} />
         <Route path="/admin/academy" element={<AcademyManagerPage />} />
         <Route path="/admin/trades" element={<TradeMonitorPage />} />
         <Route path="/admin/apk-management" element={<ApkManagementPage />} />
