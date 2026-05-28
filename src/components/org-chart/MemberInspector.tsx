@@ -47,7 +47,7 @@ export function MemberInspector({
   const member = useQuery(api.network.getMember, memberId ? { memberId: memberId as Id<"networkMembers"> } : "skip");
   
   const resetPassword = useAction(api.networkMembers.resetMemberPassword);
-  const updateEmail = useAction(api.networkMembers.updateMemberEmail);
+  const updateEmail = useAction(api.admin.updateUserEmail);
   const deleteMember = useMutation(api.network.deleteMember);
   const updateStatus = useMutation(api.networkMembers.updateMemberStatus);
   const updateInvestmentDate = useMutation(api.networkMembers.updateMemberInvestmentDate);
@@ -255,12 +255,11 @@ export function MemberInspector({
 
     setIsChangingEmail(true);
     try {
-      const result = await updateEmail({ 
-        memberId: memberId as Id<"networkMembers">, 
-        newEmail 
+      await updateEmail({
+        memberId: memberId as Id<"networkMembers">,
+        newEmail,
       });
-      setCredentials({ email: result.newEmail, password: result.password, name: result.name });
-      toast.success("Email updated successfully");
+      toast.success("Email changed. User must sign in again.");
     } catch (e: any) {
       toast.error(e.message || "Failed to update email");
     } finally {
@@ -558,7 +557,7 @@ export function MemberInspector({
               <SecurityButton 
                 icon={<MailIcon size={18} />} 
                 label="Change Email" 
-                description="Update login and notification email"
+                description="Update login email without changing password"
                 onClick={() => setIsChangeEmailOpen(true)}
                 loading={isChangingEmail}
               />

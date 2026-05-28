@@ -18,6 +18,7 @@ Enable administrators and users to manage the organizational hierarchy directly 
   - Add Member: Select an existing user to become a direct report.
   - Remove Member: Sever the link between a member and their manager.
   - Move Member: Drag-and-drop to change reporting line.
+- **Admin Email Change**: Email correction must preserve the existing `users._id`. Use `admin.updateUserEmail`; do not delete/recreate auth accounts or create a replacement user row.
 
 ## UI/UX Best Practices
 Based on modern standards:
@@ -28,6 +29,7 @@ Based on modern standards:
 
 ## Technical Implementation
 - **Data Model**: `networkMembers` stores the display tree. Linked account rows use `userId`; `listUnifiedNetworkMembers` finds the signed-in member's canonical row and remaps that subtree under the member's viewer card.
+- **Email Changes**: `admin.updateUserEmail` patches `users.email`, the password `authAccounts.providerAccountId`, linked `networkMembers.email` rows, and invalidates sessions. Password stays unchanged; user signs in again with the new email.
 - **Visualization**: `@xyflow/react` (React Flow).
 - **State**: Convex queries for live hierarchy updates.
 

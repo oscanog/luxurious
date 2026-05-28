@@ -1,4 +1,9 @@
-import { createAccount, getAuthUserId } from "@convex-dev/auth/server";
+import {
+  createAccount,
+  getAuthUserId,
+  invalidateSessions,
+  modifyAccountCredentials,
+} from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -63,6 +68,16 @@ function randomLetters(length: number) {
 function generateTemporaryPassword() {
   return `LTG${randomDigits(4)}${randomLetters(4)}`;
 }
+
+type UpdateMemberEmailResult = {
+  success: true;
+  userId: Id<"users">;
+  oldEmail: string;
+  newEmail: string;
+  name: string;
+  patchedMemberCount: number;
+  invalidatedSessionCount: number;
+};
 
 export const updateSocialIds = mutation({
   args: {
@@ -329,31 +344,18 @@ export const resetMemberPassword = action({
       memberId: args.memberId,
     });
 
-    // Delete old auth account for this user
-    await ctx.runMutation(internal.networkMembers.deleteAuthAccountForUser, {
-      userId: memberInfo.userId,
-    });
-
-    // Create new auth account with generated password
     const password = generateTemporaryPassword();
-    await createAccount(ctx, {
+
+    await modifyAccountCredentials(ctx, {
       provider: "password",
       account: {
         id: memberInfo.email,
         secret: password,
       },
-      profile: {
-        name: memberInfo.name,
-        email: memberInfo.email,
-      },
-      shouldLinkViaEmail: false,
     });
 
-    // Re-link user role after account recreation
-    await ctx.runMutation(internal.networkMembers.patchUserAfterReset, {
-      email: memberInfo.email,
-      oldUserId: memberInfo.userId,
-      memberId: args.memberId,
+    await invalidateSessions(ctx, {
+      userId: memberInfo.userId,
     });
 
     return {
@@ -370,71 +372,17 @@ export const updateMemberEmail = action({
     memberId: v.id("networkMembers"),
     newEmail: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<UpdateMemberEmailResult> => {
     const viewerUserId = await getAuthUserId(ctx);
     if (!viewerUserId) {
       throw new Error("Not authenticated");
     }
 
-    const normalizedEmail = args.newEmail.trim().toLowerCase();
-    if (!normalizedEmail || !normalizedEmail.includes("@")) {
-      throw new Error("Invalid email address.");
-    }
-
-    // Check availability
-    const availability: { exists: boolean } = await ctx.runQuery(
-      api.networkMembers.checkEmailAvailability,
-      { email: normalizedEmail },
-    );
-    if (availability.exists) {
-      throw new Error("Email already in use by another account.");
-    }
-
-    // Get member info
-    const memberInfo: {
-      userId: Id<"users">;
-      email: string;
-      name: string;
-    } = await ctx.runQuery(internal.networkMembers.getMemberAuthInfo, {
-      viewerUserId,
+    return await ctx.runMutation(internal.admin.updateUserEmailInternal, {
+      adminUserId: viewerUserId,
       memberId: args.memberId,
+      newEmail: args.newEmail,
     });
-
-    // Delete old auth account
-    await ctx.runMutation(internal.networkMembers.deleteAuthAccountForUser, {
-      userId: memberInfo.userId,
-    });
-
-    // Create new auth account with new email + generated password
-    const password = generateTemporaryPassword();
-    await createAccount(ctx, {
-      provider: "password",
-      account: {
-        id: normalizedEmail,
-        secret: password,
-      },
-      profile: {
-        name: memberInfo.name,
-        email: normalizedEmail,
-      },
-      shouldLinkViaEmail: false,
-    });
-
-    // Re-link and update email on old user
-    await ctx.runMutation(internal.networkMembers.patchUserEmailAfterChange, {
-      oldEmail: memberInfo.email,
-      newEmail: normalizedEmail,
-      oldUserId: memberInfo.userId,
-      memberId: args.memberId,
-    });
-
-    return {
-      success: true,
-      oldEmail: memberInfo.email,
-      newEmail: normalizedEmail,
-      password,
-      name: memberInfo.name,
-    };
   },
 });
 
@@ -463,174 +411,6 @@ export const getMemberAuthInfo = internalQuery({
       email: user.email,
       name: member.name,
     };
-  },
-});
-
-export const deleteAuthAccountForUser = internalMutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    // Delete auth accounts for this user
-    const accounts = await ctx.db
-      .query("authAccounts")
-      .withIndex("userIdAndProvider", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    for (const account of accounts) {
-      // Delete verification codes for this account
-      const codes = await ctx.db
-        .query("authVerificationCodes")
-        .withIndex("accountId", (q) => q.eq("accountId", account._id))
-        .collect();
-      for (const code of codes) {
-        await ctx.db.delete(code._id);
-      }
-      await ctx.db.delete(account._id);
-    }
-
-    // Delete sessions
-    const sessions = await ctx.db
-      .query("authSessions")
-      .withIndex("userId", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    for (const session of sessions) {
-      const refreshTokens = await ctx.db
-        .query("authRefreshTokens")
-        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
-      for (const token of refreshTokens) {
-        await ctx.db.delete(token._id);
-      }
-      await ctx.db.delete(session._id);
-    }
-  },
-});
-
-export const patchUserAfterReset = internalMutation({
-  args: {
-    email: v.string(),
-    oldUserId: v.id("users"),
-    memberId: v.id("networkMembers"),
-  },
-  handler: async (ctx, args) => {
-    // createAccount may have created a new user row - find it
-    const newUser = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (!newUser) {
-      throw new Error("New auth user not found after reset.");
-    }
-
-    // Copy role from old user to new
-    const oldUser = await ctx.db.get(args.oldUserId);
-    if (oldUser) {
-      await ctx.db.patch(newUser._id, {
-        role: oldUser.role ?? "member",
-        uplineId: oldUser.uplineId,
-        lastUplineId: oldUser.lastUplineId,
-      });
-
-      // If a new user was created (different ID), update member reference
-      if (newUser._id !== args.oldUserId) {
-        await ctx.db.patch(args.memberId, {
-          userId: newUser._id,
-          updatedAt: Date.now(),
-        });
-
-        // Update mobile profile reference
-        const profiles = await ctx.db
-          .query("mobileProfiles")
-          .withIndex("by_userId", (q) => q.eq("userId", args.oldUserId))
-          .collect();
-        for (const profile of profiles) {
-          await ctx.db.patch(profile._id, {
-            userId: newUser._id,
-            updatedAt: Date.now(),
-          });
-        }
-
-        // Clean up old user if it has no auth accounts left
-        const oldAccounts = await ctx.db
-          .query("authAccounts")
-          .withIndex("userIdAndProvider", (q) => q.eq("userId", args.oldUserId))
-          .take(1);
-        if (oldAccounts.length === 0) {
-          await ctx.db.delete(args.oldUserId);
-        }
-      }
-    }
-  },
-});
-
-export const patchUserEmailAfterChange = internalMutation({
-  args: {
-    oldEmail: v.string(),
-    newEmail: v.string(),
-    oldUserId: v.id("users"),
-    memberId: v.id("networkMembers"),
-  },
-  handler: async (ctx, args) => {
-    // Find user created by createAccount for the new email
-    const newUser = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.newEmail))
-      .first();
-
-    if (!newUser) {
-      throw new Error("New auth user not found after email change.");
-    }
-
-    const oldUser = await ctx.db.get(args.oldUserId);
-    if (oldUser) {
-      await ctx.db.patch(newUser._id, {
-        role: oldUser.role ?? "member",
-        uplineId: oldUser.uplineId,
-        lastUplineId: oldUser.lastUplineId,
-      });
-
-      if (newUser._id !== args.oldUserId) {
-        // Update member to point to new user
-        await ctx.db.patch(args.memberId, {
-          userId: newUser._id,
-          email: args.newEmail,
-          updatedAt: Date.now(),
-        });
-
-        // Update mobile profile
-        const profiles = await ctx.db
-          .query("mobileProfiles")
-          .withIndex("by_userId", (q) => q.eq("userId", args.oldUserId))
-          .collect();
-        for (const profile of profiles) {
-          await ctx.db.patch(profile._id, {
-            userId: newUser._id,
-            updatedAt: Date.now(),
-          });
-        }
-
-        // Clean old user
-        const oldAccounts = await ctx.db
-          .query("authAccounts")
-          .withIndex("userIdAndProvider", (q) => q.eq("userId", args.oldUserId))
-          .take(1);
-        if (oldAccounts.length === 0) {
-          await ctx.db.delete(args.oldUserId);
-        }
-      } else {
-        // Same user, just update email fields
-        await ctx.db.patch(args.oldUserId, {
-          email: args.newEmail,
-        });
-        await ctx.db.patch(args.memberId, {
-          email: args.newEmail,
-          updatedAt: Date.now(),
-        });
-      }
-    }
   },
 });
 

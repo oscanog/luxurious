@@ -26,6 +26,15 @@ type EmbeddableRecord = {
   content: string;
 };
 
+type AccessibleEmbeddingRow = {
+  id: Id<"aiDbEmbeddings">;
+  table: SourceTable;
+  sourceId: string;
+  title: string;
+  content: string;
+  updatedAt: number;
+};
+
 function fmtDate(ms: number | undefined | null) {
   return ms ? new Date(ms).toISOString().slice(0, 10) : "unknown";
 }
@@ -251,7 +260,7 @@ export const getAccessibleByIds = internalQuery({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
 
-    const rows = [];
+    const rows: AccessibleEmbeddingRow[] = [];
     for (const id of args.ids) {
       const row = await ctx.db.get("aiDbEmbeddings", id);
       if (!row) continue;

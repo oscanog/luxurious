@@ -74,3 +74,9 @@
 * Florence's side panel showed asset logs, but the main canvas card missed latest asset because the card used the signed-in profile viewer row while the asset logs were attached to the canonical admin/upline tree row.
 * Asset lookup now populates latest-asset maps by member id, linked user id, member email, and normalized member name.
 * This lets duplicate auth/user rows with the same member email still render the same latest org asset on cards.
+
+### Follow-up: Admin Email Change Must Preserve User Id
+* Email is a join key across `users`, `authAccounts`, `networkMembers`, login, org chart, AI visibility, and mobile profile reads.
+* Admin email correction must use `admin.updateUserEmail`, which patches the existing `users._id` and password auth account instead of creating a new user.
+* Password stays unchanged. Sessions are invalidated, so the member signs in again with the new email.
+* Do not use create/delete auth-account flows for email-only changes; they can orphan wallets, trades, social posts, AI threads, and history tied to the original `users._id`.
