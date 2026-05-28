@@ -63,3 +63,9 @@
 * Remap descendants of those canonical rows under the signed-in viewer card.
 * Keep access scoped: member sees their canonical subtree, not admin-only users or unrelated branches.
 * Update AI context to use the same unified member helper so desktop AI and org chart share one access model.
+
+### Follow-up: Show Direct Upline Read-Only
+* Florence's account needed to see Maylyn above Florence because Maylyn is the canonical direct upline.
+* Direct-upline lookup now resolves canonical member rows by `userId` or email, then loads `parentMemberId`.
+* `buildOverview` wraps viewer node under that upline and sets `allowAdd: false` on both the wrapper node and nested `member` payload.
+* Desktop org cards already hide the plus button when `member.allowAdd === false`, so Maylyn is visible but cannot add from Florence's non-admin view.

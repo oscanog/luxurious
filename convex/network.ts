@@ -299,6 +299,46 @@ function resolveParentUserId(nextParent: NetworkMember | null, viewer: Doc<"user
   return nextParent.userId ?? null;
 }
 
+async function findDirectUplineForProfile(
+  ctx: QueryCtx,
+  profile: Doc<"mobileProfiles">,
+): Promise<NetworkMember | null> {
+  if (!profile.userId) {
+    return null;
+  }
+
+  const viewerUser = await ctx.db.get("users", profile.userId);
+  const rootsById = await ctx.db
+    .query("networkMembers")
+    .withIndex("by_userId", (q) => q.eq("userId", profile.userId))
+    .take(20);
+  const rootsByEmail = viewerUser?.email
+    ? await ctx.db
+        .query("networkMembers")
+        .withIndex("by_email", (q) => q.eq("email", viewerUser.email))
+        .take(20)
+    : [];
+
+  const rootsByKey = new Map<Id<"networkMembers">, NetworkMember>();
+  for (const root of [...rootsById, ...rootsByEmail]) {
+    rootsByKey.set(root._id, root);
+  }
+
+  const candidates = [...rootsByKey.values()]
+    .filter((member) => !member.isViewer && member.parentMemberId)
+    .sort((left, right) => {
+      const leftExternal = left.profileId !== profile._id ? 0 : 1;
+      const rightExternal = right.profileId !== profile._id ? 0 : 1;
+      return leftExternal - rightExternal;
+    });
+  const canonicalRoot = candidates[0] ?? null;
+  if (!canonicalRoot?.parentMemberId) {
+    return null;
+  }
+
+  return await ctx.db.get("networkMembers", canonicalRoot.parentMemberId);
+}
+
 async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProfiles">) {
   const profileMembers = await ctx.db
     .query("networkMembers")
@@ -665,21 +705,7 @@ export const getDashboard = query({
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
-    let directUpline: Doc<"networkMembers"> | null = null;
-    if (profile.userId) {
-      const parentTreeMember = await ctx.db
-        .query("networkMembers")
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("userId"), profile.userId),
-            q.eq(q.field("isViewer"), false)
-          )
-        )
-        .first();
-      if (parentTreeMember && parentTreeMember.parentMemberId) {
-        directUpline = await ctx.db.get(parentTreeMember.parentMemberId);
-      }
-    }
+    const directUpline = await findDirectUplineForProfile(ctx, profile);
 
     const allAssets = await ctx.db.query("memberAssets").collect();
     const allMembersList = await ctx.db.query("networkMembers").collect();
@@ -745,21 +771,7 @@ export const getTree = query({
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
-    let directUpline: Doc<"networkMembers"> | null = null;
-    if (profile.userId) {
-      const parentTreeMember = await ctx.db
-        .query("networkMembers")
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("userId"), profile.userId),
-            q.eq(q.field("isViewer"), false)
-          )
-        )
-        .first();
-      if (parentTreeMember && parentTreeMember.parentMemberId) {
-        directUpline = await ctx.db.get(parentTreeMember.parentMemberId);
-      }
-    }
+    const directUpline = await findDirectUplineForProfile(ctx, profile);
 
     const allAssets = await ctx.db.query("memberAssets").collect();
     const allMembersList = await ctx.db.query("networkMembers").collect();

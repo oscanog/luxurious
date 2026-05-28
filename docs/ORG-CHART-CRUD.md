@@ -6,6 +6,8 @@ Enable administrators and users to manage the organizational hierarchy directly 
 ## Requirements
 - **Root Focus**: The chart must always center on the authenticated user by default.
 - **Canonical Downline Visibility**: A joined member account must see downlines connected under their linked `networkMembers.userId` row, even when those downlines were added by an admin or upline in another profile.
+- **Direct Upline Context**: Non-admin member accounts should also see their direct upline above their own root when the canonical tree has one.
+- **Upline Read-Only Control**: Direct upline wrapper nodes must not show the add-member plus button for non-admin member views.
 - **Dynamic Pivot**: Clicking any avatar card pivots the chart to center on that user.
 - **Breadcrumbs**: Maintain a dynamic breadcrumb trail showing the path from the original root (current user) to the current pivot.
 - **Member Sidebar**: Collapsible right sidebar to list available members. Differentiates "Broken" (previously connected) vs "Unused" members.
