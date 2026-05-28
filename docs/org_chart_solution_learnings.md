@@ -48,3 +48,18 @@
 * [x] Ensured index-free query via generic filter avoids schema mismatch errors.
 * [x] Implemented React frontend check for `member.allowAdd !== false` to hide plus button on desktop.
 * [x] Implemented Flutter mobile check for `node.allowAdd` to hide plus button on mobile.
+
+---
+
+## 4. Canonical Linked-Downline Visibility
+
+### Issue: Member Account Showed Only Local Seeded Profile
+* **Root Cause**: `listUnifiedNetworkMembers` started from the signed-in user's own `mobileProfiles` tree. If an admin/upline added the real downlines in another profile, the member account only saw local seeded placeholders.
+* **Example**: Florence Nogoy signed in as a non-admin member. Her own profile showed only her viewer card and local prospects, while Marko's org tree had Florence's real connected downline subtree.
+
+### Fix
+* Add `networkMembers.by_userId` index.
+* In `listUnifiedNetworkMembers`, find non-viewer `networkMembers` rows linked to `profile.userId` outside the current profile.
+* Remap descendants of those canonical rows under the signed-in viewer card.
+* Keep access scoped: member sees their canonical subtree, not admin-only users or unrelated branches.
+* Update AI context to use the same unified member helper so desktop AI and org chart share one access model.

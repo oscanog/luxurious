@@ -5,6 +5,7 @@ Enable administrators and users to manage the organizational hierarchy directly 
 
 ## Requirements
 - **Root Focus**: The chart must always center on the authenticated user by default.
+- **Canonical Downline Visibility**: A joined member account must see downlines connected under their linked `networkMembers.userId` row, even when those downlines were added by an admin or upline in another profile.
 - **Dynamic Pivot**: Clicking any avatar card pivots the chart to center on that user.
 - **Breadcrumbs**: Maintain a dynamic breadcrumb trail showing the path from the original root (current user) to the current pivot.
 - **Member Sidebar**: Collapsible right sidebar to list available members. Differentiates "Broken" (previously connected) vs "Unused" members.
@@ -24,7 +25,7 @@ Based on modern standards:
 - **Search**: Fast member lookup within the "Add" flow.
 
 ## Technical Implementation
-- **Data Model**: `users` table with a `parentId` or `managerId` field.
+- **Data Model**: `networkMembers` stores the display tree. Linked account rows use `userId`; `listUnifiedNetworkMembers` finds the signed-in member's canonical row and remaps that subtree under the member's viewer card.
 - **Visualization**: `@xyflow/react` (React Flow).
 - **State**: Convex queries for live hierarchy updates.
 

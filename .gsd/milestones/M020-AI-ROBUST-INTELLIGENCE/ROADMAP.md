@@ -77,16 +77,27 @@ Give the agent the ability to remember context across the thread without re-quer
 - Added DeepSeek/OpenAI-compatible tool loop in `aiAgent.ts` with `searchNetwork`, `getLatestAsset`, `semanticSearch`, and `getFinanceHistory`.
 - Added thread memory fields on `aiChatThreads`: `threadSummary`, `activeScopes`, `activeEntities`, `lastIntent`, `lastToolResults`.
 - Added reactive embedding schedules for primary desktop/member/asset/finance/academy mutation paths.
+- Added desktop chat tool/search status chips, structured error panel, and lightweight Markdown rendering for lists, code, links, quotes, and tables.
+- Added `scripts/qa-ai-agent.mjs` for deployed fresh-thread QA with authenticated admin/member accounts.
+- Fixed follow-up intent guard so prompts like "admin-only" do not get misrouted as asset latest-only requests.
+- Updated member network visibility to use canonical linked-account downlines from the org tree, not only members created inside the signed-in user's own profile.
 - Note: existing records need `aiDbEmbeddingActions.backfillBatch` to run with `AI_EMBEDDING_*` env configured. Embedding model must return 1536-dimensional vectors.
 
 ## Phase 4: Desktop UX Upgrades
 
-- [ ] Update `AiChatBadge.tsx` to handle streaming tool-call indicators (e.g., show "Searching for Maylyn..." when the LLM triggers a tool).
-- [ ] Improve the typewriter effect to handle complex Markdown tables and charts if the agent returns them.
+- [x] Update `AiChatBadge.tsx` to handle tool/search indicators and show completed activity chips from backend tool metadata.
+- [x] Improve the typewriter effect to handle Markdown lists, code, links, quotes, and tables without raw text dumps.
+- [x] Improve AI request errors with a structured panel, provider/status details, and retry affordance.
+
+## Phase 5: Access Scope QA
+
+- [x] Admin fresh-thread QA: Florence asset total/latest and Maylyn follow-up resolve from live data.
+- [x] Non-admin empty-scope QA: Layka account cannot see admin users or out-of-scope records.
+- [x] Non-admin linked-downline QA: member accounts use canonical `networkMembers.userId` roots so downlines connected by an admin/upline are visible to the signed-in member.
 
 ## Acceptance Criteria
 
-- [ ] "si maylyn ba magkano latest?" successfully returns Maylyn's asset data right after asking about Florence, without needing to repeat the word "asset".
-- [ ] All major DB tables (`networkMembers`, `memberAssets`) are vectorized and semantically searchable.
-- [ ] `aiAgent.ts` uses DeepSeek tool calling instead of static string concatenation for context.
-- [ ] Reference repo `@convex-dev/agent` concepts are successfully integrated into the Luxurious backend.
+- [x] "si maylyn ba magkano latest?" successfully returns Maylyn's asset data right after asking about Florence, without needing to repeat the word "asset".
+- [x] All major DB tables (`networkMembers`, `memberAssets`) are vectorized and semantically searchable.
+- [x] `aiAgent.ts` uses DeepSeek tool calling instead of static string concatenation for context.
+- [x] Reference repo `@convex-dev/agent` concepts are successfully integrated into the Luxurious backend.

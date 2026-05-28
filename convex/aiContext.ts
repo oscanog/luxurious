@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalQuery, QueryCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { listUnifiedNetworkMembers } from "./mobileHelpers";
 
 async function getProfile(ctx: QueryCtx, userId: Id<"users">) {
   return await ctx.db
@@ -19,10 +20,7 @@ async function getVisibleMembers(ctx: QueryCtx, userId: Id<"users">, limit = 300
 
   const profile = await getProfile(ctx, userId);
   if (!profile) return [];
-  return await ctx.db
-    .query("networkMembers")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
-    .take(limit);
+  return (await listUnifiedNetworkMembers(ctx, profile._id)).slice(0, limit);
 }
 
 function fmtDate(ms: number | undefined | null) {
@@ -91,7 +89,7 @@ async function getMemberAssetLogs(
   limit = 5,
 ) {
   const allAssets: Doc<"memberAssets">[] = [];
-  for (const memberId of relatedMemberIds(member, visibleMembers)) {
+  for (const memberId of await relatedAssetMemberIds(ctx, member, visibleMembers)) {
     const assets = await ctx.db
       .query("memberAssets")
       .withIndex("by_memberId_and_createdAt", (q) => q.eq("memberId", memberId))
@@ -108,6 +106,46 @@ async function getMemberAssetLogs(
   return [...uniqueAssets.values()]
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit);
+}
+
+async function relatedAssetMemberIds(
+  ctx: QueryCtx,
+  member: Doc<"networkMembers">,
+  visibleMembers: Doc<"networkMembers">[],
+) {
+  const ids = new Set<Id<"networkMembers">>(relatedMemberIds(member, visibleMembers));
+
+  if (member.userId) {
+    const linkedRows = await ctx.db
+      .query("networkMembers")
+      .withIndex("by_userId", (q) => q.eq("userId", member.userId))
+      .take(20);
+    for (const row of linkedRows) {
+      ids.add(row._id);
+    }
+
+    const user = await ctx.db.get("users", member.userId);
+    const email = member.email ?? user?.email;
+    if (email) {
+      const emailRows = await ctx.db
+        .query("networkMembers")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .take(20);
+      for (const row of emailRows) {
+        ids.add(row._id);
+      }
+    }
+  } else if (member.email) {
+    const emailRows = await ctx.db
+      .query("networkMembers")
+      .withIndex("by_email", (q) => q.eq("email", member.email))
+      .take(20);
+    for (const row of emailRows) {
+      ids.add(row._id);
+    }
+  }
+
+  return [...ids];
 }
 
 // ── Network ──────────────────────────────────────────────────────────────────
@@ -128,12 +166,7 @@ async function networkContext(
   } else {
     const profile = await getProfile(ctx, userId);
     if (!profile) return "No network profile found for this user.";
-    members = await ctx.db
-      .query("networkMembers")
-      .withIndex("by_profileId_and_sortOrder", (q) =>
-        q.eq("profileId", profile._id),
-      )
-      .take(100);
+    members = (await listUnifiedNetworkMembers(ctx, profile._id)).slice(0, 100);
   }
 
   if (searchTerm) {

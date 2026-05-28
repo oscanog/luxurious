@@ -504,17 +504,25 @@ export async function listUnifiedNetworkMembers(
   ctx: MobileCtx,
   profileId: Id<"mobileProfiles">,
 ): Promise<Doc<"networkMembers">[]> {
+  const profile = await ctx.db.get("mobileProfiles", profileId);
   const primaryMembers = await ctx.db
     .query("networkMembers")
     .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profileId))
     .collect();
 
-  const allMembers = [...primaryMembers];
+  const primaryViewer = primaryMembers.find((member) => member.isViewer) ?? null;
+  const canonicalMembers = profile?.userId && primaryViewer
+    ? await listCanonicalDownlineMembers(ctx, profile, primaryViewer)
+    : [];
+  const allMembers: Doc<"networkMembers">[] =
+    canonicalMembers.length > 0 && primaryViewer
+      ? [primaryViewer, ...canonicalMembers]
+      : [...primaryMembers];
   const processedUserIds = new Set<string>();
-  const profileQueue = [{ profileId, members: primaryMembers }];
+  const profileQueue = [{ profileId, members: allMembers }];
   const userIdToParentMemberId = new Map<Id<"users">, Id<"networkMembers">>();
   
-  for (const m of primaryMembers) {
+  for (const m of allMembers) {
     if (m.userId && !m.isViewer) {
       userIdToParentMemberId.set(m.userId, m._id);
     }
@@ -606,6 +614,76 @@ export async function listUnifiedNetworkMembers(
   }
 
   return allMembers;
+}
+
+async function listCanonicalDownlineMembers(
+  ctx: MobileCtx,
+  profile: MobileProfile,
+  primaryViewer: Doc<"networkMembers">,
+) {
+  if (!profile.userId) {
+    return [];
+  }
+
+  const viewerUser = await ctx.db.get("users", profile.userId);
+  const rootsById = await ctx.db
+    .query("networkMembers")
+    .withIndex("by_userId", (q) => q.eq("userId", profile.userId))
+    .take(20);
+  const rootsByEmail = viewerUser?.email
+    ? await ctx.db
+        .query("networkMembers")
+        .withIndex("by_email", (q) => q.eq("email", viewerUser.email))
+        .take(20)
+    : [];
+  const rootByKey = new Map<Id<"networkMembers">, Doc<"networkMembers">>();
+  for (const root of [...rootsById, ...rootsByEmail]) {
+    rootByKey.set(root._id, root);
+  }
+  const linkedRoots = [...rootByKey.values()];
+  const externalRoots = linkedRoots.filter(
+    (member) => !member.isViewer && member.profileId !== profile._id,
+  );
+  if (externalRoots.length === 0) {
+    return [];
+  }
+
+  const mergedMembers: Doc<"networkMembers">[] = [];
+  const seenIds = new Set<Id<"networkMembers">>();
+  for (const root of externalRoots) {
+    const profileMembers = await ctx.db
+      .query("networkMembers")
+      .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", root.profileId))
+      .collect();
+    const parentLookup = new Map<Id<"networkMembers">, Doc<"networkMembers">[]>();
+    for (const member of profileMembers) {
+      if (!member.parentMemberId) {
+        continue;
+      }
+      const siblings = parentLookup.get(member.parentMemberId) ?? [];
+      siblings.push(member);
+      parentLookup.set(member.parentMemberId, siblings);
+    }
+
+    const stack = [...(parentLookup.get(root._id) ?? [])];
+    while (stack.length > 0) {
+      const member = stack.shift();
+      if (!member || seenIds.has(member._id)) {
+        continue;
+      }
+      seenIds.add(member._id);
+      mergedMembers.push({
+        ...member,
+        parentMemberId:
+          member.parentMemberId === root._id
+            ? primaryViewer._id
+            : member.parentMemberId,
+      });
+      stack.push(...(parentLookup.get(member._id) ?? []));
+    }
+  }
+
+  return mergedMembers;
 }
 
 async function seedDefaultNetworkMembers(

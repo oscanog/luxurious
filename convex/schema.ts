@@ -361,7 +361,9 @@ export default defineSchema({
     .index("by_profileId_and_sortOrder", ["profileId", "sortOrder"])
     .index("by_profileId_and_parentMemberId", ["profileId", "parentMemberId"])
     .index("by_profileId_and_status", ["profileId", "status"])
-    .index("by_profileId_and_isViewer", ["profileId", "isViewer"]),
+    .index("by_profileId_and_isViewer", ["profileId", "isViewer"])
+    .index("by_userId", ["userId"])
+    .index("by_email", ["email"]),
 
   memberAssets: defineTable({
     memberId: v.id("networkMembers"),
