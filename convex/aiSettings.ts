@@ -89,6 +89,40 @@ export const getAdminSettings = query({
   },
 });
 
+export const getThreadMessages = query({
+  args: {
+    threadId: v.id("aiChatThreads"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== userId) {
+      throw new Error("Thread not found");
+    }
+
+    const messages = await ctx.db
+      .query("aiChatMessages")
+      .withIndex("by_threadId_and_createdAt", (q) => q.eq("threadId", args.threadId))
+      .order("desc")
+      .take(Math.min(Math.max(args.limit ?? 40, 1), 80));
+
+    return messages.reverse().map((message) => ({
+      id: message._id,
+      role: message.role,
+      content: message.content,
+      model: message.model ?? null,
+      provider: message.provider ?? null,
+      error: message.error ?? null,
+      createdAt: message.createdAt,
+    }));
+  },
+});
+
 export const listAuditEvents = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {

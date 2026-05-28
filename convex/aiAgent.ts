@@ -68,6 +68,8 @@ function toDeepSeekMessages(messages: DeepSeekMessage[]) {
           "Available workspace modules: Network Org Chart, Trading Simulator, Trading Signals, Academy, Finance Tracker,",
           "Social Feed, Presentation Studio, Admin Portal, AI Settings.",
           "When WORKSPACE DATA sections are provided below, use them to answer with real live details.",
+          "For member latest assets shown on Org Studio cards, use NETWORK DATA memberAssets logs, especially latestOrgAsset fields.",
+          "Do not confuse org chart memberAssets logs with Finance Banking & Assets accounts; finance accounts are banking/profile balances.",
           "If pgvector retrieval context is also provided, combine both sources for the best answer.",
           "Do not claim access to secrets or private data unless provided in the chat.",
         ].join(" "),
@@ -99,7 +101,7 @@ function startOfMonth() {
 const SCOPE_KEYWORDS: Record<string, string[]> = {
   network: ["member", "network", "downline", "upline", "org", "team", "recruit", "direct", "joined", "bonchat", "yepbit", "user", "asset", "investment", "details"],
   trading: ["trade", "signal", "portfolio", "position", "entry", "stop loss"],
-  finance: ["finance", "account", "transaction", "budget", "balance", "money", "debt", "installment"],
+  finance: ["finance", "financial", "banking", "bank", "account", "accounts", "currency", "ledger", "transaction", "budget", "balance", "money", "cash", "debt", "installment"],
   academy: ["academy", "lesson", "course", "learn", "progress", "level"],
   social: ["social", "post", "feed", "hashtag"],
   support: ["ticket", "support", "issue", "priority"],
@@ -121,19 +123,31 @@ function detectScopes(message: string): string[] {
 }
 
 function extractSearchTerm(message: string): string | undefined {
+  const clean = (value: string) =>
+    value
+      .replace(/[?!.]+$/g, "")
+      .replace(/\b(in|from|on|at|the|network|org|chart|finance|tracker|module)\b.*$/i, "")
+      .trim();
+
   // Quoted names
   const quoted = message.match(/["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]/u);
-  if (quoted) return quoted[1].trim();
+  if (quoted) return clean(quoted[1]);
 
-  // "details of NAME", "about NAME", "who is NAME"
+  // "latest asset of NAME", "details of NAME", "about NAME", "who is NAME"
   const patterns = [
+    /(?:latest\s+)?(?:asset|assets|asset log|asset logs)\s+(?:of|for|from|by)\s+(.+?)(?:\s*[[(,.?!]|$)/i,
+    /(?:what is|what's|show|get|find)\s+(?:the\s+)?(?:latest\s+)?(?:asset|assets|asset log|asset logs)\s+(?:of|for|from|by)\s+(.+?)(?:\s*[[(,.?!]|$)/i,
+    /(.+?)\s+(?:latest\s+)?(?:asset|assets|asset log|asset logs)(?:\s*[[(,.?!]|$)/i,
     /details?\s+(?:of|about|for)\s+(.+?)(?:\s*[[(,.]|$)/i,
     /(?:who is|find|search|look up|info on)\s+(.+?)(?:\s*[[(,.]|$)/i,
     /(?:about|regarding)\s+(.+?)(?:\s*[[(,.]|$)/i,
   ];
   for (const p of patterns) {
     const m = message.match(p);
-    if (m && m[1].trim().length > 1) return m[1].trim();
+    if (m) {
+      const term = clean(m[1]);
+      if (term.length > 1) return term;
+    }
   }
   return undefined;
 }

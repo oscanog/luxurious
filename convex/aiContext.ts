@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery, QueryCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 async function getProfile(ctx: QueryCtx, userId: Id<"users">) {
   return await ctx.db
@@ -11,6 +11,53 @@ async function getProfile(ctx: QueryCtx, userId: Id<"users">) {
 
 function fmtDate(ms: number | undefined | null) {
   return ms ? new Date(ms).toISOString().slice(0, 10) : null;
+}
+
+function formatAsset(asset: Doc<"memberAssets">) {
+  return `${asset.currency} ${asset.value} "${asset.name}" (${fmtDate(asset.createdAt)})`;
+}
+
+function relatedMemberIds(
+  member: Doc<"networkMembers">,
+  visibleMembers: Doc<"networkMembers">[],
+) {
+  const nameKey = member.name.trim().toLowerCase();
+  const ids = new Set<Id<"networkMembers">>([member._id]);
+  for (const candidate of visibleMembers) {
+    if (member.userId && candidate.userId === member.userId) {
+      ids.add(candidate._id);
+    }
+    if (candidate.name.trim().toLowerCase() === nameKey) {
+      ids.add(candidate._id);
+    }
+  }
+  return [...ids];
+}
+
+async function getMemberAssetLogs(
+  ctx: QueryCtx,
+  member: Doc<"networkMembers">,
+  visibleMembers: Doc<"networkMembers">[],
+  limit = 5,
+) {
+  const allAssets: Doc<"memberAssets">[] = [];
+  for (const memberId of relatedMemberIds(member, visibleMembers)) {
+    const assets = await ctx.db
+      .query("memberAssets")
+      .withIndex("by_memberId_and_createdAt", (q) => q.eq("memberId", memberId))
+      .order("desc")
+      .take(limit);
+    allAssets.push(...assets);
+  }
+
+  const uniqueAssets = new Map<string, Doc<"memberAssets">>();
+  for (const asset of allAssets) {
+    uniqueAssets.set(`${asset.name}_${asset.value}_${asset.currency}_${asset.createdAt}`, asset);
+  }
+
+  return [...uniqueAssets.values()]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, limit);
 }
 
 // ── Network ──────────────────────────────────────────────────────────────────
@@ -24,7 +71,7 @@ async function networkContext(
   const user = await ctx.db.get("users", userId);
   const isAdmin = user?.role === "admin";
 
-  let members;
+  let members: Doc<"networkMembers">[];
   if (isAdmin) {
     // Admin: search ALL members across ALL profiles (bounded)
     members = await ctx.db.query("networkMembers").take(200);
@@ -75,22 +122,16 @@ async function networkContext(
         .join(", ");
       lines.push(detail);
 
-      // Fetch member assets
-      const assets = await ctx.db
-        .query("memberAssets")
-        .withIndex("by_memberId_and_createdAt", (q) =>
-          q.eq("memberId", m._id),
-        )
-        .order("desc")
-        .take(5);
+      const assets = await getMemberAssetLogs(ctx, m, members, 5);
       if (assets.length > 0) {
+        lines.push(`  Latest org chart asset: ${formatAsset(assets[0])}`);
         lines.push(
-          `  Assets: ${assets.map((a) => `${a.currency} ${a.value} "${a.name}" (${fmtDate(a.createdAt)})`).join("; ")}`,
+          `  Recent org chart asset logs: ${assets.map(formatAsset).join("; ")}`,
         );
         const total = assets.reduce((sum, a) => sum + a.value, 0);
-        lines.push(`  Total asset value: ${assets[0].currency} ${total.toFixed(2)}`);
+        lines.push(`  Total logged org chart assets: ${assets[0].currency} ${total.toFixed(2)}`);
       } else {
-        lines.push("  Assets: none");
+        lines.push("  Org chart asset logs: none");
       }
     }
     return lines.join("\n");
@@ -99,20 +140,29 @@ async function networkContext(
   // Overview — show ALL members with key details
   const counts: Record<string, number> = {};
   for (const m of members) counts[m.status] = (counts[m.status] || 0) + 1;
+  const memberLines: string[] = [];
+  for (const m of members) {
+    const parts = [`- ${m.name} (${m.roleTitle}, ${m.status})`];
+    if (m.bonchatId) parts.push(`bonchatId=${m.bonchatId}`);
+    if (m.bonchatUsername) parts.push(`bonchatUser=${m.bonchatUsername}`);
+    if (m.yepbitId) parts.push(`yepbitId=${m.yepbitId}`);
+    if (m.yepbitUsername) parts.push(`yepbitUser=${m.yepbitUsername}`);
+    if (m.email) parts.push(`email=${m.email}`);
+    const assets = await getMemberAssetLogs(ctx, m, members, 1);
+    if (assets[0]) {
+      parts.push(`latestOrgAsset=${assets[0].currency} ${assets[0].value}`);
+      parts.push(`latestOrgAssetName="${assets[0].name}"`);
+      parts.push(`latestOrgAssetDate=${fmtDate(assets[0].createdAt)}`);
+    }
+    memberLines.push(parts.join(" "));
+  }
   return [
     `Total members: ${members.length}`,
+    "Org chart assets come from memberAssets logs. They are separate from Finance Banking & Assets accounts.",
     `Status: ${Object.entries(counts)
       .map(([s, c]) => `${s}=${c}`)
       .join(", ")}`,
-    ...members.map((m) => {
-      const parts = [`- ${m.name} (${m.roleTitle}, ${m.status})`];
-      if (m.bonchatId) parts.push(`bonchatId=${m.bonchatId}`);
-      if (m.bonchatUsername) parts.push(`bonchatUser=${m.bonchatUsername}`);
-      if (m.yepbitId) parts.push(`yepbitId=${m.yepbitId}`);
-      if (m.yepbitUsername) parts.push(`yepbitUser=${m.yepbitUsername}`);
-      if (m.email) parts.push(`email=${m.email}`);
-      return parts.join(" ");
-    }),
+    ...memberLines,
   ].join("\n");
 }
 
@@ -173,7 +223,7 @@ async function financeContext(ctx: QueryCtx, userId: Id<"users">) {
 
   const lines: string[] = [];
   if (accounts.length > 0) {
-    lines.push("Accounts:");
+    lines.push("Finance Banking & Assets accounts. These are profile financial accounts, not org chart memberAssets logs:");
     for (const a of accounts) {
       lines.push(
         `- ${a.name} (${a.type}, ${a.institution}) balance=${a.balance} ${a.currencyCode}`,

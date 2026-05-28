@@ -303,6 +303,15 @@ http.route({
         case "admin:getAllTrades":
           result = await ctx.runQuery(api.admin.getAllTrades, {});
           break;
+        case "aiSettings:getPublicSettings":
+          result = await ctx.runQuery(api.aiSettings.getPublicSettings, {});
+          break;
+        case "aiSettings:getThreadMessages":
+          result = await ctx.runQuery(api.aiSettings.getThreadMessages, {
+            threadId: typeof body.args?.threadId === "string" ? (body.args.threadId as any) : "",
+            limit: typeof body.args?.limit === "number" ? body.args.limit : undefined,
+          });
+          break;
         case "apkReleases:listActiveReleases":
           result = await ctx.runQuery(api.apkReleases.listActiveReleases, {});
           break;
@@ -753,6 +762,16 @@ http.route({
           result = await ctx.runMutation(api.admin.setAdminStatus, {
             userId: typeof body.args?.userId === "string" ? (body.args.userId as any) : "",
             status: body.args?.status === true || body.args?.isAdmin === true,
+          });
+          break;
+        case "aiAgent:sendMessage":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runAction(api.aiAgent.sendMessage, {
+            threadId:
+              typeof body.args?.threadId === "string"
+                ? (body.args.threadId as any)
+                : undefined,
+            message: readStringArg(body.args?.message),
           });
           break;
         case "apkReleases:generateUploadUrl":
