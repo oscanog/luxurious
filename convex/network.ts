@@ -711,15 +711,20 @@ export const getDashboard = query({
     const allMembersList = await ctx.db.query("networkMembers").collect();
     const memberIdToUserId = new Map<Id<"networkMembers">, Id<"users">>();
     const memberIdToNameKey = new Map<Id<"networkMembers">, string>();
+    const memberIdToEmailKey = new Map<Id<"networkMembers">, string>();
     for (const m of allMembersList) {
       if (m.userId) {
         memberIdToUserId.set(m._id, m.userId);
+      }
+      if (m.email) {
+        memberIdToEmailKey.set(m._id, m.email.trim().toLowerCase());
       }
       const nameKey = m.name.trim().toLowerCase();
       memberIdToNameKey.set(m._id, nameKey);
     }
 
     const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
+    const latestAssetByEmail = new Map<string, Doc<"memberAssets">>();
     const latestAssetByName = new Map<string, Doc<"memberAssets">>();
     const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
     
@@ -727,14 +732,14 @@ export const getDashboard = query({
     for (const asset of sortedAssets) {
       const uId = memberIdToUserId.get(asset.memberId);
       const nameKey = memberIdToNameKey.get(asset.memberId);
-      
-      if (uId) {
-        latestAssetByUser.set(uId, asset);
-      } else if (nameKey) {
+      const emailKey = memberIdToEmailKey.get(asset.memberId);
+
+      if (uId) latestAssetByUser.set(uId, asset);
+      if (emailKey) latestAssetByEmail.set(emailKey, asset);
+      if (nameKey) {
         latestAssetByName.set(nameKey, asset);
-      } else {
-        latestAssetByMember.set(asset.memberId, asset);
       }
+      latestAssetByMember.set(asset.memberId, asset);
     }
 
     const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
@@ -744,6 +749,9 @@ export const getDashboard = query({
       
       if (m.userId) {
         latest = latestAssetByUser.get(m.userId);
+      }
+      if (!latest && m.email) {
+        latest = latestAssetByEmail.get(m.email.trim().toLowerCase());
       }
       if (!latest && nameKey) {
         latest = latestAssetByName.get(nameKey);
@@ -777,15 +785,20 @@ export const getTree = query({
     const allMembersList = await ctx.db.query("networkMembers").collect();
     const memberIdToUserId = new Map<Id<"networkMembers">, Id<"users">>();
     const memberIdToNameKey = new Map<Id<"networkMembers">, string>();
+    const memberIdToEmailKey = new Map<Id<"networkMembers">, string>();
     for (const m of allMembersList) {
       if (m.userId) {
         memberIdToUserId.set(m._id, m.userId);
+      }
+      if (m.email) {
+        memberIdToEmailKey.set(m._id, m.email.trim().toLowerCase());
       }
       const nameKey = m.name.trim().toLowerCase();
       memberIdToNameKey.set(m._id, nameKey);
     }
 
     const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
+    const latestAssetByEmail = new Map<string, Doc<"memberAssets">>();
     const latestAssetByName = new Map<string, Doc<"memberAssets">>();
     const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
     
@@ -793,14 +806,14 @@ export const getTree = query({
     for (const asset of sortedAssets) {
       const uId = memberIdToUserId.get(asset.memberId);
       const nameKey = memberIdToNameKey.get(asset.memberId);
-      
-      if (uId) {
-        latestAssetByUser.set(uId, asset);
-      } else if (nameKey) {
+      const emailKey = memberIdToEmailKey.get(asset.memberId);
+
+      if (uId) latestAssetByUser.set(uId, asset);
+      if (emailKey) latestAssetByEmail.set(emailKey, asset);
+      if (nameKey) {
         latestAssetByName.set(nameKey, asset);
-      } else {
-        latestAssetByMember.set(asset.memberId, asset);
       }
+      latestAssetByMember.set(asset.memberId, asset);
     }
 
     const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
@@ -810,6 +823,9 @@ export const getTree = query({
       
       if (m.userId) {
         latest = latestAssetByUser.get(m.userId);
+      }
+      if (!latest && m.email) {
+        latest = latestAssetByEmail.get(m.email.trim().toLowerCase());
       }
       if (!latest && nameKey) {
         latest = latestAssetByName.get(nameKey);

@@ -82,6 +82,7 @@ Give the agent the ability to remember context across the thread without re-quer
 - Fixed follow-up intent guard so prompts like "admin-only" do not get misrouted as asset latest-only requests.
 - Updated member network visibility to use canonical linked-account downlines from the org tree, not only members created inside the signed-in user's own profile.
 - Updated non-admin org chart scope to include direct-upline context above the signed-in member, with `allowAdd: false` so uplines such as Maylyn are visible but read-only.
+- Fixed linked viewer card latest asset mapping by resolving assets across member id, user id, email, and normalized name.
 - Note: existing records need `aiDbEmbeddingActions.backfillBatch` to run with `AI_EMBEDDING_*` env configured. Embedding model must return 1536-dimensional vectors.
 
 ## Phase 4: Desktop UX Upgrades
@@ -96,6 +97,7 @@ Give the agent the ability to remember context across the thread without re-quer
 - [x] Non-admin empty-scope QA: Layka account cannot see admin users or out-of-scope records.
 - [x] Non-admin linked-downline QA: member accounts use canonical `networkMembers.userId` roots so downlines connected by an admin/upline are visible to the signed-in member.
 - [x] Non-admin direct-upline QA: Florence account sees Maylyn as direct upline and Maylyn payload has `member.allowAdd: false`.
+- [x] Linked viewer latest-asset QA: Florence canvas card receives latest asset `USD 2078.57`, matching inspector asset logs and AI answers.
 
 ## Acceptance Criteria
 

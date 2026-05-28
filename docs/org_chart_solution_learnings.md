@@ -69,3 +69,8 @@
 * Direct-upline lookup now resolves canonical member rows by `userId` or email, then loads `parentMemberId`.
 * `buildOverview` wraps viewer node under that upline and sets `allowAdd: false` on both the wrapper node and nested `member` payload.
 * Desktop org cards already hide the plus button when `member.allowAdd === false`, so Maylyn is visible but cannot add from Florence's non-admin view.
+
+### Follow-up: Latest Asset on Linked Viewer Card
+* Florence's side panel showed asset logs, but the main canvas card missed latest asset because the card used the signed-in profile viewer row while the asset logs were attached to the canonical admin/upline tree row.
+* Asset lookup now populates latest-asset maps by member id, linked user id, member email, and normalized member name.
+* This lets duplicate auth/user rows with the same member email still render the same latest org asset on cards.
