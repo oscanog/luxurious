@@ -337,25 +337,7 @@ function MarkdownMessage({ content }: { content: string }) {
 }
 
 function ActivityTrail({ activity, pending }: { activity?: AiActivity[]; pending?: boolean }) {
-  const pendingItems: AiActivity[] = [
-    {
-      kind: "search",
-      name: "memory",
-      status: "success",
-      label: "Memory search",
-      detail: "Thread context",
-      count: null,
-    },
-    {
-      kind: "tool",
-      name: "tools",
-      status: "success",
-      label: "Workspace tools",
-      detail: "Access scoped",
-      count: null,
-    },
-  ];
-  const items = pending ? pendingItems : activity ?? [];
+  const items = pending ? [] : activity ?? [];
   if (items.length === 0) return null;
 
   return (

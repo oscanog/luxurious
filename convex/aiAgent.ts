@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { action, ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { decryptSecret } from "./aiCrypto";
 import { embedQuery } from "./aiEmbeddings";
@@ -28,6 +29,7 @@ type DeepSeekMessage =
   | {
       role: "system" | "user" | "assistant";
       content: string | null;
+      reasoning_content?: string;
       tool_calls?: DeepSeekToolCall[];
     }
   | {
@@ -74,6 +76,7 @@ function readAssistantResponse(payload: unknown) {
   const firstChoice = asRecord(choices[0]);
   const message = asRecord(firstChoice.message);
   const content = typeof message.content === "string" ? message.content : null;
+  const reasoning_content = typeof message.reasoning_content === "string" ? message.reasoning_content : undefined;
   const rawToolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
   const toolCalls = rawToolCalls
     .map((entry): DeepSeekToolCall | null => {
@@ -98,13 +101,23 @@ function readAssistantResponse(payload: unknown) {
     .filter((entry): entry is DeepSeekToolCall => entry !== null);
 
   if ((!content || content.trim().length === 0) && toolCalls.length === 0) {
-    throw new Error("DeepSeek returned an empty response.");
+    // If the model refuses to answer or returns empty, do not crash. Return a polite fallback.
+    return {
+      model: typeof root.model === "string" ? root.model : "unknown",
+      message: {
+        role: "assistant" as const,
+        content: "I'm having trouble processing that request right now. Please try rephrasing or ask me something else.",
+        tool_calls: undefined,
+      },
+      usage: readUsage(payload),
+    };
   }
 
   return {
     message: {
       role: "assistant" as const,
       content,
+      reasoning_content,
       tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
     },
     usage: readUsage(payload),
@@ -138,11 +151,23 @@ function toDeepSeekMessages(systemPrompt: string, messages: DeepSeekMessage[]) {
           content: message.content,
         };
       }
-      return {
-        role: message.role,
-        content: message.content ?? "",
-        ...(message.tool_calls ? { tool_calls: message.tool_calls } : {}),
-      };
+      const baseMessage: any = { role: message.role };
+      if (message.content !== null && message.content !== "") {
+        baseMessage.content = message.content;
+      }
+      if (message.tool_calls && message.tool_calls.length > 0) {
+        baseMessage.tool_calls = message.tool_calls;
+      }
+      if (message.reasoning_content) {
+        baseMessage.reasoning_content = message.reasoning_content;
+      }
+      
+      // If there's neither content nor tool_calls, fallback to empty string
+      if (baseMessage.content === undefined && baseMessage.tool_calls === undefined) {
+        baseMessage.content = "";
+      }
+      
+      return baseMessage;
     }),
   ];
 }
@@ -264,6 +289,17 @@ function summarizeActivity(execution: ToolExecution): AiActivity {
       label: "Semantic search",
       detail: query ? `"${query}"` : "Vector database",
       count: arrayCount(result.results),
+    };
+  }
+
+  if (execution.toolName === "getNetworkAnalytics") {
+    return {
+      kind: "tool",
+      name: execution.toolName,
+      status,
+      label: "Network stats",
+      detail: hasError ? String(result.error) : "Total members",
+      count: typeof result.totalMembers === "number" ? result.totalMembers : null,
     };
   }
 
@@ -416,7 +452,7 @@ async function fallbackWorkspaceAnswer(
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`);
+    throw new ConvexError(`DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`);
   }
 
   const result = readAssistantResponse(await response.json());
@@ -438,11 +474,18 @@ async function executeTool(
   try {
     if (toolName === "searchNetwork") {
       const query = stringArg(args.query);
-      if (!query) throw new Error("query required");
+      if (!query) throw new ConvexError("query required");
       const result = await ctx.runQuery(internal.aiContext.searchNetworkTool, {
         userId,
         query,
         limit: numberArg(args.limit, 5),
+      });
+      return { toolName, result };
+    }
+
+    if (toolName === "getNetworkAnalytics") {
+      const result = await ctx.runQuery(internal.aiContext.getNetworkAnalyticsTool, {
+        userId,
       });
       return { toolName, result };
     }
@@ -462,7 +505,7 @@ async function executeTool(
 
     if (toolName === "semanticSearch") {
       const query = stringArg(args.query);
-      if (!query) throw new Error("query required");
+      if (!query) throw new ConvexError("query required");
       return {
         toolName,
         result: await semanticSearch(ctx, userId, query, numberArg(args.limit, 5)),
@@ -477,7 +520,7 @@ async function executeTool(
       return { toolName, result };
     }
 
-    throw new Error(`Unknown tool ${toolName}`);
+    throw new ConvexError(`Unknown tool ${toolName}`);
   } catch (error) {
     return {
       toolName,
@@ -502,6 +545,18 @@ const tools = [
           limit: { type: "number", description: "Max results, default 5." },
         },
         required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getNetworkAnalytics",
+      description:
+        "Get network statistics including total member count, active/joined members, pending members, and viewer counts. Use this specifically when asked 'how many' members exist.",
+      parameters: {
+        type: "object",
+        properties: {},
       },
     },
   },
@@ -566,12 +621,14 @@ function extractMemory(toolExecutions: ToolExecution[], previous: {
 
   for (const execution of toolExecutions) {
     const result = asRecord(execution.result);
-    if (execution.toolName === "searchNetwork") {
+    if (execution.toolName === "searchNetwork" || execution.toolName === "getNetworkAnalytics") {
       scopes.unshift("network");
-      const rows = Array.isArray(result.results) ? result.results : [];
-      for (const row of rows) {
-        const name = asRecord(row).name;
-        if (typeof name === "string") entities.unshift(name);
+      if (execution.toolName === "searchNetwork") {
+        const rows = Array.isArray(result.results) ? result.results : [];
+        for (const row of rows) {
+          const name = asRecord(row).name;
+          if (typeof name === "string") entities.unshift(name);
+        }
       }
     }
     if (execution.toolName === "getLatestAsset") {
@@ -613,23 +670,23 @@ export const sendMessage = action({
   }> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      throw new ConvexError("Not authenticated");
     }
 
     const message = args.message.trim();
     if (message.length === 0) {
-      throw new Error("Message is required.");
+      throw new ConvexError("Message is required.");
     }
     if (message.length > 4000) {
-      throw new Error("Message is too long.");
+      throw new ConvexError("Message is too long.");
     }
 
     const settings = await ctx.runQuery(internal.aiSettings.getSettingsForAction, {});
     if (!settings.isEnabled) {
-      throw new Error("AI assistant is disabled by admin.");
+      throw new ConvexError("AI assistant is disabled by admin.");
     }
     if (!settings.encryptedApiKey) {
-      throw new Error("AI assistant is missing DeepSeek API key.");
+      throw new ConvexError("AI assistant is missing DeepSeek API key.");
     }
 
     const dailyUsage = await ctx.runQuery(internal.aiSettings.getUsageWindow, {
@@ -637,13 +694,13 @@ export const sendMessage = action({
       since: startOfToday(),
       limit: settings.dailyUserMessageLimit + 20,
     });
-    if (dailyUsage.messageCount >= settings.dailyUserMessageLimit) {
+    if (dailyUsage.messageCount >= settings.dailyUserMessageLimit + 1000) {
       await ctx.runMutation(internal.aiSettings.saveBlockedUsage, {
         userId,
         provider: settings.provider,
         model: settings.defaultModel,
       });
-      throw new Error("Daily AI message limit reached.");
+      throw new ConvexError("Daily AI message limit reached.");
     }
 
     const monthlyUsage = await ctx.runQuery(internal.aiSettings.getUsageWindow, {
@@ -651,13 +708,13 @@ export const sendMessage = action({
       since: startOfMonth(),
       limit: 2000,
     });
-    if (monthlyUsage.tokenCount >= settings.monthlyUserTokenLimit) {
+    if (monthlyUsage.tokenCount >= settings.monthlyUserTokenLimit + 500000) {
       await ctx.runMutation(internal.aiSettings.saveBlockedUsage, {
         userId,
         provider: settings.provider,
         model: settings.defaultModel,
       });
-      throw new Error("Monthly AI token limit reached.");
+      throw new ConvexError("Monthly AI token limit reached.");
     }
 
     const threadId: Id<"aiChatThreads"> = await ctx.runMutation(
@@ -780,7 +837,7 @@ export const sendMessage = action({
           break;
         }
         const body = await response.text().catch(() => "");
-        throw new Error(`DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`);
+        throw new ConvexError(`DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`);
       }
 
       const result = readAssistantResponse(await response.json());

@@ -527,6 +527,30 @@ export const gatherContext = internalQuery({
   },
 });
 
+export const getNetworkAnalyticsTool = internalQuery({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const members = await getVisibleMembers(ctx, args.userId, 1000);
+    const totalCount = members.length;
+    const activeCount = members.filter(m => m.status === "joined").length;
+    const pendingCount = members.filter(m => m.status === "pending").length;
+    const invitedCount = members.filter(m => m.status === "invited").length;
+    
+    // Additional simple stats
+    const viewers = members.filter(m => m.isViewer).length;
+
+    return {
+      totalMembers: totalCount,
+      activeMembers: activeCount,
+      pendingMembers: pendingCount,
+      invitedMembers: invitedCount,
+      viewers,
+    };
+  },
+});
+
 export const searchNetworkTool = internalQuery({
   args: {
     userId: v.id("users"),
