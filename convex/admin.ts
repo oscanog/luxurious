@@ -82,19 +82,40 @@ export const updateUserEmailInternal = internalMutation({
     }
 
     let memberName = "";
+    let targetMemberId: Id<"networkMembers"> | undefined;
     let targetUserId: Id<"users"> | undefined = args.userId;
     if (args.memberId) {
       const member = await ctx.db.get("networkMembers", args.memberId);
       if (!member) {
         throw new Error("Member not found.");
       }
-      if (!member.userId) {
-        throw new Error("Member has no linked account.");
-      }
-      if (targetUserId && targetUserId !== member.userId) {
+      targetMemberId = member._id;
+      if (targetUserId && member.userId && targetUserId !== member.userId) {
         throw new Error("User and member do not match.");
       }
-      targetUserId = member.userId;
+      if (!targetUserId) {
+        targetUserId = member.userId;
+      }
+      if (!targetUserId && member.email) {
+        const memberEmail = normalizeEmail(member.email);
+        const usersByMemberEmail = await ctx.db
+          .query("users")
+          .withIndex("email", (q) => q.eq("email", memberEmail))
+          .take(2);
+        if (usersByMemberEmail.length === 1) {
+          targetUserId = usersByMemberEmail[0]._id;
+        }
+      }
+      if (!targetUserId) {
+        const usersByMemberName = await ctx.db
+          .query("users")
+          .withIndex("by_name", (q) => q.eq("name", member.name))
+          .take(2);
+        if (usersByMemberName.length !== 1) {
+          throw new Error("Member has no safely linked user account.");
+        }
+        targetUserId = usersByMemberName[0]._id;
+      }
       memberName = member.name;
     }
 
@@ -149,9 +170,21 @@ export const updateUserEmailInternal = internalMutation({
     const now = Date.now();
     const patchedMemberIds = new Set<Id<"networkMembers">>();
 
+    if (targetMemberId) {
+      await ctx.db.patch("networkMembers", targetMemberId, {
+        userId: targetUserId,
+        email: newEmail,
+        updatedAt: now,
+      });
+      patchedMemberIds.add(targetMemberId);
+    }
+
     for await (const member of ctx.db
       .query("networkMembers")
       .withIndex("by_userId", (q) => q.eq("userId", targetUserId))) {
+      if (member._id === targetMemberId) {
+        continue;
+      }
       await ctx.db.patch("networkMembers", member._id, {
         email: newEmail,
         updatedAt: now,

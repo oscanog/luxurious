@@ -24,6 +24,7 @@ export default defineSchema({
   })
     .index("email", ["email"])
     .index("phone", ["phone"])
+    .index("by_name", ["name"])
     .index("by_upline", ["uplineId"]),
 
   wallets: defineTable({
