@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 // ── Queries ──────────────────────────────────────────────────
 
@@ -125,9 +126,13 @@ export const upsertLesson = mutation({
         duration: args.duration,
         content: args.content,
       });
+      await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+        table: "academyLessons",
+        sourceId: args.id,
+      });
       return args.id;
     }
-    return await ctx.db.insert("academyLessons", {
+    const lessonId = await ctx.db.insert("academyLessons", {
       levelId: args.levelId,
       order: args.order,
       slug: args.slug,
@@ -135,6 +140,11 @@ export const upsertLesson = mutation({
       duration: args.duration,
       content: args.content,
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "academyLessons",
+      sourceId: lessonId,
+    });
+    return lessonId;
   },
 });
 
@@ -148,6 +158,10 @@ export const deleteLevel = mutation({
       .take(50);
     for (const lesson of lessons) {
       await ctx.db.delete("academyLessons", lesson._id);
+      await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.deleteRecordEmbedding, {
+        table: "academyLessons",
+        sourceId: lesson._id,
+      });
     }
     await ctx.db.delete("academyLevels", args.id);
   },
@@ -157,6 +171,10 @@ export const deleteLesson = mutation({
   args: { id: v.id("academyLessons") },
   handler: async (ctx, args) => {
     await ctx.db.delete("academyLessons", args.id);
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.deleteRecordEmbedding, {
+      table: "academyLessons",
+      sourceId: args.id,
+    });
   },
 });
 

@@ -1,5 +1,6 @@
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import {
   getDefaultAccount,
   getMobileProfileForViewerOrThrow,
@@ -40,6 +41,14 @@ async function createTransaction(
   await ctx.db.patch("financialAccounts", account._id, {
     balance: nextBalance,
     updatedAt: Date.now(),
+  });
+  await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+    table: "financialTransactions",
+    sourceId: transactionId,
+  });
+  await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+    table: "financialAccounts",
+    sourceId: account._id,
   });
 
   return { id: transactionId, accountId: account._id };

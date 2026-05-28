@@ -1,6 +1,7 @@
 import { MutationCtx, QueryCtx, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   getMobileProfileForViewerOrThrow,
@@ -48,7 +49,7 @@ export const inviteMember = mutation({
       }
     }
 
-    return await ctx.db.insert("networkMembers", {
+    const memberId = await ctx.db.insert("networkMembers", {
       profileId: profile._id,
       name: args.name,
       roleTitle: args.roleTitle,
@@ -61,6 +62,11 @@ export const inviteMember = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: memberId,
+    });
+    return memberId;
   },
 });
 
@@ -86,6 +92,10 @@ export const updateMemberSocials = mutation({
       bonchatId: args.bonchatId?.trim() || undefined,
       yepbitId: args.yepbitId?.trim() || undefined,
       updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: args.memberId,
     });
   },
 });
@@ -963,6 +973,10 @@ export const reassignMemberParent = mutation({
       parentMemberId: args.newParentMemberId,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: args.memberId,
+    });
 
     if (args.reconnectChildren) {
       const existingParentId = member.parentMemberId;
@@ -971,6 +985,10 @@ export const reassignMemberParent = mutation({
         await ctx.db.patch(child._id, {
           parentMemberId: existingParentId,
           updatedAt: now,
+        });
+        await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+          table: "networkMembers",
+          sourceId: child._id,
         });
       }
     }
@@ -1079,6 +1097,10 @@ export const deleteMember = mutation({
 
     for (const target of membersToDelete) {
       await ctx.db.delete("networkMembers", target._id);
+      await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.deleteRecordEmbedding, {
+        table: "networkMembers",
+        sourceId: target._id,
+      });
     }
 
     return {
@@ -1164,6 +1186,10 @@ export const addMemberAsset = mutation({
       currency: args.currency,
       createdAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "memberAssets",
+      sourceId: assetId,
+    });
     return assetId;
   },
 });
@@ -1219,6 +1245,10 @@ export const deleteMemberAsset = mutation({
     const asset = await ctx.db.get(args.assetId);
     if (!asset) throw new Error("Asset not found");
     await ctx.db.delete(args.assetId);
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.deleteRecordEmbedding, {
+      table: "memberAssets",
+      sourceId: args.assetId,
+    });
   },
 });
 
@@ -1235,6 +1265,9 @@ export const updateMemberAsset = mutation({
       value: args.value,
       currency: args.currency,
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "memberAssets",
+      sourceId: args.assetId,
+    });
   },
 });
-

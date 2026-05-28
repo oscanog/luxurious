@@ -1,6 +1,6 @@
 # M020: AI Robust Intelligence & Memory Architecture
 
-**Status:** `[planned]`
+**Status:** `[in_progress]`
 **Created:** 2026-05-28
 **Owner:** Backend / Desktop
 
@@ -47,28 +47,37 @@ AI: I don’t have the latest asset data for Maylyn in this chat...
 
 Instead of relying on fragile regex and hardcoded keywords (`detectScopes`, `extractSearchTerm`), we need to tokenize (embed) all meaningful existing database records in Convex so the chat can use semantic search to reliably find data.
 
-- [ ] Create a new table `aiDbEmbeddings` to map Convex documents to vector embeddings.
-- [ ] Write a Convex cron job or migration script to backfill embeddings for:
+- [x] Create a new table `aiDbEmbeddings` to map Convex documents to vector embeddings.
+- [x] Write a Convex cron job or migration script to backfill embeddings for:
   - `networkMembers` (Names, roles, Bonchat IDs).
   - `memberAssets` (Asset logs).
   - `financialAccounts` / `financialTransactions`.
   - `academyLessons`.
-- [ ] Implement reactive mutations: whenever a member or asset is added/updated, update its vector embedding automatically.
+- [x] Implement reactive mutations: whenever a member or asset is added/updated, update its vector embedding automatically.
 
 ## Phase 2: Agent Tool Calling (Replacing Static Context Gathering)
 
 Move away from dumping massive text blocks into the system prompt. Instead, use LLM Tool Calling (Function Calling).
 
-- [ ] Refactor `aiAgent.ts` to expose Convex tools to DeepSeek (e.g., `searchNetwork`, `getLatestAsset`, `getFinanceHistory`).
-- [ ] When user asks "si maylyn ba magkano latest?", the LLM realizes it needs Maylyn's data and calls `searchNetwork(name: "maylyn")` and `getLatestAsset(memberId: ...)`.
-- [ ] Integrate `@convex-dev/agent` patterns for durable tool execution and thread management.
+- [x] Refactor `aiAgent.ts` to expose Convex tools to DeepSeek (e.g., `searchNetwork`, `getLatestAsset`, `getFinanceHistory`).
+- [x] When user asks "si maylyn ba magkano latest?", the LLM realizes it needs Maylyn's data and calls `searchNetwork(name: "maylyn")` and `getLatestAsset(memberId: ...)`.
+- [x] Integrate `@convex-dev/agent` patterns for durable tool execution and thread management.
 
 ## Phase 3: Persistent Conversation Memory
 
 Give the agent the ability to remember context across the thread without re-querying the database every time.
 
-- [ ] Update `aiChatMessages` or use `@convex-dev/agent` thread state to maintain conversation history with retrieved facts.
-- [ ] Implement a Mem0-style summarization step: periodically summarize the thread's active entities (e.g., "User is currently asking about asset logs for Florence and Maylyn") and store it in a `threadSummary` field.
+- [x] Update `aiChatMessages` or use `@convex-dev/agent` thread state to maintain conversation history with retrieved facts.
+- [x] Implement a Mem0-style summarization step: periodically summarize the thread's active entities (e.g., "User is currently asking about asset logs for Florence and Maylyn") and store it in a `threadSummary` field.
+
+## Implementation Notes (2026-05-28)
+
+- Added `aiDbEmbeddings` Convex vector table (1536 dimensions) and hourly `crons.ts` backfill.
+- Added embedding worker in `aiDbEmbeddingActions.ts` and source materializers in `aiDbEmbeddings.ts`.
+- Added DeepSeek/OpenAI-compatible tool loop in `aiAgent.ts` with `searchNetwork`, `getLatestAsset`, `semanticSearch`, and `getFinanceHistory`.
+- Added thread memory fields on `aiChatThreads`: `threadSummary`, `activeScopes`, `activeEntities`, `lastIntent`, `lastToolResults`.
+- Added reactive embedding schedules for primary desktop/member/asset/finance/academy mutation paths.
+- Note: existing records need `aiDbEmbeddingActions.backfillBatch` to run with `AI_EMBEDDING_*` env configured. Embedding model must return 1536-dimensional vectors.
 
 ## Phase 4: Desktop UX Upgrades
 

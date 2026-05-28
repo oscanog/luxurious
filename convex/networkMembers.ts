@@ -87,6 +87,10 @@ export const updateSocialIds = mutation({
       ...updates,
       updatedAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: memberId,
+    });
   },
 });
 
@@ -146,6 +150,10 @@ export const createMemberRecord = internalMutation({
       investmentStartedAt: args.investmentStartedAt,
       createdAt: now,
       updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: memberId,
     });
 
     if (args.authUserId) {
@@ -678,6 +686,10 @@ export const completeMemberJoin = internalMutation({
       joinedAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: args.memberId,
+    });
 
     const authUser = await ctx.db.get(args.authUserId);
     if (authUser) {
@@ -828,6 +840,10 @@ export const updateMemberStatus = mutation({
     }
 
     await ctx.db.patch(args.memberId, updates);
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: args.memberId,
+    });
   },
 });
 
@@ -848,6 +864,10 @@ export const updateMemberInvestmentDate = mutation({
     await ctx.db.patch(args.memberId, {
       investmentStartedAt: args.investmentStartedAt,
       updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: args.memberId,
     });
   },
 });

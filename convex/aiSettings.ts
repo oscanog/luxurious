@@ -100,7 +100,7 @@ export const getThreadMessages = query({
       throw new Error("Not authenticated");
     }
 
-    const thread = await ctx.db.get(args.threadId);
+    const thread = await ctx.db.get("aiChatThreads", args.threadId);
     if (!thread || thread.userId !== userId) {
       throw new Error("Thread not found");
     }
@@ -290,6 +290,26 @@ export const getRecentMessages = internalQuery({
   },
 });
 
+export const getThreadMemory = internalQuery({
+  args: {
+    userId: v.id("users"),
+    threadId: v.id("aiChatThreads"),
+  },
+  handler: async (ctx, args) => {
+    const thread = await ctx.db.get("aiChatThreads", args.threadId);
+    if (!thread || thread.userId !== args.userId) {
+      throw new Error("Thread not found");
+    }
+    return {
+      threadSummary: thread.threadSummary ?? "",
+      activeScopes: thread.activeScopes ?? [],
+      activeEntities: thread.activeEntities ?? [],
+      lastIntent: thread.lastIntent ?? "",
+      lastToolResults: thread.lastToolResults ?? "",
+    };
+  },
+});
+
 export const createUserMessage = internalMutation({
   args: {
     userId: v.id("users"),
@@ -310,6 +330,11 @@ export const createUserMessage = internalMutation({
       threadId = await ctx.db.insert("aiChatThreads", {
         userId: args.userId,
         title: args.content.slice(0, 64),
+        threadSummary: "",
+        activeScopes: [],
+        activeEntities: [],
+        lastIntent: "",
+        lastToolResults: "",
         createdAt: now,
         updatedAt: now,
       });
@@ -361,6 +386,41 @@ export const saveAssistantMessage = internalMutation({
       outputTokens: args.outputTokens,
       status: "success",
       createdAt: now,
+    });
+  },
+});
+
+export const updateThreadMemory = internalMutation({
+  args: {
+    userId: v.id("users"),
+    threadId: v.id("aiChatThreads"),
+    activeScopes: v.array(v.string()),
+    activeEntities: v.array(v.string()),
+    lastIntent: v.string(),
+    lastToolResults: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const thread = await ctx.db.get("aiChatThreads", args.threadId);
+    if (!thread || thread.userId !== args.userId) {
+      throw new Error("Thread not found");
+    }
+
+    const summaryParts = [];
+    if (args.lastIntent) summaryParts.push(`Current intent: ${args.lastIntent}`);
+    if (args.activeEntities.length > 0) {
+      summaryParts.push(`Active entities: ${args.activeEntities.join(", ")}`);
+    }
+    if (args.activeScopes.length > 0) {
+      summaryParts.push(`Active scopes: ${args.activeScopes.join(", ")}`);
+    }
+
+    await ctx.db.patch("aiChatThreads", args.threadId, {
+      threadSummary: summaryParts.join(". "),
+      activeScopes: args.activeScopes.slice(0, 8),
+      activeEntities: args.activeEntities.slice(0, 12),
+      lastIntent: args.lastIntent,
+      lastToolResults: args.lastToolResults.slice(0, 2000),
+      updatedAt: Date.now(),
     });
   },
 });

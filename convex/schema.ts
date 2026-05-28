@@ -586,6 +586,11 @@ export default defineSchema({
   aiChatThreads: defineTable({
     userId: v.id("users"),
     title: v.optional(v.string()),
+    threadSummary: v.optional(v.string()),
+    activeScopes: v.optional(v.array(v.string())),
+    activeEntities: v.optional(v.array(v.string())),
+    lastIntent: v.optional(v.string()),
+    lastToolResults: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -624,4 +629,32 @@ export default defineSchema({
     safeDetails: v.string(),
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
+
+  aiDbEmbeddings: defineTable({
+    table: v.union(
+      v.literal("networkMembers"),
+      v.literal("memberAssets"),
+      v.literal("financialAccounts"),
+      v.literal("financialTransactions"),
+      v.literal("academyLessons"),
+    ),
+    sourceId: v.string(),
+    profileId: v.optional(v.id("mobileProfiles")),
+    ownerUserId: v.optional(v.id("users")),
+    title: v.string(),
+    content: v.string(),
+    embeddingModel: v.string(),
+    embeddingDimension: v.number(),
+    embedding: v.array(v.number()),
+    checksum: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_table_and_sourceId", ["table", "sourceId"])
+    .index("by_profileId_and_table", ["profileId", "table"])
+    .index("by_ownerUserId_and_table", ["ownerUserId", "table"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["table", "profileId", "ownerUserId"],
+    }),
 });

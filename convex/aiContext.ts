@@ -9,12 +9,62 @@ async function getProfile(ctx: QueryCtx, userId: Id<"users">) {
     .unique();
 }
 
+async function getVisibleMembers(ctx: QueryCtx, userId: Id<"users">, limit = 300) {
+  const user = await ctx.db.get("users", userId);
+  const isAdmin = user?.role === "admin" || user?.email === "admin@luxurious.trade";
+
+  if (isAdmin) {
+    return await ctx.db.query("networkMembers").take(limit);
+  }
+
+  const profile = await getProfile(ctx, userId);
+  if (!profile) return [];
+  return await ctx.db
+    .query("networkMembers")
+    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+    .take(limit);
+}
+
 function fmtDate(ms: number | undefined | null) {
   return ms ? new Date(ms).toISOString().slice(0, 10) : null;
 }
 
 function formatAsset(asset: Doc<"memberAssets">) {
   return `${asset.currency} ${asset.value} "${asset.name}" (${fmtDate(asset.createdAt)})`;
+}
+
+function memberSearchScore(member: Doc<"networkMembers">, query: string) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return 0;
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const fields = [
+    member.name,
+    member.firstName,
+    member.middleName,
+    member.lastName,
+    member.email,
+    member.phone,
+    member.bonchatId,
+    member.bonchatUsername,
+    member.yepbitId,
+    member.yepbitUsername,
+    member.roleTitle,
+  ]
+    .filter((field): field is string => Boolean(field))
+    .map((field) => field.toLowerCase());
+
+  let score = 0;
+  for (const field of fields) {
+    if (field === normalized) score += 100;
+    if (field.startsWith(normalized)) score += 40;
+    if (field.includes(normalized)) score += 20;
+    for (const token of tokens) {
+      if (field === token) score += 20;
+      if (field.startsWith(token)) score += 10;
+      if (field.includes(token)) score += 5;
+    }
+  }
+  return score;
 }
 
 function relatedMemberIds(
@@ -441,5 +491,207 @@ export const gatherContext = internalQuery({
     }
 
     return parts.length > 0 ? parts.join("\n\n") : "";
+  },
+});
+
+export const searchNetworkTool = internalQuery({
+  args: {
+    userId: v.id("users"),
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 5, 1), 10);
+    const members = await getVisibleMembers(ctx, args.userId, 300);
+    const ranked = members
+      .map((member) => ({ member, score: memberSearchScore(member, args.query) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    const results = [];
+    for (const { member, score } of ranked) {
+      const assets = await getMemberAssetLogs(ctx, member, members, 3);
+      results.push({
+        memberId: member._id,
+        name: member.name,
+        firstName: member.firstName ?? null,
+        lastName: member.lastName ?? null,
+        roleTitle: member.roleTitle,
+        status: member.status,
+        bonchatId: member.bonchatId ?? null,
+        bonchatUsername: member.bonchatUsername ?? null,
+        yepbitId: member.yepbitId ?? null,
+        yepbitUsername: member.yepbitUsername ?? null,
+        score,
+        latestAsset: assets[0]
+          ? {
+              name: assets[0].name,
+              value: assets[0].value,
+              currency: assets[0].currency,
+              createdAt: assets[0].createdAt,
+              date: fmtDate(assets[0].createdAt),
+            }
+          : null,
+      });
+    }
+
+    return {
+      query: args.query,
+      count: results.length,
+      results,
+    };
+  },
+});
+
+export const getLatestAssetTool = internalQuery({
+  args: {
+    userId: v.id("users"),
+    memberId: v.optional(v.id("networkMembers")),
+    query: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const members = await getVisibleMembers(ctx, args.userId, 300);
+    let member = args.memberId
+      ? members.find((entry) => entry._id === args.memberId) ?? null
+      : null;
+
+    if (!member && args.query) {
+      member =
+        members
+          .map((entry) => ({ entry, score: memberSearchScore(entry, args.query ?? "") }))
+          .filter((entry) => entry.score > 0)
+          .sort((a, b) => b.score - a.score)[0]?.entry ?? null;
+    }
+
+    if (!member) {
+      return {
+        found: false,
+        reason: "member not found",
+      };
+    }
+
+    const assets = await getMemberAssetLogs(ctx, member, members, 5);
+    return {
+      found: true,
+      memberId: member._id,
+      memberName: member.name,
+      latestAsset: assets[0]
+        ? {
+            name: assets[0].name,
+            value: assets[0].value,
+            currency: assets[0].currency,
+            createdAt: assets[0].createdAt,
+            date: fmtDate(assets[0].createdAt),
+          }
+        : null,
+      recentAssets: assets.map((asset) => ({
+        name: asset.name,
+        value: asset.value,
+        currency: asset.currency,
+        createdAt: asset.createdAt,
+        date: fmtDate(asset.createdAt),
+      })),
+    };
+  },
+});
+
+export const getMemberAssetSummaryTool = internalQuery({
+  args: {
+    userId: v.id("users"),
+    memberId: v.optional(v.id("networkMembers")),
+    query: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const members = await getVisibleMembers(ctx, args.userId, 300);
+    let member = args.memberId
+      ? members.find((entry) => entry._id === args.memberId) ?? null
+      : null;
+
+    if (!member && args.query) {
+      member =
+        members
+          .map((entry) => ({ entry, score: memberSearchScore(entry, args.query ?? "") }))
+          .filter((entry) => entry.score > 0)
+          .sort((a, b) => b.score - a.score)[0]?.entry ?? null;
+    }
+
+    if (!member) {
+      return {
+        found: false,
+        reason: "member not found",
+      };
+    }
+
+    const assets = await getMemberAssetLogs(ctx, member, members, 100);
+    const currency = assets[0]?.currency ?? "USD";
+    return {
+      found: true,
+      memberId: member._id,
+      memberName: member.name,
+      assetCount: assets.length,
+      totalValue: assets.reduce((sum, asset) => sum + asset.value, 0),
+      currency,
+      latestAsset: assets[0]
+        ? {
+            name: assets[0].name,
+            value: assets[0].value,
+            currency: assets[0].currency,
+            createdAt: assets[0].createdAt,
+            date: fmtDate(assets[0].createdAt),
+          }
+        : null,
+      recentAssets: assets.slice(0, 10).map((asset) => ({
+        name: asset.name,
+        value: asset.value,
+        currency: asset.currency,
+        createdAt: asset.createdAt,
+        date: fmtDate(asset.createdAt),
+      })),
+    };
+  },
+});
+
+export const getFinanceHistoryTool = internalQuery({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const profile = await getProfile(ctx, args.userId);
+    if (!profile) {
+      return { accounts: [], transactions: [] };
+    }
+
+    const accounts = await ctx.db
+      .query("financialAccounts")
+      .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+      .take(20);
+    const accountById = new Map(accounts.map((account) => [account._id, account]));
+    const transactions = await ctx.db
+      .query("financialTransactions")
+      .withIndex("by_profileId_and_occurredAt", (q) => q.eq("profileId", profile._id))
+      .order("desc")
+      .take(Math.min(Math.max(args.limit ?? 10, 1), 25));
+
+    return {
+      accounts: accounts.map((account) => ({
+        name: account.name,
+        institution: account.institution,
+        type: account.type,
+        balance: account.balance,
+        currencyCode: account.currencyCode,
+      })),
+      transactions: transactions.map((transaction) => ({
+        kind: transaction.kind,
+        category: transaction.category,
+        note: transaction.note ?? null,
+        amount: transaction.amount,
+        currencyCode: transaction.currencyCode,
+        occurredAt: transaction.occurredAt,
+        date: fmtDate(transaction.occurredAt),
+        accountName: accountById.get(transaction.accountId)?.name ?? null,
+      })),
+    };
   },
 });

@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import {
   DEFAULT_CURRENCIES,
   formatMonthKey,
@@ -54,6 +55,10 @@ export const createAccount = mutation({
       isArchived: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "financialAccounts",
+      sourceId: accountId,
     });
     return { id: accountId };
   },
