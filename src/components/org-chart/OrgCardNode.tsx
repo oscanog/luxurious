@@ -17,6 +17,9 @@ export type OrgCardData = {
     uplineId: Id<"networkMembers"> | null;
     lastUplineId?: Id<"networkMembers"> | null;
     directChildrenCount?: number;
+    totalDownlines?: number;
+    joinedDownlines?: number;
+    prospectDownlines?: number;
     status: "joined" | "invited" | "pending" | "to-invite";
     allowAdd?: boolean;
     latestAsset?: {

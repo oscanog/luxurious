@@ -111,7 +111,7 @@ function MapFitter({ nodes, selectedId }: { nodes: Node<OrgFlowData>[], selected
   return null;
 }
 
-function FitBoundsControl({ nodes }: { nodes: Node<OrgFlowData>[] }) {
+function FitBoundsControl() {
   const map = useMap();
   const [activeMode, setActiveMode] = useState<"PH" | "CA" | "WORLD" | null>(null);
 
@@ -339,7 +339,7 @@ export default function LeafletMapView({ nodes, onSelectNode, selectedId }: Leaf
         
         <CanadaCityLabels theme={theme} />
         <MapFitter nodes={nodes} selectedId={selectedId} />
-        <FitBoundsControl nodes={nodes} />
+        <FitBoundsControl />
       </MapContainer>
       
       {/* Add custom CSS for the popup to match luxurious theme */}
