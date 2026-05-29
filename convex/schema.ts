@@ -356,6 +356,12 @@ export default defineSchema({
     phone: v.optional(v.string()),
     currentWork: v.optional(v.string()),
     investmentStartedAt: v.optional(v.number()),
+    city: v.optional(v.string()),
+    province: v.optional(v.string()),
+    country: v.optional(v.string()),
+    locationAddress: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -24,6 +24,13 @@ interface MemberSidebarProps {
   setTargetManagerId: (id: string) => void;
   onSuccess?: () => void;
   onFocusNode?: (id: string) => void;
+  viewMode?: "canvas" | "map";
+  unmappedMembers?: {
+    id: string;
+    name: string;
+    role?: string;
+    email?: string;
+  }[];
 }
 
 export function MemberSidebar({ 
@@ -35,7 +42,9 @@ export function MemberSidebar({
   targetManagerId,
   setTargetManagerId,
   onSuccess,
-  onFocusNode
+  onFocusNode,
+  viewMode = "canvas",
+  unmappedMembers = []
 }: MemberSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [heatmapType, setHeatmapType] = useState<"joins" | "investments">("joins");
@@ -645,7 +654,9 @@ export function MemberSidebar({
           ) : (
             <>
               <div className="p-4 border-b border-[hsl(var(--border))] flex items-center justify-between">
-                <h2 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Available Members</h2>
+                <h2 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                  {viewMode === "map" ? "Members Missing Location" : "Available Members"}
+                </h2>
                 <button onClick={onToggle} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
                   <X size={18} />
                 </button>
@@ -805,59 +816,87 @@ export function MemberSidebar({
             </div>
 
             <div className="p-2 space-y-1">
-              {filteredMembers.length === 0 ? (
-                <div className="p-8 text-center text-xs text-[hsl(var(--muted-foreground))]">
-                  No members found
-                </div>
-              ) : (
-                filteredMembers.map((member) => (
-                  <div 
-                    key={member._id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("application/reactflow", JSON.stringify(member));
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-[hsl(var(--primary)/0.04)] transition-colors group cursor-grab active:cursor-grabbing"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))] shrink-0">
-                      {member.image ? (
-                        <img src={member.image} alt={member.name} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <User size={16} />
-                      )}
+              {viewMode === "map" ? (
+                <>
+                  {unmappedMembers.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-[hsl(var(--muted-foreground))]">
+                      All members have location data!
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold truncate">{member.name ?? "Anonymous"}</p>
-                        {member.role?.toLowerCase() === "admin" && (
-                          <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-500 border border-purple-500/20">Admin</span>
+                  ) : (
+                    unmappedMembers.map((member) => (
+                      <div 
+                        key={member.id}
+                        className="flex items-center gap-3 p-2 rounded-lg bg-[hsl(var(--card))] border border-[hsl(var(--border))] group opacity-80"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))/0.5] flex items-center justify-center text-[hsl(var(--muted-foreground))] shrink-0">
+                          {member.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{member.name}</p>
+                          <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{member.email || "No email"}</p>
+                        </div>
+                        <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                          No Location
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </>
+              ) : (
+                filteredMembers.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-[hsl(var(--muted-foreground))]">
+                    No members found
+                  </div>
+                ) : (
+                  filteredMembers.map((member) => (
+                    <div 
+                      key={member._id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("application/reactflow", JSON.stringify(member));
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-[hsl(var(--primary)/0.04)] transition-colors group cursor-grab active:cursor-grabbing"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))] shrink-0">
+                        {member.image ? (
+                          <img src={member.image} alt={member.name} className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          <User size={16} />
                         )}
                       </div>
-                      <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{member.email}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold truncate">{member.name ?? "Anonymous"}</p>
+                          {member.role?.toLowerCase() === "admin" && (
+                            <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-500 border border-purple-500/20">Admin</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{member.email}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInspectingMember(member);
+                        }}
+                        className="p-1.5 rounded-md bg-[hsl(var(--secondary))] text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[hsl(var(--primary))] hover:text-white"
+                        title="Inspect Member Intelligence"
+                      >
+                        <BarChart2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          toast.success(`Zooming in for ${member.name ?? "Member"}`);
+                          onFocusNode?.(member._id);
+                        }}
+                        className="p-1.5 rounded-md bg-[hsl(43,96%,48%)/0.1] text-[hsl(43,96%,48%)] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[hsl(43,96%,48%)] hover:text-[#1A2235]"
+                        title="Focus Member on Canvas"
+                      >
+                        <Focus size={16} />
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setInspectingMember(member);
-                      }}
-                      className="p-1.5 rounded-md bg-[hsl(var(--secondary))] text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[hsl(var(--primary))] hover:text-white"
-                      title="Inspect Member Intelligence"
-                    >
-                      <BarChart2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        toast.success(`Zooming in for ${member.name ?? "Member"}`);
-                        onFocusNode?.(member._id);
-                      }}
-                      className="p-1.5 rounded-md bg-[hsl(43,96%,48%)/0.1] text-[hsl(43,96%,48%)] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[hsl(43,96%,48%)] hover:text-[#1A2235]"
-                      title="Focus Member on Canvas"
-                    >
-                      <Focus size={16} />
-                    </button>
-                  </div>
-                ))
+                  ))
+                )
               )}
             </div>
           </div>

@@ -11,7 +11,8 @@ import {
   Globe, 
   Check, 
   Zap,
-  UserPlus
+  UserPlus,
+  MapPin
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ interface AddMemberStepperProps {
   onSuccess?: () => void;
 }
 
-type Step = "type" | "identity" | "contact" | "platform" | "work" | "summary" | "success";
+type Step = "type" | "identity" | "contact" | "location" | "platform" | "work" | "summary" | "success";
 
 export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMemberStepperProps) {
   const [step, setStep] = useState<Step>("type");
@@ -42,9 +43,16 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     yepbitUsername: "",
     currentWork: "",
     investmentStartedAt: "",
+    city: "",
+    province: "",
+    country: "",
+    locationAddress: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   });
   const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const inviteMember = useAction(api.networkMembers.addMember);
 
@@ -98,10 +106,13 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
       if (memberType === "joined") {
         setStep("platform");
       } else {
-        setStep("work");
+        setStep("location");
       }
     }
     else if (step === "platform") {
+      setStep("location");
+    }
+    else if (step === "location") {
       setStep("work");
     }
     else if (step === "work") {
@@ -117,13 +128,14 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     if (step === "identity") setStep("type");
     else if (step === "contact") setStep("identity");
     else if (step === "platform") setStep("contact");
-    else if (step === "work") {
+    else if (step === "location") {
       if (memberType === "joined") {
         setStep("platform");
       } else {
         setStep("contact");
       }
     }
+    else if (step === "work") setStep("location");
     else if (step === "summary") setStep("work");
   };
 
@@ -149,6 +161,12 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
         role: formData.role,
         currentWork: formData.currentWork || undefined,
         investmentStartedAt: formData.investmentStartedAt ? new Date(formData.investmentStartedAt).getTime() : undefined,
+        city: formData.city || undefined,
+        province: formData.province || undefined,
+        country: formData.country || undefined,
+        locationAddress: formData.locationAddress || undefined,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
       });
 
       if (result.credentials) {
@@ -205,8 +223,8 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
               <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
                 {step === "type" ? "select flow" : step === "success" ? "Success" : (
                   memberType === "joined" 
-                    ? `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "platform" ? 3 : step === "work" ? 4 : 5} of 5`
-                    : `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "work" ? 3 : 4} of 4`
+                    ? `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "platform" ? 3 : step === "location" ? 4 : step === "work" ? 5 : 6} of 6`
+                    : `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "location" ? 3 : step === "work" ? 4 : 5} of 5`
                 )}
               </p>
             </div>
@@ -373,6 +391,93 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
             </div>
           )}
 
+          {step === "location" && (
+            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+              <div className="grid grid-cols-2 gap-4">
+                <InputGroup 
+                  label="City" 
+                  value={formData.city} 
+                  onChange={v => setFormData(p => ({ ...p, city: v }))}
+                  onPaste={() => smartPaste("city")}
+                  placeholder="(optional)"
+                />
+                <InputGroup 
+                  label="Province / State" 
+                  value={formData.province} 
+                  onChange={v => setFormData(p => ({ ...p, province: v }))}
+                  onPaste={() => smartPaste("province")}
+                  placeholder="(optional)"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <InputGroup 
+                  label="Country" 
+                  value={formData.country} 
+                  onChange={v => setFormData(p => ({ ...p, country: v }))}
+                  onPaste={() => smartPaste("country")}
+                  placeholder="(optional)"
+                />
+              </div>
+              <InputGroup 
+                label="Location Address" 
+                value={formData.locationAddress} 
+                onChange={v => setFormData(p => ({ ...p, locationAddress: v }))}
+                onPaste={() => smartPaste("locationAddress")}
+                placeholder="Full address (optional)"
+              />
+
+              <div className="pt-2">
+                <button
+                  onClick={async () => {
+                    const query = [formData.locationAddress, formData.city, formData.province, formData.country]
+                      .filter(Boolean)
+                      .join(", ");
+                    if (!query) {
+                      toast.error("Please enter some location details to geocode");
+                      return;
+                    }
+                    
+                    setIsGeocoding(true);
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                      const data = await res.json();
+                      if (data && data.length > 0) {
+                        setFormData(p => ({
+                          ...p,
+                          latitude: parseFloat(data[0].lat),
+                          longitude: parseFloat(data[0].lon)
+                        }));
+                        toast.success("Location resolved successfully!");
+                      } else {
+                        toast.error("Location not found");
+                      }
+                    } catch (e) {
+                      toast.error("Failed to geocode location");
+                    } finally {
+                      setIsGeocoding(false);
+                    }
+                  }}
+                  disabled={isGeocoding}
+                  className="flex items-center gap-2 px-4 py-2 bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] transition-colors rounded-xl font-bold text-sm"
+                >
+                  {isGeocoding ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : formData.latitude ? (
+                    <Check size={16} />
+                  ) : (
+                    <MapPin size={16} />
+                  )}
+                  {formData.latitude ? "Coordinates Resolved" : "Resolve Coordinates"}
+                </button>
+                {formData.latitude && (
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-2 font-mono">
+                    Lat: {formData.latitude.toFixed(4)}, Lng: {formData.longitude?.toFixed(4)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {step === "work" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               {memberType === "joined" && (
@@ -411,6 +516,10 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                   </>
                 )}
                 <SummaryItem label="Work Occupation" value={formData.currentWork} />
+                <SummaryItem label="City" value={formData.city} />
+                <SummaryItem label="Province" value={formData.province} />
+                <SummaryItem label="Country" value={formData.country} />
+                <SummaryItem label="Location Address" value={formData.locationAddress} />
                 {memberType === "joined" && (
                   <SummaryItem label="Investment Start Date" value={formData.investmentStartedAt} />
                 )}

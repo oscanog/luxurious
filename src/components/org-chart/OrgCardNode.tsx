@@ -26,6 +26,12 @@ export type OrgCardData = {
       createdAt: number;
     } | null;
     investmentStartedAt?: number;
+    city?: string;
+    province?: string;
+    country?: string;
+    locationAddress?: string;
+    latitude?: number;
+    longitude?: number;
   };
   isRoot?: boolean;
   branchColor?: string;

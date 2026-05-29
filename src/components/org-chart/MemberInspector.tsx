@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -12,7 +12,8 @@ import {
   Globe,
   Settings,
   ChevronRight,
-  Pencil
+  Pencil,
+  MapPin
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ export function MemberInspector({
   networkStats,
   onClose,
 }: MemberInspectorProps) {
-  const [activeTab, setActiveTab] = useState<"info" | "security">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "security" | "address">("info");
   const [isResetting, setIsResetting] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -51,6 +52,7 @@ export function MemberInspector({
   const deleteMember = useMutation(api.network.deleteMember);
   const updateStatus = useMutation(api.networkMembers.updateMemberStatus);
   const updateInvestmentDate = useMutation(api.networkMembers.updateMemberInvestmentDate);
+  const updateLocation = useMutation(api.networkMembers.updateMemberLocation);
   const joinMember = useAction(api.networkMembers.joinExistingMember);
 
   const assetLogs = useQuery(
@@ -72,6 +74,30 @@ export function MemberInspector({
   const [editAssetCurrency, setEditAssetCurrency] = useState("USD");
   const [isEditAssetOpen, setIsEditAssetOpen] = useState(false);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+
+  const [addressForm, setAddressForm] = useState({
+    city: "",
+    province: "",
+    country: "",
+    locationAddress: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
+  });
+  const [isAddressSaving, setIsAddressSaving] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  useEffect(() => {
+    if (member) {
+      setAddressForm({
+        city: member.city || "",
+        province: member.province || "",
+        country: member.country || "",
+        locationAddress: member.locationAddress || "",
+        latitude: member.latitude,
+        longitude: member.longitude,
+      });
+    }
+  }, [member]);
 
   const handleDeleteAsset = async () => {
     if (!deletingAssetId) return;
@@ -319,6 +345,15 @@ export function MemberInspector({
           Overview
         </button>
         <button 
+          onClick={() => setActiveTab("address")}
+          className={cn(
+            "flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all",
+            activeTab === "address" ? "bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+          )}
+        >
+          Address
+        </button>
+        <button 
           onClick={() => setActiveTab("security")}
           className={cn(
             "flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all",
@@ -383,6 +418,13 @@ export function MemberInspector({
             <div className="space-y-4">
               <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">Details</label>
               <InfoItem icon={<Mail size={16} />} label="Email" value={member.email || "No email"} />
+              {(member.city || member.country) && (
+                <InfoItem 
+                  icon={<MapPin size={16} />} 
+                  label="Location" 
+                  value={[member.city, member.province, member.country].filter(Boolean).join(", ")} 
+                />
+              )}
               <InfoItem icon={<Globe size={16} />} label="Bonchat" value={member.bonchatUsername || "Not linked"} />
               <InfoItem icon={<Globe size={16} />} label="Yepbit" value={member.yepbitUsername || "Not linked"} />
             </div>
@@ -534,6 +576,34 @@ export function MemberInspector({
               </div>
             </div>
           </>
+        ) : activeTab === "address" ? (
+          <AddressTabContent
+            key={memberId}
+            addressForm={addressForm}
+            setAddressForm={setAddressForm}
+            isGeocoding={isGeocoding}
+            setIsGeocoding={setIsGeocoding}
+            isAddressSaving={isAddressSaving}
+            onSave={async (overrides) => {
+              setIsAddressSaving(true);
+              try {
+                await updateLocation({
+                  memberId: memberId as Id<"networkMembers">,
+                  city: overrides?.city ?? addressForm.city ?? undefined,
+                  province: overrides?.province ?? addressForm.province ?? undefined,
+                  country: overrides?.country ?? addressForm.country ?? undefined,
+                  locationAddress: overrides?.locationAddress ?? addressForm.locationAddress ?? undefined,
+                  latitude: overrides?.latitude ?? addressForm.latitude,
+                  longitude: overrides?.longitude ?? addressForm.longitude,
+                });
+                toast.success("Location updated successfully!");
+              } catch (e: any) {
+                toast.error(e.message || "Failed to update location");
+              } finally {
+                setIsAddressSaving(false);
+              }
+            }}
+          />
         ) : (
           <div className="space-y-6">
             <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10">
@@ -752,5 +822,294 @@ function SecurityButton({
       </div>
       <ChevronRight size={16} className="text-[hsl(var(--muted-foreground)/0.5)]" />
     </button>
+  );
+}
+
+function InspectorInput({ 
+  label, 
+  value, 
+  onChange, 
+  placeholder 
+}: { 
+  label: React.ReactNode; 
+  value: string; 
+  onChange: (v: string) => void; 
+  placeholder?: string; 
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 text-sm font-semibold outline-none focus:border-[hsl(var(--primary))] transition-all"
+      />
+    </div>
+  );
+}
+
+function InspectorSelect({ 
+  label, 
+  value, 
+  onChange, 
+  options, 
+  placeholder,
+  disabled
+}: { 
+  label: string | React.ReactNode; 
+  value: string; 
+  onChange: (v: string) => void; 
+  options: {value: string, label: string}[];
+  placeholder: string; 
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block px-1">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl p-3 text-sm font-semibold outline-none focus:border-[hsl(var(--primary))] transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map((opt: any) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+      <div className="absolute right-4 top-[34px] pointer-events-none text-[hsl(var(--muted-foreground))]">
+        <ChevronRight size={14} className="rotate-90" />
+      </div>
+    </div>
+  );
+}
+
+function AddressTabContent({
+  addressForm,
+  setAddressForm,
+  isGeocoding,
+  setIsGeocoding,
+  isAddressSaving,
+  onSave,
+}: {
+  addressForm: any;
+  setAddressForm: React.Dispatch<React.SetStateAction<any>>;
+  isGeocoding: boolean;
+  setIsGeocoding: (val: boolean) => void;
+  isAddressSaving: boolean;
+  onSave: (overrides?: any) => void;
+}) {
+  const [regions, setRegions] = useState<any[]>([]);
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+
+  const [barangay, setBarangay] = useState(() => {
+    const parts = (addressForm.locationAddress || "").split(",").map((s: string) => s.trim());
+    return parts[0] || "";
+  });
+  const [address1, setAddress1] = useState(() => {
+    const parts = (addressForm.locationAddress || "").split(",").map((s: string) => s.trim());
+    return parts[1] || "";
+  });
+  const [address2, setAddress2] = useState(() => {
+    const parts = (addressForm.locationAddress || "").split(",").map((s: string) => s.trim());
+    return parts.length >= 3 ? parts[2] || "" : "";
+  });
+
+  // Load JSON
+  useEffect(() => {
+    fetch("/data/ph/region.json").then(res => res.json()).then(setRegions).catch(() => {});
+    fetch("/data/ph/province.json").then(res => res.json()).then(setProvinces).catch(() => {});
+    fetch("/data/ph/city.json").then(res => res.json()).then(setCities).catch(() => {});
+  }, []);
+
+  // Match existing province to code
+  useEffect(() => {
+    if (addressForm.province && provinces.length > 0) {
+      const p = provinces.find(p => p.province_name === addressForm.province);
+      if (p) {
+        setSelectedProvince(p.province_code);
+        setSelectedRegion(p.region_code);
+      }
+    }
+  }, [addressForm.province, provinces]);
+
+  // Match existing city to code
+  useEffect(() => {
+    if (addressForm.city && cities.length > 0) {
+      const c = cities.find(c => c.city_name === addressForm.city);
+      if (c) setSelectedCity(c.city_code);
+    }
+  }, [addressForm.city, cities]);
+
+  const filteredProvinces = provinces.filter(p => p.region_code === selectedRegion);
+  const filteredCities = cities.filter(c => c.province_code === selectedProvince);
+
+  return (
+    <div className="space-y-6">
+      <div className="p-4 rounded-2xl bg-[hsl(var(--primary)/0.05)] border border-[hsl(var(--primary)/0.1)]">
+        <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--primary))] block mb-1">Geographic Info</span>
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))] leading-relaxed">
+          Select your address details. Dropdowns will cascade automatically.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <InspectorSelect 
+          label="Region"
+          value={selectedRegion}
+          onChange={(v) => {
+            setSelectedRegion(v);
+            setSelectedProvince("");
+            setSelectedCity("");
+            setAddressForm((prev: any) => ({ ...prev, province: "", city: "" }));
+          }}
+          options={regions.map(r => ({ value: r.region_code, label: r.region_name }))}
+          placeholder="Select Region"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <InspectorSelect 
+            label="Province"
+            value={selectedProvince}
+            disabled={!selectedRegion}
+            onChange={(v) => {
+              setSelectedProvince(v);
+              const p = provinces.find(x => x.province_code === v);
+              setAddressForm((prev: any) => ({ ...prev, province: p?.province_name || "", city: "" }));
+              setSelectedCity("");
+            }}
+            options={filteredProvinces.map(p => ({ value: p.province_code, label: p.province_name }))}
+            placeholder="Select Province"
+          />
+          <InspectorSelect 
+            label="City / Municipality"
+            value={selectedCity}
+            disabled={!selectedProvince}
+            onChange={(v) => {
+              setSelectedCity(v);
+              const c = cities.find(x => x.city_code === v);
+              setAddressForm((prev: any) => ({ ...prev, city: c?.city_name || "" }));
+            }}
+            options={filteredCities.map(c => ({ value: c.city_code, label: c.city_name }))}
+            placeholder="Select City"
+          />
+        </div>
+
+        <InspectorInput 
+          label={<span>Barangay <i className="text-[9px] font-normal lowercase">(optional)</i></span>}
+          value={barangay} 
+          onChange={(v) => {
+            setBarangay(v);
+            const combined = [v, address1, address2].filter(Boolean).join(", ");
+            setAddressForm((prev: any) => ({ ...prev, locationAddress: combined }));
+          }} 
+          placeholder="e.g. Brgy. 1" 
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <InspectorInput 
+            label={<span>Address 1 <i className="text-[9px] font-normal lowercase">(optional)</i></span>}
+            value={address1} 
+            onChange={(v) => {
+              setAddress1(v);
+              const combined = [barangay, v, address2].filter(Boolean).join(", ");
+              setAddressForm((prev: any) => ({ ...prev, locationAddress: combined }));
+            }} 
+            placeholder="House/Lot No., Street" 
+          />
+          <InspectorInput 
+            label={<span>Address 2 <i className="text-[9px] font-normal lowercase">(optional)</i></span>}
+            value={address2} 
+            onChange={(v) => {
+              setAddress2(v);
+              const combined = [barangay, address1, v].filter(Boolean).join(", ");
+              setAddressForm((prev: any) => ({ ...prev, locationAddress: combined }));
+            }} 
+            placeholder="Subdivision, Building" 
+          />
+        </div>
+      </div>
+
+      <div className="flex pt-2">
+        <button
+          type="button"
+          onClick={async () => {
+            // Resolve city/province from local dropdown state as source of truth
+            const resolvedProvince = provinces.find(p => p.province_code === selectedProvince)?.province_name || addressForm.province;
+            const resolvedCity = cities.find(c => c.city_code === selectedCity)?.city_name || addressForm.city;
+
+            if (!resolvedCity || !resolvedProvince) {
+              toast.error("Please select a City and Province first");
+              return;
+            }
+
+            // Sync addressForm with resolved values
+            setAddressForm((prev: any) => ({ ...prev, city: resolvedCity, province: resolvedProvince }));
+
+            const locationAddress = [barangay, address1, address2].filter(Boolean).join(", ");
+
+            // Cascading geocode queries: specific → broad. Always resolves a pin.
+            const queries = [
+              [barangay, resolvedCity, resolvedProvince, "Philippines"].filter(Boolean).join(", "),
+              [resolvedCity, resolvedProvince, "Philippines"].filter(Boolean).join(", "),
+              [resolvedProvince, "Philippines"].filter(Boolean).join(", "),
+            ];
+            
+            setIsGeocoding(true);
+            let lat: number | undefined = undefined;
+            let lon: number | undefined = undefined;
+            
+            try {
+              for (const q of queries) {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                  lat = parseFloat(data[0].lat);
+                  lon = parseFloat(data[0].lon);
+                  break;
+                }
+              }
+
+              if (lat != null && lon != null) {
+                setAddressForm((p: any) => ({
+                  ...p,
+                  country: "Philippines",
+                  latitude: lat,
+                  longitude: lon
+                }));
+              } else {
+                toast.error("Could not resolve location. Please check your address.");
+                setIsGeocoding(false);
+                return;
+              }
+            } catch (e) {
+              toast.error("Geocoding failed. Check your connection and try again.");
+              setIsGeocoding(false);
+              return;
+            } finally {
+              setIsGeocoding(false);
+            }
+            
+            onSave({ country: "Philippines", city: resolvedCity, province: resolvedProvince, locationAddress, latitude: lat, longitude: lon });
+          }}
+          disabled={isAddressSaving || isGeocoding}
+          className="w-full py-3 bg-[hsl(var(--primary))] hover:opacity-90 text-white font-bold text-xs rounded-xl shadow-lg shadow-[hsl(var(--primary)/0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {(isAddressSaving || isGeocoding) ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          ) : (
+            <MapPin size={16} />
+          )}
+          {isGeocoding ? "Resolving Location..." : isAddressSaving ? "Saving..." : "Save Address"}
+        </button>
+      </div>
+    </div>
   );
 }

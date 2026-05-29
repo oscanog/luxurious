@@ -34,6 +34,12 @@ const addMemberArgs = {
   birthday: v.optional(v.string()),
   currentWork: v.optional(v.string()),
   investmentStartedAt: v.optional(v.number()),
+  city: v.optional(v.string()),
+  province: v.optional(v.string()),
+  country: v.optional(v.string()),
+  locationAddress: v.optional(v.string()),
+  latitude: v.optional(v.number()),
+  longitude: v.optional(v.number()),
   role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
 } as const;
 
@@ -163,6 +169,12 @@ export const createMemberRecord = internalMutation({
       birthday: args.birthday,
       currentWork: args.currentWork?.trim() || undefined,
       investmentStartedAt: args.investmentStartedAt,
+      city: args.city?.trim() || undefined,
+      province: args.province?.trim() || undefined,
+      country: args.country?.trim() || undefined,
+      locationAddress: args.locationAddress?.trim() || undefined,
+      latitude: args.latitude,
+      longitude: args.longitude,
       createdAt: now,
       updatedAt: now,
     });
@@ -643,6 +655,37 @@ export const updateMemberInvestmentDate = mutation({
     
     await ctx.db.patch(args.memberId, {
       investmentStartedAt: args.investmentStartedAt,
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
+      table: "networkMembers",
+      sourceId: args.memberId,
+    });
+  },
+});
+
+export const updateMemberLocation = mutation({
+  args: {
+    memberId: v.id("networkMembers"),
+    city: v.optional(v.string()),
+    province: v.optional(v.string()),
+    country: v.optional(v.string()),
+    locationAddress: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await getMobileProfileForViewerOrThrow(ctx);
+    const member = await ctx.db.get(args.memberId);
+    if (!member) throw new Error("Member not found");
+    
+    await ctx.db.patch(args.memberId, {
+      city: args.city,
+      province: args.province,
+      country: args.country,
+      locationAddress: args.locationAddress,
+      latitude: args.latitude,
+      longitude: args.longitude,
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useQuery } from "convex/react";
 import {
   ReactFlow,
@@ -40,6 +40,8 @@ import { useContextMenu } from "../../components/ui/useContextMenu";
 import { type ContextMenuItem } from "../../components/ui/ContextMenu";
 import { cn } from "@/lib/utils";
 
+const LeafletMapView = lazy(() => import("../../components/org-chart/LeafletMapView"));
+
 type OrgStatus = OrgCardData["member"]["status"];
 
 type OrgTreeNode = {
@@ -54,7 +56,7 @@ type OrgTreeNode = {
   children: OrgTreeNode[];
 };
 
-type OrgFlowData = {
+export type OrgFlowData = {
   id: string;
   name: string;
   roleTitle: string;
@@ -399,8 +401,10 @@ function OrgChartContent() {
   const [search, setSearch] = useState("");
   const [isProjectionView, setIsProjectionView] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
+  const [viewMode, setViewMode] = useState<"canvas" | "map">("canvas");
 
   const [statusFilter, setStatusFilter] = useState("All");
+  const [countryFilter, setCountryFilter] = useState("All");
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -499,11 +503,20 @@ function OrgChartContent() {
     ? ["All", "Joined", "Invited", "Pending", "To-Invite"]
     : ["All", "Joined"];
 
+  const availableCountries = useMemo(() => {
+    const countries = new Set<string>();
+    allTreeNodes.forEach(n => {
+      if (n.member.country) countries.add(n.member.country);
+    });
+    return ["All", ...Array.from(countries).sort()];
+  }, [allTreeNodes]);
+
   const flowNodes = useMemo(() => nodes.map((node) => ({
     ...node,
     selected: node.id === effectiveSelectedId,
-    hidden: statusFilter !== "All" && node.data.status !== statusFilter.toLowerCase(),
-  })), [nodes, effectiveSelectedId, statusFilter]);
+    hidden: (statusFilter !== "All" && node.data.status !== statusFilter.toLowerCase()) ||
+            (countryFilter !== "All" && node.data.member.country !== countryFilter),
+  })), [nodes, effectiveSelectedId, statusFilter, countryFilter]);
 
   const flowEdges = useMemo(() => edges.map((edge) => {
     const isConnectedToSelected = edge.source === effectiveSelectedId || edge.target === effectiveSelectedId;
@@ -621,6 +634,11 @@ function OrgChartContent() {
             triggerFocusNode(match.id);
           }
         }}
+        viewMode={viewMode}
+        unmappedMembers={allTreeNodes
+          .filter(n => n.member.latitude == null && !n.isViewer)
+          .map(n => ({ id: n.id, name: n.name, role: n.roleTitle, email: n.member.email }))
+        }
       />
       <div className="flex items-center justify-between gap-4 pb-6">
         <Link
@@ -645,14 +663,33 @@ function OrgChartContent() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 rounded-[18px] bg-[#1A2235] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] relative">
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))]">
+            <button
+              onClick={() => setViewMode("canvas")}
+              className={cn("flex h-10 px-3 gap-2 items-center justify-center rounded-xl transition-colors font-bold text-sm", viewMode === "canvas" ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
+              title="Canvas View"
+            >
+              <Network size={16} />
+              <span className="hidden sm:inline">Canvas</span>
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={cn("flex h-10 px-3 gap-2 items-center justify-center rounded-xl transition-colors font-bold text-sm", viewMode === "map" ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
+              title="Map View"
+            >
+              <MapIcon size={16} />
+              <span className="hidden sm:inline">Map</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] relative">
             <button 
               onClick={() => {
                 setShowFilters(!showFilters);
                 setShowStats(false);
                 setShowInfo(false);
               }}
-              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showFilters ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white")}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showFilters ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Filters"
             >
               <SlidersHorizontal size={18} />
@@ -663,7 +700,7 @@ function OrgChartContent() {
                 setShowFilters(false);
                 setShowInfo(false);
               }}
-              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showStats ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white")}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showStats ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Statistics"
             >
               <ChartColumn size={18} />
@@ -672,7 +709,7 @@ function OrgChartContent() {
               onClick={() => setShowMinimap(!showMinimap)}
               className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-                showMinimap ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white"
+                showMinimap ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
               )}
               title="Minimap"
             >
@@ -684,7 +721,7 @@ function OrgChartContent() {
                 setShowFilters(false);
                 setShowStats(false);
               }}
-              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showInfo ? "bg-[hsl(43,96%,48%)] text-[#1A2235]" : "text-slate-400 hover:bg-white/10 hover:text-white")}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showInfo ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Info"
             >
               <Info size={18} />
@@ -694,7 +731,7 @@ function OrgChartContent() {
             {showFilters && (
               <div className="absolute top-[120%] right-0 w-48 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
                 <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Filter by Status</h4>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 mb-4">
                   {availableStatusFilters.map((status) => (
                     <label key={status} className="flex items-center gap-3 cursor-pointer group">
                       <input 
@@ -708,6 +745,19 @@ function OrgChartContent() {
                       <span className="text-sm font-medium text-[hsl(var(--foreground))] group-hover:text-[hsl(43,96%,48%)] transition-colors">{status}</span>
                     </label>
                   ))}
+                </div>
+
+                <h4 className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3 pt-4 border-t border-[hsl(var(--border)/0.5)]">Filter by Country</h4>
+                <div className="relative">
+                  <select
+                    value={countryFilter}
+                    onChange={(e) => setCountryFilter(e.target.value)}
+                    className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl p-2 text-sm font-semibold outline-none cursor-pointer focus:border-[hsl(var(--primary))]"
+                  >
+                    {availableCountries.map((country) => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -773,7 +823,7 @@ function OrgChartContent() {
           
           <button 
             onClick={handleToggleHierarchyView}
-            className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[#1A2235] text-[hsl(43,96%,48%)] shadow-lg border border-[hsl(var(--border))] hover:bg-[#1f293f] hover:scale-[1.05] active:scale-[0.95] transition-all"
+            className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[hsl(var(--card))] text-[hsl(43,96%,48%)] shadow-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] hover:scale-[1.05] active:scale-[0.95] transition-all"
             title={isProjectionView ? "Projection View (All)" : "Real Hierarchy (Joined Only)"}
           >
             {isProjectionView ? (
@@ -786,13 +836,40 @@ function OrgChartContent() {
       </div>
 
       <div className="relative h-[760px] w-full rounded-[36px] overflow-hidden">
-        <OrgChartCanvas 
-          nodes={flowNodes} 
-          edges={flowEdges} 
-          onSelect={setSelectedId} 
-          onPaneContextMenu={handlePaneRightClick} 
-          showMinimap={showMinimap} 
-        />
+        {viewMode === "canvas" ? (
+          <OrgChartCanvas 
+            nodes={flowNodes} 
+            edges={flowEdges} 
+            onSelect={setSelectedId} 
+            onPaneContextMenu={handlePaneRightClick} 
+            showMinimap={showMinimap} 
+          />
+        ) : (
+          <Suspense fallback={
+            <div className="absolute inset-0 bg-[hsl(var(--card))] flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 text-[hsl(var(--muted-foreground))]">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-current border-t-transparent" />
+                <p className="text-sm font-bold tracking-widest uppercase">Loading Map...</p>
+              </div>
+            </div>
+          }>
+            <LeafletMapView 
+              nodes={flowNodes.filter(n => !n.hidden)} 
+              onSelectNode={(id) => {
+                setSelectedId(id);
+              }} 
+              selectedId={selectedId} 
+            />
+            <div className="absolute bottom-4 left-4 z-[400] bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl px-4 py-2 shadow-lg">
+              <p className="text-xs font-bold text-[hsl(var(--foreground))]">
+                Showing {flowNodes.filter(n => !n.hidden && n.data.member.latitude != null).length} pins
+              </p>
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
+                Out of {allTreeNodes.length} members
+              </p>
+            </div>
+          </Suspense>
+        )}
       </div>
 
       <MemberInspector 

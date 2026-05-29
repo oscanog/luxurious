@@ -112,6 +112,12 @@ type OrgTreeNode = {
   directChildrenCount: number;
   totalDownlineCount: number;
   allowAdd?: boolean;
+  city?: string;
+  province?: string;
+  country?: string;
+  locationAddress?: string;
+  latitude?: number;
+  longitude?: number;
   latestAsset?: {
     name: string;
     value: number;
@@ -131,6 +137,12 @@ type OrgTreeNode = {
     invitedCount: number;
     pendingCount: number;
     uplineId: Id<"networkMembers"> | null;
+    city?: string;
+    province?: string;
+    country?: string;
+    locationAddress?: string;
+    latitude?: number;
+    longitude?: number;
     allowAdd?: boolean;
     latestAsset?: {
       name: string;
@@ -208,6 +220,12 @@ function buildTree(
       directChildrenCount: (parentLookup.get(member._id) ?? []).length,
       totalDownlineCount: totalDownlines,
       allowAdd: true,
+      city: member.city,
+      province: member.province,
+      country: member.country,
+      locationAddress: member.locationAddress,
+      latitude: member.latitude,
+      longitude: member.longitude,
       latestAsset,
       investmentStartedAt: member.investmentStartedAt,
       member: {
@@ -222,6 +240,12 @@ function buildTree(
         invitedCount: 0,
         pendingCount: 0,
         uplineId: (member.parentMemberId as any),
+        city: member.city,
+        province: member.province,
+        country: member.country,
+        locationAddress: member.locationAddress,
+        latitude: member.latitude,
+        longitude: member.longitude,
         allowAdd: true,
         latestAsset,
         investmentStartedAt: member.investmentStartedAt,
@@ -596,6 +620,12 @@ function buildOverview(
       directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
       totalDownlineCount: totalDownlines,
       allowAdd: true,
+      city: viewer.city,
+      province: viewer.province,
+      country: viewer.country,
+      locationAddress: viewer.locationAddress,
+      latitude: viewer.latitude,
+      longitude: viewer.longitude,
       latestAsset,
       investmentStartedAt: viewer.investmentStartedAt,
       member: {
@@ -610,6 +640,12 @@ function buildOverview(
         invitedCount: 0,
         pendingCount: 0,
         uplineId: (viewer.parentMemberId as any),
+        city: viewer.city,
+        province: viewer.province,
+        country: viewer.country,
+        locationAddress: viewer.locationAddress,
+        latitude: viewer.latitude,
+        longitude: viewer.longitude,
         allowAdd: true,
         latestAsset,
         investmentStartedAt: viewer.investmentStartedAt,
@@ -630,6 +666,12 @@ function buildOverview(
         directChildrenCount: 1,
         totalDownlineCount: uplineDownlines,
         allowAdd: false,
+        city: directUpline.city,
+        province: directUpline.province,
+        country: directUpline.country,
+        locationAddress: directUpline.locationAddress,
+        latitude: directUpline.latitude,
+        longitude: directUpline.longitude,
         latestAsset: uplineAsset,
         investmentStartedAt: directUpline.investmentStartedAt,
         member: {
@@ -644,6 +686,12 @@ function buildOverview(
           invitedCount: 0,
           pendingCount: 0,
           uplineId: (directUpline.parentMemberId as any),
+          city: directUpline.city,
+          province: directUpline.province,
+          country: directUpline.country,
+          locationAddress: directUpline.locationAddress,
+          latitude: directUpline.latitude,
+          longitude: directUpline.longitude,
           allowAdd: false,
           latestAsset: uplineAsset,
           investmentStartedAt: directUpline.investmentStartedAt,
@@ -695,6 +743,12 @@ function buildOverview(
       userId: member.userId,
       email: member.email,
       investmentStartedAt: member.investmentStartedAt,
+      city: member.city,
+      province: member.province,
+      country: member.country,
+      locationAddress: member.locationAddress,
+      latitude: member.latitude,
+      longitude: member.longitude,
     })),
     tree: treeRoots,
   };
@@ -1189,6 +1243,12 @@ export const getMember = query({
       invitedCount: 0, // Placeholder
       directChildrenCount: directChildrenCount,
       pendingCount: pendingCount,
+      city: member.city,
+      province: member.province,
+      country: member.country,
+      locationAddress: member.locationAddress,
+      latitude: member.latitude,
+      longitude: member.longitude,
       latestAsset,
       investmentStartedAt: member.investmentStartedAt,
     };
