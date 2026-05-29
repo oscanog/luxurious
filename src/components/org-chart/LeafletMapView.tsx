@@ -324,7 +324,7 @@ export default function LeafletMapView({ nodes, onSelectNode, selectedId }: Leaf
           chunkedLoading
           showCoverageOnHover={false}
           maxClusterRadius={50}
-          iconCreateFunction={(cluster) => {
+          iconCreateFunction={(cluster: any) => {
             const count = cluster.getChildCount();
             const size = count < 10 ? 36 : count < 50 ? 42 : 48;
             return L.divIcon({
