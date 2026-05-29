@@ -31,10 +31,17 @@ Expand the network map and address management to support a second target country
 - [x] Create a pill-shaped button group for:
   - **PH Only (🇵🇭):** Hardcoded bounds mapping to Philippine coordinates `[[4.5, 116.5], [21.5, 127]]`.
   - **CA Only (🇨🇦):** Hardcoded bounds mapping to Canadian coordinates `[[41.6, -141], [83.1, -52.6]]`.
-  - **World View (🌍):** Dynamic fit to all active markers (previous default logic).
+  - **World View (🌍):** Dynamic fit to the entire globe `[[-60, -180], [85, 180]]`.
 
 ## Phase 4: Final Validation
 
 - [x] Ensure components render seamlessly in Light and Dark mode.
 - [x] Geocoding tests successful for Canadian addresses.
 - [x] Map smoothly transitions bounds via `flyToBounds`/`fitBounds` on trigger click.
+
+## Phase 5: Map UX & AI Refinements (Added)
+
+- [x] Add `CanadaCityLabels` component to manually plot top 10 Canadian cities on the map at low zoom levels since OSM hides them.
+- [x] Revert tile layer to standard OpenStreetMap, removing CartoDB.
+- [x] Enhance map tooltips and popups to display total joined downlines, prospect downlines, days joined, and latest asset.
+- [x] Update AI context (`aiAgent.ts`, `aiContext.ts`, `AI-SCOPES.md`) to include member address data (city, province, country) so the agent can answer geospatial queries.

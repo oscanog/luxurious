@@ -83,6 +83,7 @@ Give the agent the ability to remember context across the thread without re-quer
 - Updated member network visibility to use canonical linked-account downlines from the org tree, not only members created inside the signed-in user's own profile.
 - Updated non-admin org chart scope to include direct-upline context above the signed-in member, with `allowAdd: false` so uplines such as Maylyn are visible but read-only.
 - Fixed linked viewer card latest asset mapping by resolving assets across member id, user id, email, and normalized name.
+- Updated `aiAgent.ts` and `aiContext.ts` to expose `city`, `province`, `country`, `locationAddress`, and coordinates so the agent can answer geospatial and location-based questions.
 - Note: existing records need `aiDbEmbeddingActions.backfillBatch` to run with `AI_EMBEDDING_*` env configured. Embedding model must return 1536-dimensional vectors.
 
 ## Phase 4: Desktop UX Upgrades

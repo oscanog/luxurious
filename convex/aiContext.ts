@@ -47,6 +47,10 @@ function memberSearchScore(member: Doc<"networkMembers">, query: string) {
     member.yepbitId,
     member.yepbitUsername,
     member.roleTitle,
+    member.city,
+    member.province,
+    member.country,
+    member.locationAddress,
   ]
     .filter((field): field is string => Boolean(field))
     .map((field) => field.toLowerCase());
@@ -199,6 +203,11 @@ async function networkContext(
         m.yepbitId ? `Yepbit ID: ${m.yepbitId}` : null,
         m.yepbitUsername ? `Yepbit Username: ${m.yepbitUsername}` : null,
         m.currentWork ? `Work: ${m.currentWork}` : null,
+        m.city ? `City: ${m.city}` : null,
+        m.province ? `Province: ${m.province}` : null,
+        m.country ? `Country: ${m.country}` : null,
+        m.locationAddress ? `Address: ${m.locationAddress}` : null,
+        m.latitude != null && m.longitude != null ? `Coords: ${m.latitude},${m.longitude}` : null,
         `Viewer: ${m.isViewer}`,
       ]
         .filter(Boolean)
@@ -231,6 +240,10 @@ async function networkContext(
     if (m.yepbitId) parts.push(`yepbitId=${m.yepbitId}`);
     if (m.yepbitUsername) parts.push(`yepbitUser=${m.yepbitUsername}`);
     if (m.email) parts.push(`email=${m.email}`);
+    if (m.city) parts.push(`city=${m.city}`);
+    if (m.province) parts.push(`province=${m.province}`);
+    if (m.country) parts.push(`country=${m.country}`);
+    if (m.locationAddress) parts.push(`address=${m.locationAddress}`);
     const assets = await getMemberAssetLogs(ctx, m, members, 1);
     if (assets[0]) {
       parts.push(`latestOrgAsset=${assets[0].currency} ${assets[0].value}`);
@@ -580,6 +593,12 @@ export const searchNetworkTool = internalQuery({
         bonchatUsername: member.bonchatUsername ?? null,
         yepbitId: member.yepbitId ?? null,
         yepbitUsername: member.yepbitUsername ?? null,
+        city: member.city ?? null,
+        province: member.province ?? null,
+        country: member.country ?? null,
+        locationAddress: member.locationAddress ?? null,
+        latitude: member.latitude ?? null,
+        longitude: member.longitude ?? null,
         score,
         latestAsset: assets[0]
           ? {

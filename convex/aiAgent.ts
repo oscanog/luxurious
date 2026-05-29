@@ -537,7 +537,7 @@ const tools = [
     function: {
       name: "searchNetwork",
       description:
-        "Search visible org chart members by name, Bonchat/Yepbit ID, username, email, or role. Use before member-specific questions.",
+        "Search visible org chart members by name, Bonchat/Yepbit ID, username, email, role, or address/location (city, province, country). Use before member-specific or location questions.",
       parameters: {
         type: "object",
         properties: {

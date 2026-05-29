@@ -6,7 +6,7 @@ All scopes the Luxurious AI agent can query for live workspace data.
 
 | Scope | Tables | What AI Can Answer |
 |-------|--------|--------------------|
-| **network** | `networkMembers`, `memberAssets` | Member details, org chart, downline counts, status breakdown, latest Org Studio asset log per member |
+| **network** | `networkMembers`, `memberAssets` | Member details, org chart, downline counts, status breakdown, latest Org Studio asset log per member, member address/location (city, province, country, coordinates) |
 | **trading** | `trades`, `tradingSignals` | Open positions, recent trades, active signals, P&L |
 | **finance** | `financialAccounts`, `financialTransactions`, `budgetPlans`, `debtPlans`, `installmentPlans` | Finance Banking & Assets account balances, recent transactions, budget status |
 | **academy** | `academyLevels`, `academyLessons`, `academyProgress` | Course progress, completed lessons, available levels |
@@ -39,7 +39,7 @@ All scopes the Luxurious AI agent can query for live workspace data.
 
 | Scope | Trigger Keywords |
 |-------|-----------------|
-| network | member, network, downline, upline, org, team, recruit, direct, joined, bonchat, yepbit, user, asset, investment, details |
+| network | member, network, downline, upline, org, team, recruit, direct, joined, bonchat, yepbit, user, asset, investment, details, address, location, city, province, country, where, live, lives, residing, coordinates, map |
 | trading | trade, signal, portfolio, position, buy, sell, entry, stop |
 | finance | finance, financial, banking, bank, account, accounts, currency, ledger, transaction, budget, balance, money, cash, debt, installment |
 | academy | academy, lesson, course, learn, progress, level |
@@ -53,6 +53,15 @@ All scopes the Luxurious AI agent can query for live workspace data.
 ## Search Term Extraction
 
 When a user asks about a specific entity (e.g. "details of Melvin Nogoy", "latest asset of Florence Nogoy"), the agent extracts the name and passes it as `searchTerm` to the network scope query, which filters members by name match and includes latest/recent org chart asset logs.
+
+## Address / Location Rules
+
+- Member address data (city, province, country, locationAddress, latitude, longitude) is stored on `networkMembers`.
+- The system supports two countries: **Philippines** and **Canada**.
+- Address data is set via the Org Chart Member Inspector address tab, which includes cascading dropdowns (Region → Province → City) sourced from `/data/ph/` or `/data/ca/` JSON datasets.
+- Geocoding resolves coordinates via Nominatim (OpenStreetMap) with cascading fallback (Address → City/Province → Province).
+- When user asks "where does [member] live?" or "what city is [member] in?", the AI should answer from the network scope address fields.
+- When user asks "who lives in Toronto?" or "members in Canada?", the AI should search network members by city/province/country.
 
 ## Bounds
 
