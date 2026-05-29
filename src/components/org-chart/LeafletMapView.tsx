@@ -114,7 +114,27 @@ function FitBoundsControl({ nodes }: { nodes: Node<OrgFlowData>[] }) {
   const map = useMap();
   
   return (
-    <div className="absolute top-4 right-4 z-[400]">
+    <div className="absolute top-4 right-4 z-[400] flex items-center gap-1.5 p-1.5 bg-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-lg rounded-[18px]">
+      <button 
+        onClick={() => {
+          map.fitBounds([[4.5, 116.5], [21.5, 127]], { padding: [20, 20], maxZoom: 14 });
+        }}
+        className="flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        title="Fit Philippines"
+      >
+        <span>🇵🇭</span>
+        <span className="hidden sm:inline">PH</span>
+      </button>
+      <button 
+        onClick={() => {
+          map.fitBounds([[41.6, -141], [83.1, -52.6]], { padding: [20, 20], maxZoom: 14 });
+        }}
+        className="flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        title="Fit Canada"
+      >
+        <span>🇨🇦</span>
+        <span className="hidden sm:inline">CA</span>
+      </button>
       <button 
         onClick={() => {
           const validCoords = nodes
@@ -126,9 +146,11 @@ function FitBoundsControl({ nodes }: { nodes: Node<OrgFlowData>[] }) {
             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
           }
         }}
-        className="h-10 px-4 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl text-sm font-bold shadow-lg hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        className="flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        title="Fit All Nodes"
       >
-        Fit Bounds
+        <span>🌍</span>
+        <span className="hidden sm:inline">World</span>
       </button>
     </div>
   );

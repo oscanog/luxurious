@@ -901,6 +901,8 @@ function AddressTabContent({
   isAddressSaving: boolean;
   onSave: (overrides?: any) => void;
 }) {
+  const [selectedCountry, setSelectedCountry] = useState(() => addressForm.country === "Canada" ? "CA" : "PH");
+
   const [regions, setRegions] = useState<any[]>([]);
   const [provinces, setProvinces] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
@@ -922,12 +924,13 @@ function AddressTabContent({
     return parts.length >= 3 ? parts[2] || "" : "";
   });
 
-  // Load JSON
+  // Load JSON based on country
   useEffect(() => {
-    fetch("/data/ph/region.json").then(res => res.json()).then(setRegions).catch(() => {});
-    fetch("/data/ph/province.json").then(res => res.json()).then(setProvinces).catch(() => {});
-    fetch("/data/ph/city.json").then(res => res.json()).then(setCities).catch(() => {});
-  }, []);
+    const folder = selectedCountry === "CA" ? "ca" : "ph";
+    fetch(`/data/${folder}/region.json`).then(res => res.json()).then(setRegions).catch(() => setRegions([]));
+    fetch(`/data/${folder}/province.json`).then(res => res.json()).then(setProvinces).catch(() => setProvinces([]));
+    fetch(`/data/${folder}/city.json`).then(res => res.json()).then(setCities).catch(() => setCities([]));
+  }, [selectedCountry]);
 
   // Match existing province to code
   useEffect(() => {
@@ -953,6 +956,33 @@ function AddressTabContent({
 
   return (
     <div className="space-y-6">
+      <div className="flex bg-[hsl(var(--muted))] p-1 rounded-xl">
+        <button 
+          onClick={() => {
+            setSelectedCountry("PH");
+            setSelectedRegion("");
+            setSelectedProvince("");
+            setSelectedCity("");
+            setAddressForm((prev: any) => ({ ...prev, country: "Philippines", province: "", city: "" }));
+          }}
+          className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", selectedCountry === "PH" ? "bg-[hsl(var(--card))] shadow text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}
+        >
+          🇵🇭 Philippines
+        </button>
+        <button 
+          onClick={() => {
+            setSelectedCountry("CA");
+            setSelectedRegion("");
+            setSelectedProvince("");
+            setSelectedCity("");
+            setAddressForm((prev: any) => ({ ...prev, country: "Canada", province: "", city: "" }));
+          }}
+          className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", selectedCountry === "CA" ? "bg-[hsl(var(--card))] shadow text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}
+        >
+          🇨🇦 Canada
+        </button>
+      </div>
+
       <div className="p-4 rounded-2xl bg-[hsl(var(--primary)/0.05)] border border-[hsl(var(--primary)/0.1)]">
         <span className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--primary))] block mb-1">Geographic Info</span>
         <p className="text-[11px] text-[hsl(var(--muted-foreground))] leading-relaxed">
@@ -1055,11 +1085,13 @@ function AddressTabContent({
 
             const locationAddress = [barangay, address1, address2].filter(Boolean).join(", ");
 
+            const countryName = selectedCountry === "CA" ? "Canada" : "Philippines";
+
             // Cascading geocode queries: specific → broad. Always resolves a pin.
             const queries = [
-              [barangay, resolvedCity, resolvedProvince, "Philippines"].filter(Boolean).join(", "),
-              [resolvedCity, resolvedProvince, "Philippines"].filter(Boolean).join(", "),
-              [resolvedProvince, "Philippines"].filter(Boolean).join(", "),
+              [barangay, resolvedCity, resolvedProvince, countryName].filter(Boolean).join(", "),
+              [resolvedCity, resolvedProvince, countryName].filter(Boolean).join(", "),
+              [resolvedProvince, countryName].filter(Boolean).join(", "),
             ];
             
             setIsGeocoding(true);
@@ -1080,7 +1112,7 @@ function AddressTabContent({
               if (lat != null && lon != null) {
                 setAddressForm((p: any) => ({
                   ...p,
-                  country: "Philippines",
+                  country: countryName,
                   latitude: lat,
                   longitude: lon
                 }));
@@ -1097,7 +1129,7 @@ function AddressTabContent({
               setIsGeocoding(false);
             }
             
-            onSave({ country: "Philippines", city: resolvedCity, province: resolvedProvince, locationAddress, latitude: lat, longitude: lon });
+            onSave({ country: countryName, city: resolvedCity, province: resolvedProvince, locationAddress, latitude: lat, longitude: lon });
           }}
           disabled={isAddressSaving || isGeocoding}
           className="w-full py-3 bg-[hsl(var(--primary))] hover:opacity-90 text-white font-bold text-xs rounded-xl shadow-lg shadow-[hsl(var(--primary)/0.2)] disabled:opacity-50 flex items-center justify-center gap-2"

@@ -1,0 +1,15 @@
+[
+  {"province_code": "NL", "province_name": "Newfoundland and Labrador", "region_code": "AT"},
+  {"province_code": "PE", "province_name": "Prince Edward Island", "region_code": "AT"},
+  {"province_code": "NS", "province_name": "Nova Scotia", "region_code": "AT"},
+  {"province_code": "NB", "province_name": "New Brunswick", "region_code": "AT"},
+  {"province_code": "QC", "province_name": "Quebec", "region_code": "CE"},
+  {"province_code": "ON", "province_name": "Ontario", "region_code": "CE"},
+  {"province_code": "MB", "province_name": "Manitoba", "region_code": "PR"},
+  {"province_code": "SK", "province_name": "Saskatchewan", "region_code": "PR"},
+  {"province_code": "AB", "province_name": "Alberta", "region_code": "PR"},
+  {"province_code": "BC", "province_name": "British Columbia", "region_code": "WC"},
+  {"province_code": "YT", "province_name": "Yukon", "region_code": "NO"},
+  {"province_code": "NT", "province_name": "Northwest Territories", "region_code": "NO"},
+  {"province_code": "NU", "province_name": "Nunavut", "region_code": "NO"}
+]

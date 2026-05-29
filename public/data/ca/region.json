@@ -1,0 +1,7 @@
+[
+  {"id": 1, "region_name": "Atlantic Canada", "region_code": "AT"},
+  {"id": 2, "region_name": "Central Canada", "region_code": "CE"},
+  {"id": 3, "region_name": "Prairie Provinces", "region_code": "PR"},
+  {"id": 4, "region_name": "West Coast", "region_code": "WC"},
+  {"id": 5, "region_name": "Northern Territories", "region_code": "NO"}
+]
