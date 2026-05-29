@@ -5,6 +5,7 @@ import { type Node } from "@xyflow/react";
 import { type OrgFlowData } from "../../pages/dashboard/OrgChartPage";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { cn } from "@/lib/utils";
 
 // Fix Leaflet default icon paths in React
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -112,14 +113,26 @@ function MapFitter({ nodes, selectedId }: { nodes: Node<OrgFlowData>[], selected
 
 function FitBoundsControl({ nodes }: { nodes: Node<OrgFlowData>[] }) {
   const map = useMap();
+  const [activeMode, setActiveMode] = useState<"PH" | "CA" | "WORLD" | null>(null);
+
+  useEffect(() => {
+    const onMove = () => setActiveMode(null);
+    map.on('dragstart', onMove);
+    map.on('zoomstart', onMove);
+    return () => {
+      map.off('dragstart', onMove);
+      map.off('zoomstart', onMove);
+    };
+  }, [map]);
   
   return (
     <div className="absolute top-4 right-4 z-[400] flex items-center gap-1.5 p-1.5 bg-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-lg rounded-[18px]">
       <button 
         onClick={() => {
           map.fitBounds([[4.5, 116.5], [21.5, 127]], { padding: [20, 20], maxZoom: 14 });
+          setActiveMode("PH");
         }}
-        className="flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        className={cn("flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold transition-all", activeMode === "PH" ? "bg-[hsl(var(--primary))] text-white shadow-md scale-105" : "hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]")}
         title="Fit Philippines"
       >
         <span>🇵🇭</span>
@@ -128,8 +141,9 @@ function FitBoundsControl({ nodes }: { nodes: Node<OrgFlowData>[] }) {
       <button 
         onClick={() => {
           map.fitBounds([[41.6, -141], [83.1, -52.6]], { padding: [20, 20], maxZoom: 14 });
+          setActiveMode("CA");
         }}
-        className="flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        className={cn("flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold transition-all", activeMode === "CA" ? "bg-[hsl(var(--primary))] text-white shadow-md scale-105" : "hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]")}
         title="Fit Canada"
       >
         <span>🇨🇦</span>
@@ -137,22 +151,60 @@ function FitBoundsControl({ nodes }: { nodes: Node<OrgFlowData>[] }) {
       </button>
       <button 
         onClick={() => {
-          const validCoords = nodes
-            .filter(n => n.data.member?.latitude != null && n.data.member?.longitude != null)
-            .map(n => [n.data.member.latitude!, n.data.member.longitude!] as [number, number]);
-            
-          if (validCoords.length > 0) {
-            const bounds = L.latLngBounds(validCoords);
-            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-          }
+          map.fitBounds([[-60, -180], [85, 180]], { padding: [20, 20], maxZoom: 14 });
+          setActiveMode("WORLD");
         }}
-        className="flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))]"
+        className={cn("flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold transition-all", activeMode === "WORLD" ? "bg-[hsl(var(--primary))] text-white shadow-md scale-105" : "hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]")}
         title="Fit All Nodes"
       >
         <span>🌍</span>
         <span className="hidden sm:inline">World</span>
       </button>
     </div>
+  );
+}
+
+function CanadaCityLabels({ theme }: { theme: string }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); };
+  }, [map]);
+
+  if (zoom >= 6) return null; // OSM native labels take over around zoom 6
+
+  const cities = [
+    { name: "Toronto", lat: 43.6532, lng: -79.3832 },
+    { name: "Montreal", lat: 45.5017, lng: -73.5673 },
+    { name: "Vancouver", lat: 49.2827, lng: -123.1207 },
+    { name: "Calgary", lat: 51.0447, lng: -114.0719 },
+    { name: "Edmonton", lat: 53.5461, lng: -113.4938 },
+    { name: "Ottawa", lat: 45.4215, lng: -75.6972 },
+    { name: "Winnipeg", lat: 49.8951, lng: -97.1384 },
+    { name: "Halifax", lat: 44.6488, lng: -63.5752 },
+    { name: "St. John's", lat: 47.5615, lng: -52.7126 },
+    { name: "Quebec City", lat: 46.8138, lng: -71.2079 }
+  ];
+
+  return (
+    <>
+      {cities.map(city => (
+        <Marker 
+          key={city.name} 
+          position={[city.lat, city.lng]}
+          icon={L.divIcon({
+            html: `<div style="color: ${theme === 'dark' ? '#94a3b8' : '#64748b'}; text-shadow: ${theme === 'dark' ? '1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000' : '1px 1px 2px #fff, -1px -1px 2px #fff, 1px -1px 2px #fff, -1px 1px 2px #fff'}; font-weight: 700; font-size: 13px; font-family: sans-serif; white-space: nowrap; pointer-events: none;">${city.name}</div>`,
+            className: "bg-transparent border-none",
+            iconSize: [100, 20],
+            iconAnchor: [50, 10], // center
+          })}
+          interactive={false}
+        />
+      ))}
+    </>
   );
 }
 
@@ -189,6 +241,29 @@ export default function LeafletMapView({ nodes, onSelectNode, selectedId }: Leaf
               <div className="flex flex-col gap-0.5 items-center justify-center">
                 <span className="font-bold text-[hsl(var(--foreground))] whitespace-nowrap">{name}</span>
                 <span className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] whitespace-nowrap">{roleTitle}</span>
+                
+                {/* Additional Hover Stats */}
+                <div className="flex gap-2 mt-1 pt-1 border-t border-[hsl(var(--border)/0.5)]">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[8px] font-black uppercase text-[hsl(var(--muted-foreground))]">Joined</span>
+                    <span className="text-xs font-bold text-[hsl(221_83%_53%)]">{(member as any).joinedDownlines || 0}</span>
+                  </div>
+                  <div className="flex flex-col items-center border-l border-[hsl(var(--border)/0.5)] pl-2">
+                    <span className="text-[8px] font-black uppercase text-[hsl(var(--muted-foreground))]">Prospects</span>
+                    <span className="text-xs font-bold text-[hsl(43_96%_48%)]">{(member as any).prospectDownlines || 0}</span>
+                  </div>
+                  {member.investmentStartedAt && (
+                    <div className="flex flex-col items-center border-l border-[hsl(var(--border)/0.5)] pl-2">
+                      <span className="text-[8px] font-black uppercase text-[hsl(var(--muted-foreground))]">Days</span>
+                      <span className="text-xs font-bold">{Math.floor((Date.now() - member.investmentStartedAt) / (1000 * 60 * 60 * 24))}</span>
+                    </div>
+                  )}
+                </div>
+                {member.latestAsset && (
+                  <div className="mt-1 text-[10px] font-bold text-[hsl(43_96%_48%)]">
+                    Asset: {member.latestAsset.currency} {member.latestAsset.value.toLocaleString()}
+                  </div>
+                )}
               </div>
             </Tooltip>
             <Popup className="luxurious-popup">
@@ -200,10 +275,25 @@ export default function LeafletMapView({ nodes, onSelectNode, selectedId }: Leaf
                   {roleTitle}
                 </div>
                 
-                <div className="mt-2 pt-2 border-t border-[hsl(var(--border)/0.5)]">
-                  <div className="text-xs text-[hsl(var(--foreground))]">
-                    {member.city && member.country ? `${member.city}, ${member.country}` : (member.country || "Location Unspecified")}
+                <div className="mt-2 pt-2 border-t border-[hsl(var(--border)/0.5)] flex flex-col gap-1">
+                  <div className="text-xs text-[hsl(var(--foreground))] flex items-center justify-between">
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold uppercase">Location</span>
+                    <span>{member.city && member.country ? `${member.city}, ${member.country}` : (member.country || "Unspecified")}</span>
                   </div>
+                  <div className="text-xs text-[hsl(var(--foreground))] flex items-center justify-between">
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold uppercase">Joined DL</span>
+                    <span className="font-bold text-[hsl(221_83%_53%)]">{(member as any).joinedDownlines || 0}</span>
+                  </div>
+                  <div className="text-xs text-[hsl(var(--foreground))] flex items-center justify-between">
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold uppercase">Prospects</span>
+                    <span className="font-bold text-[hsl(43_96%_48%)]">{(member as any).prospectDownlines || 0}</span>
+                  </div>
+                  {member.investmentStartedAt && (
+                    <div className="text-xs text-[hsl(var(--foreground))] flex items-center justify-between">
+                      <span className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold uppercase">Days Joined</span>
+                      <span className="font-bold">{Math.floor((Date.now() - member.investmentStartedAt) / (1000 * 60 * 60 * 24))}</span>
+                    </div>
+                  )}
                   {member.latestAsset && (
                     <div className="mt-2 p-2 rounded bg-[hsl(43_96%_48%/0.1)] border border-[hsl(43_96%_48%/0.2)]">
                       <span className="text-[9px] font-black uppercase tracking-widest text-[hsl(43_96%_48%)] block">Latest Asset</span>
@@ -247,6 +337,7 @@ export default function LeafletMapView({ nodes, onSelectNode, selectedId }: Leaf
           {markers}
         </MarkerClusterGroup>
         
+        <CanadaCityLabels theme={theme} />
         <MapFitter nodes={nodes} selectedId={selectedId} />
         <FitBoundsControl nodes={nodes} />
       </MapContainer>

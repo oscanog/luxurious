@@ -175,10 +175,21 @@ function buildFlowTree(roots: OrgTreeNode[]): { nodes: Array<Node<OrgFlowData>>;
   return { nodes, edges };
 }
 
-function countProjectedDescendants(children: OrgTreeNode[]): number {
+function getDownlineStats(children: OrgTreeNode[]): { total: number; joined: number; prospect: number } {
   return children.reduce(
-    (sum, child) => sum + 1 + countProjectedDescendants(child.children),
-    0,
+    (stats, child) => {
+      const isJoined = child.status === "joined";
+      const isProspect = child.status !== "joined";
+      
+      const childStats = getDownlineStats(child.children);
+      
+      return {
+        total: stats.total + 1 + childStats.total,
+        joined: stats.joined + (isJoined ? 1 : 0) + childStats.joined,
+        prospect: stats.prospect + (isProspect ? 1 : 0) + childStats.prospect,
+      };
+    },
+    { total: 0, joined: 0, prospect: 0 }
   );
 }
 
@@ -203,16 +214,18 @@ function projectOrgNode(
   }
 
   const directChildrenCount = projectedChildren.length;
-  const totalDownlineCount = countProjectedDescendants(projectedChildren);
+  const stats = getDownlineStats(projectedChildren);
 
   return {
     ...node,
     directChildrenCount,
-    totalDownlineCount,
+    totalDownlineCount: stats.total,
     member: {
       ...node.member,
       directChildrenCount,
-      totalDownlines: totalDownlineCount,
+      totalDownlines: stats.total,
+      joinedDownlines: stats.joined,
+      prospectDownlines: stats.prospect,
     },
     children: projectedChildren,
   };
