@@ -8,6 +8,7 @@ export const sourceTableValidator = v.union(
   v.literal("financialAccounts"),
   v.literal("financialTransactions"),
   v.literal("academyLessons"),
+  v.literal("aiKnowledgeChunks"),
 );
 
 type SourceTable =
@@ -15,7 +16,8 @@ type SourceTable =
   | "memberAssets"
   | "financialAccounts"
   | "financialTransactions"
-  | "academyLessons";
+  | "academyLessons"
+  | "aiKnowledgeChunks";
 
 type EmbeddableRecord = {
   table: SourceTable;
@@ -59,7 +61,9 @@ async function networkMemberRecord(
     member.email ? `email ${member.email}` : null,
     member.phone ? `phone ${member.phone}` : null,
     member.bonchatId ? `bonchat id ${member.bonchatId}` : null,
-    member.bonchatUsername ? `bonchat username ${member.bonchatUsername}` : null,
+    member.bonchatUsername
+      ? `bonchat username ${member.bonchatUsername}`
+      : null,
     member.yepbitId ? `yepbit id ${member.yepbitId}` : null,
     member.yepbitUsername ? `yepbit username ${member.yepbitUsername}` : null,
     member.currentWork ? `work ${member.currentWork}` : null,
@@ -145,7 +149,9 @@ async function financialTransactionRecord(
       account ? `account ${account.name}` : null,
       account ? `institution ${account.institution}` : null,
       `source ${transaction.source}`,
-    ].filter(Boolean).join(". "),
+    ]
+      .filter(Boolean)
+      .join(". "),
   };
 }
 
@@ -163,7 +169,27 @@ async function academyLessonRecord(
       level ? `level ${level.title}` : null,
       `duration ${lesson.duration}`,
       lesson.content,
-    ].filter(Boolean).join(". "),
+    ]
+      .filter(Boolean)
+      .join(". "),
+  };
+}
+
+async function aiKnowledgeChunkRecord(
+  ctx: QueryCtx,
+  chunk: Doc<"aiKnowledgeChunks">,
+): Promise<EmbeddableRecord | null> {
+  const document = await ctx.db.get("aiKnowledgeDocuments", chunk.documentId);
+  if (!document || document.status !== "ready") {
+    return null;
+  }
+  return {
+    table: "aiKnowledgeChunks",
+    sourceId: chunk._id,
+    title: chunk.title,
+    content: [`AI knowledge document ${document.title}`, chunk.content].join(
+      ". ",
+    ),
   };
 }
 
@@ -173,11 +199,17 @@ async function readSourceRecord(
   sourceId: string,
 ): Promise<EmbeddableRecord | null> {
   if (table === "networkMembers") {
-    const doc = await ctx.db.get("networkMembers", sourceId as Id<"networkMembers">);
+    const doc = await ctx.db.get(
+      "networkMembers",
+      sourceId as Id<"networkMembers">,
+    );
     return doc ? await networkMemberRecord(ctx, doc) : null;
   }
   if (table === "memberAssets") {
-    const doc = await ctx.db.get("memberAssets", sourceId as Id<"memberAssets">);
+    const doc = await ctx.db.get(
+      "memberAssets",
+      sourceId as Id<"memberAssets">,
+    );
     return doc ? await memberAssetRecord(ctx, doc) : null;
   }
   if (table === "financialAccounts") {
@@ -194,7 +226,17 @@ async function readSourceRecord(
     );
     return doc ? await financialTransactionRecord(ctx, doc) : null;
   }
-  const doc = await ctx.db.get("academyLessons", sourceId as Id<"academyLessons">);
+  if (table === "aiKnowledgeChunks") {
+    const doc = await ctx.db.get(
+      "aiKnowledgeChunks",
+      sourceId as Id<"aiKnowledgeChunks">,
+    );
+    return doc ? await aiKnowledgeChunkRecord(ctx, doc) : null;
+  }
+  const doc = await ctx.db.get(
+    "academyLessons",
+    sourceId as Id<"academyLessons">,
+  );
   return doc ? await academyLessonRecord(ctx, doc) : null;
 }
 
@@ -232,12 +274,22 @@ export const listRecordsForBackfill = internalQuery({
     }
     if (args.table === "financialAccounts") {
       const docs = await ctx.db.query("financialAccounts").take(limit);
-      for (const doc of docs) records.push(await financialAccountRecord(ctx, doc));
+      for (const doc of docs)
+        records.push(await financialAccountRecord(ctx, doc));
       return records;
     }
     if (args.table === "financialTransactions") {
       const docs = await ctx.db.query("financialTransactions").take(limit);
-      for (const doc of docs) records.push(await financialTransactionRecord(ctx, doc));
+      for (const doc of docs)
+        records.push(await financialTransactionRecord(ctx, doc));
+      return records;
+    }
+    if (args.table === "aiKnowledgeChunks") {
+      const docs = await ctx.db.query("aiKnowledgeChunks").take(limit);
+      for (const doc of docs) {
+        const record = await aiKnowledgeChunkRecord(ctx, doc);
+        if (record) records.push(record);
+      }
       return records;
     }
 
@@ -254,7 +306,8 @@ export const getAccessibleByIds = internalQuery({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get("users", args.userId);
-    const isAdmin = user?.role === "admin" || user?.email === "admin@luxurious.trade";
+    const isAdmin =
+      user?.role === "admin" || user?.email === "admin@luxurious.trade";
     const profile = await ctx.db
       .query("mobileProfiles")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))

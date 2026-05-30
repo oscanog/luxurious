@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   ChevronRight,
   Bot,
+  FileText,
   ShieldCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -148,6 +149,12 @@ export function AdminPortalPage() {
                 desc: "Manage DeepSeek V4, keys, limits, skills, and scope.",
                 path: "/admin/ai-settings",
                 icon: Bot,
+              },
+              {
+                title: "AI Knowledge PDFs",
+                desc: "Upload and remove PDF sources for AI retrieval.",
+                path: "/admin/ai-knowledge",
+                icon: FileText,
               },
               {
                 title: "User Directory",

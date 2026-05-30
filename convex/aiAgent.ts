@@ -53,20 +53,26 @@ type AiActivity = {
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function readUsage(payload: unknown): DeepSeekUsage {
   const usageRecord = asRecord(asRecord(payload).usage);
   return {
     prompt_tokens:
-      typeof usageRecord.prompt_tokens === "number" ? usageRecord.prompt_tokens : 0,
+      typeof usageRecord.prompt_tokens === "number"
+        ? usageRecord.prompt_tokens
+        : 0,
     completion_tokens:
       typeof usageRecord.completion_tokens === "number"
         ? usageRecord.completion_tokens
         : 0,
     total_tokens:
-      typeof usageRecord.total_tokens === "number" ? usageRecord.total_tokens : 0,
+      typeof usageRecord.total_tokens === "number"
+        ? usageRecord.total_tokens
+        : 0,
   };
 }
 
@@ -76,8 +82,13 @@ function readAssistantResponse(payload: unknown) {
   const firstChoice = asRecord(choices[0]);
   const message = asRecord(firstChoice.message);
   const content = typeof message.content === "string" ? message.content : null;
-  const reasoning_content = typeof message.reasoning_content === "string" ? message.reasoning_content : undefined;
-  const rawToolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+  const reasoning_content =
+    typeof message.reasoning_content === "string"
+      ? message.reasoning_content
+      : undefined;
+  const rawToolCalls = Array.isArray(message.tool_calls)
+    ? message.tool_calls
+    : [];
   const toolCalls = rawToolCalls
     .map((entry): DeepSeekToolCall | null => {
       const call = asRecord(entry);
@@ -106,7 +117,8 @@ function readAssistantResponse(payload: unknown) {
       model: typeof root.model === "string" ? root.model : "unknown",
       message: {
         role: "assistant" as const,
-        content: "I'm having trouble processing that request right now. Please try rephrasing or ask me something else.",
+        content:
+          "I'm having trouble processing that request right now. Please try rephrasing or ask me something else.",
         tool_calls: undefined,
       },
       usage: readUsage(payload),
@@ -131,6 +143,7 @@ function baseSystemPrompt(memoryContext: string, retrievalContext: string) {
     "For follow-up questions like 'how about Maylyn', infer intent from thread memory and recent turns.",
     "Org chart member asset logs are memberAssets records. Finance accounts are separate banking/profile balances.",
     "When user asks latest asset for a person, call searchNetwork if needed, then getLatestAsset.",
+    "When user asks policy, guide, training, onboarding, or uploaded document questions, call semanticSearch.",
     "If tool result has exact live data, answer from it. If no matching data exists, say so plainly.",
     "Do not claim access to secrets or private data unless tool results or chat history provide it.",
     memoryContext,
@@ -161,12 +174,15 @@ function toDeepSeekMessages(systemPrompt: string, messages: DeepSeekMessage[]) {
       if (message.reasoning_content) {
         baseMessage.reasoning_content = message.reasoning_content;
       }
-      
+
       // If there's neither content nor tool_calls, fallback to empty string
-      if (baseMessage.content === undefined && baseMessage.tool_calls === undefined) {
+      if (
+        baseMessage.content === undefined &&
+        baseMessage.tool_calls === undefined
+      ) {
         baseMessage.content = "";
       }
-      
+
       return baseMessage;
     }),
   ];
@@ -231,16 +247,22 @@ function isAssetIntent(message: string, memory: { lastIntent: string }) {
   return false;
 }
 
-function formatAssetAnswer(summary: Record<string, unknown>, latestOnly: boolean) {
+function formatAssetAnswer(
+  summary: Record<string, unknown>,
+  latestOnly: boolean,
+) {
   if (summary.found === false) {
     return "No matching member asset data found.";
   }
 
-  const memberName = typeof summary.memberName === "string" ? summary.memberName : "Member";
+  const memberName =
+    typeof summary.memberName === "string" ? summary.memberName : "Member";
   const latest = asRecord(summary.latestAsset);
   const latestValue = typeof latest.value === "number" ? latest.value : null;
-  const latestCurrency = typeof latest.currency === "string" ? latest.currency : "USD";
-  const latestDate = typeof latest.date === "string" ? latest.date : "unknown date";
+  const latestCurrency =
+    typeof latest.currency === "string" ? latest.currency : "USD";
+  const latestDate =
+    typeof latest.date === "string" ? latest.date : "unknown date";
   const latestName = typeof latest.name === "string" ? latest.name : "asset";
 
   if (!latestValue) {
@@ -251,9 +273,12 @@ function formatAssetAnswer(summary: Record<string, unknown>, latestOnly: boolean
     return `${memberName}'s latest org chart asset is ${latestCurrency} ${latestValue.toFixed(2)} (${latestName}, ${latestDate}).`;
   }
 
-  const totalValue = typeof summary.totalValue === "number" ? summary.totalValue : latestValue;
-  const currency = typeof summary.currency === "string" ? summary.currency : latestCurrency;
-  const assetCount = typeof summary.assetCount === "number" ? summary.assetCount : 1;
+  const totalValue =
+    typeof summary.totalValue === "number" ? summary.totalValue : latestValue;
+  const currency =
+    typeof summary.currency === "string" ? summary.currency : latestCurrency;
+  const assetCount =
+    typeof summary.assetCount === "number" ? summary.assetCount : 1;
   return `${memberName}'s logged org chart assets total ${currency} ${totalValue.toFixed(2)} across ${assetCount} log${assetCount === 1 ? "" : "s"}. Latest: ${latestCurrency} ${latestValue.toFixed(2)} (${latestName}, ${latestDate}).`;
 }
 
@@ -265,12 +290,14 @@ function summarizeActivity(execution: ToolExecution): AiActivity {
   const result = asRecord(execution.result);
   const hasError = typeof result.error === "string";
   const found = result.found;
-  const status =
-    hasError ? "error" : found === false ? "warning" : "success";
+  const status = hasError ? "error" : found === false ? "warning" : "success";
   const query = typeof result.query === "string" ? result.query : "";
 
   if (execution.toolName === "searchNetwork") {
-    const count = typeof result.count === "number" ? result.count : arrayCount(result.results);
+    const count =
+      typeof result.count === "number"
+        ? result.count
+        : arrayCount(result.results);
     return {
       kind: "search",
       name: execution.toolName,
@@ -299,12 +326,14 @@ function summarizeActivity(execution: ToolExecution): AiActivity {
       status,
       label: "Network stats",
       detail: hasError ? String(result.error) : "Total members",
-      count: typeof result.totalMembers === "number" ? result.totalMembers : null,
+      count:
+        typeof result.totalMembers === "number" ? result.totalMembers : null,
     };
   }
 
   if (execution.toolName === "getLatestAsset") {
-    const memberName = typeof result.memberName === "string" ? result.memberName : "";
+    const memberName =
+      typeof result.memberName === "string" ? result.memberName : "";
     return {
       kind: "tool",
       name: execution.toolName,
@@ -312,7 +341,8 @@ function summarizeActivity(execution: ToolExecution): AiActivity {
       label: "Latest asset",
       detail: hasError
         ? String(result.error)
-        : memberName || (found === false ? "No matching member" : "Member asset logs"),
+        : memberName ||
+          (found === false ? "No matching member" : "Member asset logs"),
       count: arrayCount(result.recentAssets),
     };
   }
@@ -338,9 +368,13 @@ function summarizeActivity(execution: ToolExecution): AiActivity {
   };
 }
 
-function summarizeAssetSummaryActivity(summary: Record<string, unknown>, query: string): AiActivity {
+function summarizeAssetSummaryActivity(
+  summary: Record<string, unknown>,
+  query: string,
+): AiActivity {
   const found = summary.found;
-  const memberName = typeof summary.memberName === "string" ? summary.memberName : query;
+  const memberName =
+    typeof summary.memberName === "string" ? summary.memberName : query;
   return {
     kind: "tool",
     name: "getMemberAssetSummary",
@@ -351,10 +385,13 @@ function summarizeAssetSummaryActivity(summary: Record<string, unknown>, query: 
   };
 }
 
-async function safeKnowledgeContext(settings: {
-  enabledSkills: string[];
-  enabledScopes: string[];
-}, message: string) {
+async function safeKnowledgeContext(
+  settings: {
+    enabledSkills: string[];
+    enabledScopes: string[];
+  },
+  message: string,
+) {
   if (!settings.enabledSkills.includes("semantic_lookup")) {
     return "";
   }
@@ -374,7 +411,12 @@ async function safeKnowledgeContext(settings: {
   }
 }
 
-async function semanticSearch(ctx: ActionCtx, userId: Id<"users">, query: string, limit: number) {
+async function semanticSearch(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  query: string,
+  limit: number,
+) {
   const embedding = await embedQuery(query);
   if (!embedding) {
     return { query, results: [], warning: "embedding unavailable" };
@@ -387,15 +429,21 @@ async function semanticSearch(ctx: ActionCtx, userId: Id<"users">, query: string
     };
   }
 
-  const vectorResults = await ctx.vectorSearch("aiDbEmbeddings", "by_embedding", {
-    vector: embedding,
-    limit: Math.min(Math.max(limit, 1), 10),
-  });
+  const vectorResults = await ctx.vectorSearch(
+    "aiDbEmbeddings",
+    "by_embedding",
+    {
+      vector: embedding,
+      limit: Math.min(Math.max(limit, 1), 10),
+    },
+  );
   const rows = await ctx.runQuery(internal.aiDbEmbeddings.getAccessibleByIds, {
     userId,
     ids: vectorResults.map((result) => result._id),
   });
-  const scoreById = new Map(vectorResults.map((result) => [result._id, result._score]));
+  const scoreById = new Map(
+    vectorResults.map((result) => [result._id, result._score]),
+  );
 
   return {
     query,
@@ -422,11 +470,14 @@ async function fallbackWorkspaceAnswer(
   },
 ) {
   const searchTerm = extractSearchTerm(args.message);
-  const workspaceContext = await ctx.runQuery(internal.aiContext.gatherContext, {
-    userId: args.userId,
-    scopes: ["network"],
-    searchTerm,
-  });
+  const workspaceContext = await ctx.runQuery(
+    internal.aiContext.gatherContext,
+    {
+      userId: args.userId,
+      scopes: ["network"],
+      searchTerm,
+    },
+  );
 
   const response = await fetch(`${args.baseUrl}/chat/completions`, {
     method: "POST",
@@ -441,7 +492,9 @@ async function fallbackWorkspaceAnswer(
           baseSystemPrompt(args.memoryContext, args.retrievalContext),
           "Tool calling was unavailable for this request. Use provided workspace context only.",
           workspaceContext ? `Workspace context:\n${workspaceContext}` : "",
-        ].filter(Boolean).join("\n\n"),
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
         args.recentMessages,
       ),
       temperature: args.temperature,
@@ -452,7 +505,9 @@ async function fallbackWorkspaceAnswer(
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new ConvexError(`DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`);
+    throw new ConvexError(
+      `DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`,
+    );
   }
 
   const result = readAssistantResponse(await response.json());
@@ -484,16 +539,20 @@ async function executeTool(
     }
 
     if (toolName === "getNetworkAnalytics") {
-      const result = await ctx.runQuery(internal.aiContext.getNetworkAnalyticsTool, {
-        userId,
-      });
+      const result = await ctx.runQuery(
+        internal.aiContext.getNetworkAnalyticsTool,
+        {
+          userId,
+        },
+      );
       return { toolName, result };
     }
 
     if (toolName === "getLatestAsset") {
-      const memberId = typeof args.memberId === "string"
-        ? args.memberId as Id<"networkMembers">
-        : undefined;
+      const memberId =
+        typeof args.memberId === "string"
+          ? (args.memberId as Id<"networkMembers">)
+          : undefined;
       const query = stringArg(args.query);
       const result = await ctx.runQuery(internal.aiContext.getLatestAssetTool, {
         userId,
@@ -508,15 +567,23 @@ async function executeTool(
       if (!query) throw new ConvexError("query required");
       return {
         toolName,
-        result: await semanticSearch(ctx, userId, query, numberArg(args.limit, 5)),
+        result: await semanticSearch(
+          ctx,
+          userId,
+          query,
+          numberArg(args.limit, 5),
+        ),
       };
     }
 
     if (toolName === "getFinanceHistory") {
-      const result = await ctx.runQuery(internal.aiContext.getFinanceHistoryTool, {
-        userId,
-        limit: numberArg(args.limit, 10),
-      });
+      const result = await ctx.runQuery(
+        internal.aiContext.getFinanceHistoryTool,
+        {
+          userId,
+          limit: numberArg(args.limit, 10),
+        },
+      );
       return { toolName, result };
     }
 
@@ -569,7 +636,10 @@ const tools = [
       parameters: {
         type: "object",
         properties: {
-          memberId: { type: "string", description: "networkMembers document id." },
+          memberId: {
+            type: "string",
+            description: "networkMembers document id.",
+          },
           query: { type: "string", description: "Member name fallback." },
         },
       },
@@ -580,11 +650,14 @@ const tools = [
     function: {
       name: "semanticSearch",
       description:
-        "Semantic search over vectorized Luxurious database records: members, asset logs, finance, and academy lessons.",
+        "Semantic search over vectorized Luxurious database records: members, asset logs, finance, academy lessons, and uploaded AI knowledge PDFs.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Natural language search query." },
+          query: {
+            type: "string",
+            description: "Natural language search query.",
+          },
           limit: { type: "number", description: "Max results, default 5." },
         },
         required: ["query"],
@@ -595,11 +668,15 @@ const tools = [
     type: "function" as const,
     function: {
       name: "getFinanceHistory",
-      description: "Get current user's finance accounts and recent transactions.",
+      description:
+        "Get current user's finance accounts and recent transactions.",
       parameters: {
         type: "object",
         properties: {
-          limit: { type: "number", description: "Max transactions, default 10." },
+          limit: {
+            type: "number",
+            description: "Max transactions, default 10.",
+          },
         },
       },
     },
@@ -610,18 +687,24 @@ function unique(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function extractMemory(toolExecutions: ToolExecution[], previous: {
-  activeScopes: string[];
-  activeEntities: string[];
-  lastIntent: string;
-}) {
+function extractMemory(
+  toolExecutions: ToolExecution[],
+  previous: {
+    activeScopes: string[];
+    activeEntities: string[];
+    lastIntent: string;
+  },
+) {
   const scopes = [...previous.activeScopes];
   const entities = [...previous.activeEntities];
   let lastIntent = previous.lastIntent;
 
   for (const execution of toolExecutions) {
     const result = asRecord(execution.result);
-    if (execution.toolName === "searchNetwork" || execution.toolName === "getNetworkAnalytics") {
+    if (
+      execution.toolName === "searchNetwork" ||
+      execution.toolName === "getNetworkAnalytics"
+    ) {
       scopes.unshift("network");
       if (execution.toolName === "searchNetwork") {
         const rows = Array.isArray(result.results) ? result.results : [];
@@ -652,7 +735,10 @@ function extractMemory(toolExecutions: ToolExecution[], previous: {
     lastIntent,
     lastToolResults: toolExecutions
       .slice(-4)
-      .map((execution) => `${execution.toolName}: ${JSON.stringify(execution.result).slice(0, 700)}`)
+      .map(
+        (execution) =>
+          `${execution.toolName}: ${JSON.stringify(execution.result).slice(0, 700)}`,
+      )
       .join("\n"),
   };
 }
@@ -662,7 +748,10 @@ export const sendMessage = action({
     threadId: v.optional(v.id("aiChatThreads")),
     message: v.string(),
   },
-  handler: async (ctx, args): Promise<{
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
     threadId: Id<"aiChatThreads">;
     content: string;
     model: string;
@@ -681,7 +770,10 @@ export const sendMessage = action({
       throw new ConvexError("Message is too long.");
     }
 
-    const settings = await ctx.runQuery(internal.aiSettings.getSettingsForAction, {});
+    const settings = await ctx.runQuery(
+      internal.aiSettings.getSettingsForAction,
+      {},
+    );
     if (!settings.isEnabled) {
       throw new ConvexError("AI assistant is disabled by admin.");
     }
@@ -703,11 +795,14 @@ export const sendMessage = action({
       throw new ConvexError("Daily AI message limit reached.");
     }
 
-    const monthlyUsage = await ctx.runQuery(internal.aiSettings.getUsageWindow, {
-      userId,
-      since: startOfMonth(),
-      limit: 2000,
-    });
+    const monthlyUsage = await ctx.runQuery(
+      internal.aiSettings.getUsageWindow,
+      {
+        userId,
+        since: startOfMonth(),
+        limit: 2000,
+      },
+    );
     if (monthlyUsage.tokenCount >= settings.monthlyUserTokenLimit + 500000) {
       await ctx.runMutation(internal.aiSettings.saveBlockedUsage, {
         userId,
@@ -739,13 +834,19 @@ export const sendMessage = action({
       threadId,
     });
 
-    const directAssetTerm = extractSearchTerm(message) ?? memory.activeEntities[0];
+    const directAssetTerm =
+      extractSearchTerm(message) ?? memory.activeEntities[0];
     if (isAssetIntent(message, memory) && directAssetTerm) {
-      const summary = await ctx.runQuery(internal.aiContext.getMemberAssetSummaryTool, {
-        userId,
-        query: directAssetTerm,
-      });
-      const latestOnly = /\b(latest|only)\b/i.test(message) || memory.lastIntent === "latest_member_asset";
+      const summary = await ctx.runQuery(
+        internal.aiContext.getMemberAssetSummaryTool,
+        {
+          userId,
+          query: directAssetTerm,
+        },
+      );
+      const latestOnly =
+        /\b(latest|only)\b/i.test(message) ||
+        memory.lastIntent === "latest_member_asset";
       const content = formatAssetAnswer(asRecord(summary), latestOnly);
       await ctx.runMutation(internal.aiSettings.saveAssistantMessage, {
         userId,
@@ -773,14 +874,18 @@ export const sendMessage = action({
         threadId,
         content,
         model: settings.defaultModel,
-        activity: [summarizeAssetSummaryActivity(asRecord(summary), directAssetTerm)],
+        activity: [
+          summarizeAssetSummaryActivity(asRecord(summary), directAssetTerm),
+        ],
       };
     }
 
     const retrievalContext = await safeKnowledgeContext(settings, message);
     const memoryContext = [
       memory.threadSummary ? `Thread memory: ${memory.threadSummary}` : "",
-      memory.lastToolResults ? `Recent tool facts:\n${memory.lastToolResults}` : "",
+      memory.lastToolResults
+        ? `Recent tool facts:\n${memory.lastToolResults}`
+        : "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -817,7 +922,10 @@ export const sendMessage = action({
       });
 
       if (!response.ok) {
-        if (step === 0 && (response.status === 400 || response.status === 422)) {
+        if (
+          step === 0 &&
+          (response.status === 400 || response.status === 422)
+        ) {
           const fallback = await fallbackWorkspaceAnswer(ctx, {
             userId,
             apiKey,
@@ -837,7 +945,9 @@ export const sendMessage = action({
           break;
         }
         const body = await response.text().catch(() => "");
-        throw new ConvexError(`DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`);
+        throw new ConvexError(
+          `DeepSeek request failed (${response.status}) ${body.slice(0, 300)}`,
+        );
       }
 
       const result = readAssistantResponse(await response.json());
@@ -864,7 +974,8 @@ export const sendMessage = action({
     }
 
     if (!finalContent.trim()) {
-      finalContent = "I found data, but could not produce a final answer. Try rephrasing.";
+      finalContent =
+        "I found data, but could not produce a final answer. Try rephrasing.";
     }
 
     await ctx.runMutation(internal.aiSettings.saveAssistantMessage, {

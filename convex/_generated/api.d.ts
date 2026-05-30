@@ -16,6 +16,8 @@ import type * as aiCrypto from "../aiCrypto.js";
 import type * as aiDbEmbeddingActions from "../aiDbEmbeddingActions.js";
 import type * as aiDbEmbeddings from "../aiDbEmbeddings.js";
 import type * as aiEmbeddings from "../aiEmbeddings.js";
+import type * as aiKnowledge from "../aiKnowledge.js";
+import type * as aiKnowledgeActions from "../aiKnowledgeActions.js";
 import type * as aiPgvector from "../aiPgvector.js";
 import type * as aiSecrets from "../aiSecrets.js";
 import type * as aiSettings from "../aiSettings.js";
@@ -67,6 +69,8 @@ declare const fullApi: ApiFromModules<{
   aiDbEmbeddingActions: typeof aiDbEmbeddingActions;
   aiDbEmbeddings: typeof aiDbEmbeddings;
   aiEmbeddings: typeof aiEmbeddings;
+  aiKnowledge: typeof aiKnowledge;
+  aiKnowledgeActions: typeof aiKnowledgeActions;
   aiPgvector: typeof aiPgvector;
   aiSecrets: typeof aiSecrets;
   aiSettings: typeof aiSettings;

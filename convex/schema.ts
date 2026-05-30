@@ -685,6 +685,38 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
 
+  aiKnowledgeDocuments: defineTable({
+    title: v.string(),
+    fileName: v.string(),
+    mimeType: v.string(),
+    fileSize: v.number(),
+    storageId: v.id("_storage"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    chunkCount: v.number(),
+    extractedCharCount: v.number(),
+    uploadedBy: v.id("users"),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status", ["status"])
+    .index("by_uploadedBy", ["uploadedBy"]),
+
+  aiKnowledgeChunks: defineTable({
+    documentId: v.id("aiKnowledgeDocuments"),
+    chunkIndex: v.number(),
+    title: v.string(),
+    content: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_documentId", ["documentId"])
+    .index("by_documentId_and_chunkIndex", ["documentId", "chunkIndex"]),
+
   aiDbEmbeddings: defineTable({
     table: v.union(
       v.literal("networkMembers"),
@@ -692,6 +724,7 @@ export default defineSchema({
       v.literal("financialAccounts"),
       v.literal("financialTransactions"),
       v.literal("academyLessons"),
+      v.literal("aiKnowledgeChunks"),
     ),
     sourceId: v.string(),
     profileId: v.optional(v.id("mobileProfiles")),

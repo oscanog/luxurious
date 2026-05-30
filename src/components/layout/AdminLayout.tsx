@@ -13,6 +13,7 @@ import {
   CircleDollarSign,
   CreditCard,
   FileScan,
+  FileText,
   Gift,
   History,
   Home,
@@ -73,12 +74,17 @@ export type NavPath =
   | "/academy"
   | "/admin"
   | "/admin/ai-settings"
+  | "/admin/ai-knowledge"
   | "/admin/academy"
   | "/admin/trades"
   | "/admin/apk-management"
   | "/admin/presentations";
 
-const NETWORK_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
+const NETWORK_ITEMS: Array<{
+  path: NavPath;
+  label: string;
+  icon: React.ElementType;
+}> = [
   { path: "/", label: "Home", icon: Home },
   { path: "/org-chart", label: "Org Chart", icon: Network },
   { path: "/members", label: "Members", icon: Users },
@@ -117,13 +123,15 @@ const FINANCE_GROUPS = [
   {
     label: "Analytics",
     icon: Sigma,
-    items: [
-      { path: "/statistics", label: "Statistics", icon: Sigma },
-    ],
+    items: [{ path: "/statistics", label: "Statistics", icon: Sigma }],
   },
 ] as const;
 
-const SUPPORT_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
+const SUPPORT_ITEMS: Array<{
+  path: NavPath;
+  label: string;
+  icon: React.ElementType;
+}> = [
   { path: "/receipt-scanner", label: "Receipt Scanner", icon: FileScan },
   { path: "/promotions", label: "Promotions", icon: Gift },
   { path: "/academy", label: "Academy", icon: BookOpen },
@@ -132,9 +140,14 @@ const SUPPORT_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementTy
   { path: "/learn-to-trade", label: "Learn to Trade", icon: BriefcaseBusiness },
 ];
 
-const ADMIN_ITEMS: Array<{ path: NavPath; label: string; icon: React.ElementType }> = [
+const ADMIN_ITEMS: Array<{
+  path: NavPath;
+  label: string;
+  icon: React.ElementType;
+}> = [
   { path: "/admin", label: "Admin Panel", icon: ShieldCheck },
   { path: "/admin/ai-settings", label: "AI Settings", icon: Bot },
+  { path: "/admin/ai-knowledge", label: "AI Knowledge", icon: FileText },
   { path: "/admin/academy", label: "Academy Manager", icon: BookOpen },
   { path: "/admin/trades", label: "Trade Monitor", icon: TrendingUp },
   { path: "/admin/apk-management", label: "APK Management", icon: ShieldCheck },
@@ -170,6 +183,7 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/academy": "Academy",
   "/admin": "Admin Panel",
   "/admin/ai-settings": "AI Settings",
+  "/admin/ai-knowledge": "AI Knowledge",
   "/admin/academy": "Academy Manager",
   "/admin/trades": "Trade Monitor",
   "/admin/apk-management": "APK Management",
@@ -199,7 +213,6 @@ function SidebarLink({
           isActive
             ? "bg-[hsl(var(--primary))] text-white shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.4)]"
             : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
-
         )
       }
     >
@@ -227,7 +240,11 @@ function SidebarAccordion({
 }: {
   label: string;
   icon: React.ElementType;
-  items: ReadonlyArray<{ path: NavPath; label: string; icon: React.ElementType }>;
+  items: ReadonlyArray<{
+    path: NavPath;
+    label: string;
+    icon: React.ElementType;
+  }>;
   collapsed: boolean;
   onSelect: () => void;
 }) {
@@ -238,12 +255,17 @@ function SidebarAccordion({
   // If collapsed, don't show accordion behavior, just show the icon?
   // Actually, sidebar usually handles this by showing a tooltip or just expanding.
   // We'll keep it simple: if collapsed, the accordion is effectively disabled/closed.
-  
+
   if (collapsed) {
     return (
       <div className="space-y-1">
         {items.map((item) => (
-          <SidebarLink key={item.path} collapsed={collapsed} item={item} onSelect={onSelect} />
+          <SidebarLink
+            key={item.path}
+            collapsed={collapsed}
+            item={item}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     );
@@ -264,10 +286,13 @@ function SidebarAccordion({
         <span className="flex-1 truncate text-left">{label}</span>
         <ChevronDown
           size={14}
-          className={cn("shrink-0 transition-transform duration-200", isOpen ? "rotate-180" : "")}
+          className={cn(
+            "shrink-0 transition-transform duration-200",
+            isOpen ? "rotate-180" : "",
+          )}
         />
       </button>
-      
+
       {isOpen && (
         <div className="ml-4 space-y-1 border-l border-[hsl(var(--border))] pl-2 animate-in slide-in-from-top-1 duration-200">
           {items.map((item) => (
@@ -309,34 +334,32 @@ function SidebarSection({
         </p>
       )}
       <div className="space-y-1">
-        {financeGroups ? (
-          financeGroups.map((group) => (
-            <SidebarAccordion
-              key={group.label}
-              label={group.label}
-              icon={group.icon}
-              items={group.items}
-              collapsed={collapsed}
-              onSelect={onSelect}
-            />
-          ))
-        ) : (
-          items?.map((item) => (
-            <SidebarLink
-              key={item.path}
-              collapsed={collapsed}
-              item={item}
-              onSelect={onSelect}
-              badgeCount={
-                item.path === "/activity-feed"
-                  ? notificationCount
-                  : item.path === "/promotions"
-                    ? promotionCount
-                    : undefined
-              }
-            />
-          ))
-        )}
+        {financeGroups
+          ? financeGroups.map((group) => (
+              <SidebarAccordion
+                key={group.label}
+                label={group.label}
+                icon={group.icon}
+                items={group.items}
+                collapsed={collapsed}
+                onSelect={onSelect}
+              />
+            ))
+          : items?.map((item) => (
+              <SidebarLink
+                key={item.path}
+                collapsed={collapsed}
+                item={item}
+                onSelect={onSelect}
+                badgeCount={
+                  item.path === "/activity-feed"
+                    ? notificationCount
+                    : item.path === "/promotions"
+                      ? promotionCount
+                      : undefined
+                }
+              />
+            ))}
       </div>
     </div>
   );
@@ -354,10 +377,12 @@ export function AdminLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  
+
   // OTP Lock state
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpTarget, setOtpTarget] = useState<"finance" | "support" | null>(null);
+  const [otpTarget, setOtpTarget] = useState<"finance" | "support" | null>(
+    null,
+  );
   const [otpInput, setOtpInput] = useState("");
   const [otpError, setOtpError] = useState(false);
   const [isFinanceUnlocked, setIsFinanceUnlocked] = useState(false);
@@ -372,14 +397,16 @@ export function AdminLayout({
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = Boolean(isAdminQuery || mobileStatus?.isAdmin);
-  const activeLabel =
-    location.pathname.startsWith("/social-feed/post/")
-      ? "Post Detail"
-      : location.pathname.startsWith("/social-feed/user/")
-        ? "Author Feed"
-        : PATH_LABELS[(location.pathname as NavPath) ?? "/"] ?? PATH_LABELS["/"];
+  const activeLabel = location.pathname.startsWith("/social-feed/post/")
+    ? "Post Detail"
+    : location.pathname.startsWith("/social-feed/user/")
+      ? "Author Feed"
+      : (PATH_LABELS[(location.pathname as NavPath) ?? "/"] ??
+        PATH_LABELS["/"]);
   const unreadCount = notificationSummary?.unreadCount ?? 0;
-  const isPresentationEditor = location.pathname.includes("/admin/presentations/") && location.pathname.endsWith("/edit");
+  const isPresentationEditor =
+    location.pathname.includes("/admin/presentations/") &&
+    location.pathname.endsWith("/edit");
   const promotionCount = notificationSummary?.activePromotionCount ?? 0;
   const initials = (mobileStatus?.user.name ?? "User")
     .split(" ")
@@ -408,7 +435,10 @@ export function AdminLayout({
     <div className="flex h-screen overflow-hidden bg-[hsl(var(--background))]">
       <>
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setMobileMenuOpen(false)} />
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
         )}
         <aside
           className={cn(
@@ -417,134 +447,163 @@ export function AdminLayout({
           )}
           style={{ width: collapsed ? 88 : 296 }}
         >
-            <div
-              className="relative overflow-hidden border-b border-[hsl(var(--border))] p-4"
-              style={{
-                backgroundColor: "hsl(221 83% 53%)",
-                backgroundImage: "radial-gradient(circle, rgb(255 255 255 / 0.18) 1px, transparent 1px)",
-                backgroundSize: "16px 16px",
-              }}
+          <div
+            className="relative overflow-hidden border-b border-[hsl(var(--border))] p-4"
+            style={{
+              backgroundColor: "hsl(221 83% 53%)",
+              backgroundImage:
+                "radial-gradient(circle, rgb(255 255 255 / 0.18) 1px, transparent 1px)",
+              backgroundSize: "16px 16px",
+            }}
+          >
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-start gap-3"
             >
-              <Link to="/" onClick={() => setMobileMenuOpen(false)} className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/16 bg-white/10 text-lg font-black text-white">
-                  L
-                </div>
-                {!collapsed && (
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-white">Luxurious</p>
-                    <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-blue-100">Network workspace</p>
-                    <p className="mt-3 truncate text-sm font-semibold text-white">{mobileStatus?.user.name ?? "Trader"}</p>
-                    <p className="truncate text-xs text-blue-100/90">{mobileStatus?.user.email ?? ""}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-white/14 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                        {isAdmin ? "Admin workspace" : "Member workspace"}
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/16 bg-white/10 text-lg font-black text-white">
+                L
+              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-extrabold text-white">
+                    Luxurious
+                  </p>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-blue-100">
+                    Network workspace
+                  </p>
+                  <p className="mt-3 truncate text-sm font-semibold text-white">
+                    {mobileStatus?.user.name ?? "Trader"}
+                  </p>
+                  <p className="truncate text-xs text-blue-100/90">
+                    {mobileStatus?.user.email ?? ""}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white/14 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
+                      {isAdmin ? "Admin workspace" : "Member workspace"}
+                    </span>
+                    {profile && (
+                      <span className="rounded-full bg-[hsl(var(--secondary))] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[hsl(222_47%_11%)]">
+                        {profile.rank.name}
                       </span>
-                      {profile && (
-                        <span className="rounded-full bg-[hsl(var(--secondary))] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[hsl(222_47%_11%)]">
-                          {profile.rank.name}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
-                )}
-              </Link>
+                </div>
+              )}
+            </Link>
+          </div>
+
+          <button
+            onClick={() => setCollapsed((current) => !current)}
+            className="absolute -right-3 top-12 z-20 hidden h-7 w-7 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] shadow-sm hover:text-[hsl(var(--foreground))] md:flex"
+          >
+            {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          </button>
+
+          <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+            <SidebarSection
+              title="Network"
+              items={NETWORK_ITEMS}
+              collapsed={collapsed}
+              onSelect={() => setMobileMenuOpen(false)}
+              notificationCount={unreadCount}
+              promotionCount={promotionCount}
+            />
+            <div className="relative">
+              <SidebarSection
+                title="Finance"
+                financeGroups={FINANCE_GROUPS}
+                collapsed={collapsed}
+                onSelect={() => setMobileMenuOpen(false)}
+              />
+              {!isFinanceUnlocked && (
+                <div
+                  onClick={() => {
+                    setOtpTarget("finance");
+                    setShowOtpModal(true);
+                  }}
+                  className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-[6px] border border-border/40 cursor-pointer transition-all hover:bg-card/40"
+                >
+                  <div className="flex flex-col items-center gap-1.5 p-3 text-center">
+                    <Lock className="h-5 w-5 text-primary animate-pulse" />
+                    {!collapsed && (
+                      <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                        Locked
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <button
-              onClick={() => setCollapsed((current) => !current)}
-              className="absolute -right-3 top-12 z-20 hidden h-7 w-7 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] shadow-sm hover:text-[hsl(var(--foreground))] md:flex"
-            >
-              {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-            </button>
-
-            <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+            <div className="relative">
               <SidebarSection
-                title="Network"
-                items={NETWORK_ITEMS}
+                title="Support"
+                items={SUPPORT_ITEMS}
                 collapsed={collapsed}
                 onSelect={() => setMobileMenuOpen(false)}
                 notificationCount={unreadCount}
                 promotionCount={promotionCount}
               />
-              <div className="relative">
-                <SidebarSection
-                  title="Finance"
-                  financeGroups={FINANCE_GROUPS}
-                  collapsed={collapsed}
-                  onSelect={() => setMobileMenuOpen(false)}
-                />
-                {!isFinanceUnlocked && (
-                  <div 
-                    onClick={() => {
-                      setOtpTarget("finance");
-                      setShowOtpModal(true);
-                    }}
-                    className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-[6px] border border-border/40 cursor-pointer transition-all hover:bg-card/40"
-                  >
-                    <div className="flex flex-col items-center gap-1.5 p-3 text-center">
-                      <Lock className="h-5 w-5 text-primary animate-pulse" />
-                      {!collapsed && <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Locked</span>}
-                    </div>
+              {!isSupportUnlocked && (
+                <div
+                  onClick={() => {
+                    setOtpTarget("support");
+                    setShowOtpModal(true);
+                  }}
+                  className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-[6px] border border-border/40 cursor-pointer transition-all hover:bg-card/40"
+                >
+                  <div className="flex flex-col items-center gap-1.5 p-3 text-center">
+                    <Lock className="h-5 w-5 text-primary animate-pulse" />
+                    {!collapsed && (
+                      <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                        Locked
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <SidebarSection
-                  title="Support"
-                  items={SUPPORT_ITEMS}
-                  collapsed={collapsed}
-                  onSelect={() => setMobileMenuOpen(false)}
-                  notificationCount={unreadCount}
-                  promotionCount={promotionCount}
-                />
-                {!isSupportUnlocked && (
-                  <div 
-                    onClick={() => {
-                      setOtpTarget("support");
-                      setShowOtpModal(true);
-                    }}
-                    className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-[6px] border border-border/40 cursor-pointer transition-all hover:bg-card/40"
-                  >
-                    <div className="flex flex-col items-center gap-1.5 p-3 text-center">
-                      <Lock className="h-5 w-5 text-primary animate-pulse" />
-                      {!collapsed && <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Locked</span>}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
+            <SidebarSection
+              title="Profile"
+              items={[
+                {
+                  path: "/profile",
+                  label: "My Profile",
+                  icon: CircleUserRound,
+                },
+              ]}
+              collapsed={collapsed}
+              onSelect={() => setMobileMenuOpen(false)}
+            />
+            {isAdmin && (
               <SidebarSection
-                title="Profile"
-                items={[{ path: "/profile", label: "My Profile", icon: CircleUserRound }]}
+                title="Admin"
+                items={ADMIN_ITEMS}
                 collapsed={collapsed}
                 onSelect={() => setMobileMenuOpen(false)}
               />
-              {isAdmin && (
-                <SidebarSection
-                  title="Admin"
-                  items={ADMIN_ITEMS}
-                  collapsed={collapsed}
-                  onSelect={() => setMobileMenuOpen(false)}
-                />
-              )}
-            </nav>
+            )}
+          </nav>
 
-            <div className="space-y-1 border-t border-[hsl(var(--border))] px-3 py-3">
-              <button
-                onClick={onToggleTheme}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-              >
-                {themeMode === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-                {!collapsed && <span>{themeMode === "dark" ? "Light Mode" : "Dark Mode"}</span>}
-              </button>
-              <button
-                onClick={() => void signOut()}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:bg-red-500/10 hover:text-red-500"
-              >
-                <LogOut size={18} />
-                {!collapsed && <span>Sign Out</span>}
-              </button>
-            </div>
+          <div className="space-y-1 border-t border-[hsl(var(--border))] px-3 py-3">
+            <button
+              onClick={onToggleTheme}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+            >
+              {themeMode === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {!collapsed && (
+                <span>{themeMode === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              )}
+            </button>
+            <button
+              onClick={() => void signOut()}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:bg-red-500/10 hover:text-red-500"
+            >
+              <LogOut size={18} />
+              {!collapsed && <span>Sign Out</span>}
+            </button>
+          </div>
         </aside>
       </>
 
@@ -552,121 +611,135 @@ export function AdminLayout({
         {!isPresentationEditor && (
           <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.94)] backdrop-blur">
             <div className="flex min-h-[88px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:items-center">
-            <div className="flex items-center gap-3 xl:justify-self-start shrink-0">
-              <button onClick={() => setMobileMenuOpen(true)} className="rounded-md p-1.5 hover:bg-[hsl(var(--muted))] md:hidden">
-                <Menu size={20} />
-              </button>
-              <div className="hidden sm:block">
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
-                  Luxurious Desktop
-                </p>
-                <h2 className="text-base font-black text-[hsl(var(--foreground))]">{activeLabel}</h2>
-              </div>
-              <div className="sm:hidden">
-                <h2 className="text-sm font-black text-[hsl(var(--foreground))]">{activeLabel}</h2>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 xl:justify-self-end shrink-0">
-              <NavLink
-                to="/activity-feed"
-                className={({ isActive }) =>
-                  cn(
-                    "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[hsl(var(--border))] transition-colors",
-                    isActive
-                      ? "bg-[hsl(var(--primary))] text-white"
-                      : "bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]",
-                  )
-                }
-                aria-label="Open alerts"
-              >
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 rounded-full bg-[hsl(var(--secondary))] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[hsl(222_47%_11%)]">
-                    {unreadCount}
-                  </span>
-                )}
-              </NavLink>
-
-              <div ref={profileMenuRef} className="relative shrink-0">
+              <div className="flex items-center gap-3 xl:justify-self-start shrink-0">
                 <button
-                  type="button"
-                  onClick={() => setProfileMenuOpen((current) => !current)}
-                  className="flex items-center gap-3 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-1.5 lg:pr-3 text-left shadow-sm transition-all hover:bg-[hsl(var(--muted))] active:scale-95"
-                  aria-haspopup="menu"
-                  aria-expanded={profileMenuOpen}
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="rounded-md p-1.5 hover:bg-[hsl(var(--muted))] md:hidden"
                 >
-
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] text-xs font-black text-white">
-                    {initials}
-                  </div>
-                  <div className="hidden min-w-0 lg:block">
-                    <p className="truncate text-sm font-bold text-[hsl(var(--foreground))]">
-                      {mobileStatus?.user.name ?? "Trader"}
-                    </p>
-                    <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
-                      {profile?.rank.name ?? mobileStatus?.user.role ?? ""}
-                    </p>
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className={cn(
-                      "hidden text-[hsl(var(--muted-foreground))] transition-transform lg:block",
-                      profileMenuOpen && "rotate-180",
-                    )}
-                  />
+                  <Menu size={20} />
                 </button>
+                <div className="hidden sm:block">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
+                    Luxurious Desktop
+                  </p>
+                  <h2 className="text-base font-black text-[hsl(var(--foreground))]">
+                    {activeLabel}
+                  </h2>
+                </div>
+                <div className="sm:hidden">
+                  <h2 className="text-sm font-black text-[hsl(var(--foreground))]">
+                    {activeLabel}
+                  </h2>
+                </div>
+              </div>
 
-                {profileMenuOpen && (
-                  <div className="absolute right-0 top-[calc(100%+12px)] z-40 w-64 rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-[0_28px_80px_-36px_hsl(220_60%_10%_/_0.45)]">
-                    <div className="rounded-[18px] px-3 py-3">
-                      <p className="truncate text-sm font-bold text-[hsl(var(--foreground))]">{mobileStatus?.user.name ?? "Trader"}</p>
-                      <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">{mobileStatus?.user.email ?? ""}</p>
+              <div className="flex items-center gap-3 xl:justify-self-end shrink-0">
+                <NavLink
+                  to="/activity-feed"
+                  className={({ isActive }) =>
+                    cn(
+                      "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[hsl(var(--border))] transition-colors",
+                      isActive
+                        ? "bg-[hsl(var(--primary))] text-white"
+                        : "bg-[hsl(var(--accent))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]",
+                    )
+                  }
+                  aria-label="Open alerts"
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 rounded-full bg-[hsl(var(--secondary))] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[hsl(222_47%_11%)]">
+                      {unreadCount}
+                    </span>
+                  )}
+                </NavLink>
+
+                <div ref={profileMenuRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setProfileMenuOpen((current) => !current)}
+                    className="flex items-center gap-3 rounded-[22px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-1.5 lg:pr-3 text-left shadow-sm transition-all hover:bg-[hsl(var(--muted))] active:scale-95"
+                    aria-haspopup="menu"
+                    aria-expanded={profileMenuOpen}
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] text-xs font-black text-white">
+                      {initials}
                     </div>
-                    <Link
-                      to="/profile"
-                      onClick={() => setProfileMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
-                    >
-                      <CircleUserRound size={18} />
-                      My Profile
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        onToggleTheme();
-                      }}
-                      className="flex w-full items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
-                    >
-                      {themeMode === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-                      {themeMode === "dark" ? "Light Mode" : "Dark Mode"}
-                    </button>
-                    <Link
-                      to="/profile"
-                      onClick={() => setProfileMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
-                    >
-                      <Settings size={18} />
-                      Account Settings
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        void signOut();
-                      }}
-                      className="flex w-full items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10"
-                    >
-                      <LogOut size={18} />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
+                    <div className="hidden min-w-0 lg:block">
+                      <p className="truncate text-sm font-bold text-[hsl(var(--foreground))]">
+                        {mobileStatus?.user.name ?? "Trader"}
+                      </p>
+                      <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">
+                        {profile?.rank.name ?? mobileStatus?.user.role ?? ""}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      size={16}
+                      className={cn(
+                        "hidden text-[hsl(var(--muted-foreground))] transition-transform lg:block",
+                        profileMenuOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+
+                  {profileMenuOpen && (
+                    <div className="absolute right-0 top-[calc(100%+12px)] z-40 w-64 rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-[0_28px_80px_-36px_hsl(220_60%_10%_/_0.45)]">
+                      <div className="rounded-[18px] px-3 py-3">
+                        <p className="truncate text-sm font-bold text-[hsl(var(--foreground))]">
+                          {mobileStatus?.user.name ?? "Trader"}
+                        </p>
+                        <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">
+                          {mobileStatus?.user.email ?? ""}
+                        </p>
+                      </div>
+                      <Link
+                        to="/profile"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
+                      >
+                        <CircleUserRound size={18} />
+                        My Profile
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          onToggleTheme();
+                        }}
+                        className="flex w-full items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
+                      >
+                        {themeMode === "dark" ? (
+                          <Sun size={18} />
+                        ) : (
+                          <Moon size={18} />
+                        )}
+                        {themeMode === "dark" ? "Light Mode" : "Dark Mode"}
+                      </button>
+                      <Link
+                        to="/profile"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
+                      >
+                        <Settings size={18} />
+                        Account Settings
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          void signOut();
+                        }}
+                        className="flex w-full items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10"
+                      >
+                        <LogOut size={18} />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
         )}
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
@@ -678,11 +751,13 @@ export function AdminLayout({
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Lock size={24} className="animate-bounce" />
             </div>
-            <h3 className="text-lg font-black text-foreground">Unlock Category</h3>
+            <h3 className="text-lg font-black text-foreground">
+              Unlock Category
+            </h3>
             <p className="mt-2 text-xs font-medium text-muted-foreground">
               Enter the 6-digit OTP passcode to grant access.
             </p>
-            
+
             <div className="mt-6 flex justify-center gap-2 relative">
               {Array.from({ length: 6 }).map((_, i) => {
                 const char = otpInput[i] ?? "";
@@ -691,15 +766,17 @@ export function AdminLayout({
                     key={i}
                     className={cn(
                       "flex h-12 w-10 items-center justify-center rounded-xl border-2 text-lg font-black transition-all",
-                      char ? "border-primary bg-primary/5 text-foreground" : "border-border bg-card text-muted-foreground",
-                      otpError && "border-red-500 bg-red-500/5 text-red-500"
+                      char
+                        ? "border-primary bg-primary/5 text-foreground"
+                        : "border-border bg-card text-muted-foreground",
+                      otpError && "border-red-500 bg-red-500/5 text-red-500",
                     )}
                   >
                     {char}
                   </div>
                 );
               })}
-              
+
               <input
                 autoFocus
                 type="text"

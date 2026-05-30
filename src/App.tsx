@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Authenticated, Unauthenticated, useMutation, useQuery } from "convex/react";
+import {
+  Authenticated,
+  Unauthenticated,
+  useMutation,
+  useQuery,
+} from "convex/react";
 import { Toaster } from "react-hot-toast";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api } from "../convex/_generated/api";
@@ -8,6 +13,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { AdminPortalPage } from "@/pages/admin/AdminPortalPage";
 import { ApkManagementPage } from "@/pages/admin/ApkManagementPage";
 import { AcademyManagerPage } from "@/pages/admin/AcademyManagerPage";
+import { AiKnowledgePage } from "@/pages/admin/AiKnowledgePage";
 import { AiSettingsPage } from "@/pages/admin/AiSettingsPage";
 import { TradeMonitorPage } from "@/pages/admin/TradeMonitorPage";
 import { PresentationStudioPage } from "@/pages/admin/PresentationStudioPage";
@@ -96,11 +102,20 @@ function AuthenticatedApp({
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/org-chart" element={<OrgChartPage />} />
         <Route path="/members" element={<MembersPage />} />
-        <Route path="/invitations" element={<Navigate to="/members" replace />} />
+        <Route
+          path="/invitations"
+          element={<Navigate to="/members" replace />}
+        />
         <Route path="/social-feed" element={<SocialFeedPage />} />
         <Route path="/social-feed/new" element={<SocialComposerPage />} />
-        <Route path="/social-feed/post/:postId" element={<SocialPostDetailPage />} />
-        <Route path="/social-feed/user/:userId" element={<SocialAuthorPage />} />
+        <Route
+          path="/social-feed/post/:postId"
+          element={<SocialPostDetailPage />}
+        />
+        <Route
+          path="/social-feed/user/:userId"
+          element={<SocialAuthorPage />}
+        />
         <Route path="/activity-feed" element={<ActivityFeedPage />} />
         <Route path="/trading-signals" element={<TradingSignalsPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
@@ -123,11 +138,18 @@ function AuthenticatedApp({
         <Route path="/academy" element={<AcademyPage />} />
         <Route path="/admin" element={<AdminPortalPage />} />
         <Route path="/admin/ai-settings" element={<AiSettingsPage />} />
+        <Route path="/admin/ai-knowledge" element={<AiKnowledgePage />} />
         <Route path="/admin/academy" element={<AcademyManagerPage />} />
         <Route path="/admin/trades" element={<TradeMonitorPage />} />
         <Route path="/admin/apk-management" element={<ApkManagementPage />} />
-        <Route path="/admin/presentations" element={<PresentationStudioPage />} />
-        <Route path="/admin/presentations/:id/edit" element={<PresentationStudioPage />} />
+        <Route
+          path="/admin/presentations"
+          element={<PresentationStudioPage />}
+        />
+        <Route
+          path="/admin/presentations/:id/edit"
+          element={<PresentationStudioPage />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AdminLayout>
@@ -135,7 +157,9 @@ function AuthenticatedApp({
 }
 
 export default function App() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode());
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() =>
+    getInitialThemeMode(),
+  );
 
   useEffect(() => {
     applyThemeMode(themeMode);
@@ -152,12 +176,25 @@ export default function App() {
       <Authenticated>
         <Routes>
           <Route path="/download" element={<ApkDownloadPage />} />
-          <Route path="*" element={<AuthenticatedApp themeMode={themeMode} onToggleTheme={toggleTheme} />} />
+          <Route
+            path="*"
+            element={
+              <AuthenticatedApp
+                themeMode={themeMode}
+                onToggleTheme={toggleTheme}
+              />
+            }
+          />
         </Routes>
       </Authenticated>
       <Unauthenticated>
         <Routes>
-          <Route path="/" element={<LoginPage themeMode={themeMode} onToggleTheme={toggleTheme} />} />
+          <Route
+            path="/"
+            element={
+              <LoginPage themeMode={themeMode} onToggleTheme={toggleTheme} />
+            }
+          />
           <Route path="/download" element={<ApkDownloadPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

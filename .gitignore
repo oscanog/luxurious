@@ -56,3 +56,7 @@ dist-ssr
 
 # Reference repos — open-source clones for study only, not tracked
 reference/
+
+# Local PDF fixtures for AI knowledge testing
+pdf-ai-knowledge/
+.playwright-mcp/

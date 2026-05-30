@@ -11,6 +11,7 @@ const sourceTableValidator = v.union(
   v.literal("financialAccounts"),
   v.literal("financialTransactions"),
   v.literal("academyLessons"),
+  v.literal("aiKnowledgeChunks"),
 );
 
 const VECTOR_DIMENSION = 1536;
@@ -20,6 +21,7 @@ const SOURCE_TABLES = [
   "financialAccounts",
   "financialTransactions",
   "academyLessons",
+  "aiKnowledgeChunks",
 ] as const;
 
 function checksum(text: string) {
@@ -39,10 +41,13 @@ async function embedOne(
   ctx: ActionCtx,
   args: { table: (typeof SOURCE_TABLES)[number]; sourceId: string },
 ) {
-  const record = await ctx.runQuery(internal.aiDbEmbeddings.getRecordForEmbedding, {
-    table: args.table,
-    sourceId: args.sourceId,
-  });
+  const record = await ctx.runQuery(
+    internal.aiDbEmbeddings.getRecordForEmbedding,
+    {
+      table: args.table,
+      sourceId: args.sourceId,
+    },
+  );
 
   if (!record) {
     await ctx.runMutation(internal.aiDbEmbeddings.deleteEmbedding, args);
@@ -68,7 +73,11 @@ async function embedOne(
     checksum: checksum(record.content),
   });
 
-  return { status: "embedded" as const, table: args.table, sourceId: args.sourceId };
+  return {
+    status: "embedded" as const,
+    table: args.table,
+    sourceId: args.sourceId,
+  };
 }
 
 export const embedRecord = internalAction({
@@ -101,10 +110,13 @@ export const backfillBatch = internalAction({
     const summary: Record<string, number> = {};
 
     for (const table of SOURCE_TABLES) {
-      const records = await ctx.runQuery(internal.aiDbEmbeddings.listRecordsForBackfill, {
-        table,
-        limit,
-      });
+      const records = await ctx.runQuery(
+        internal.aiDbEmbeddings.listRecordsForBackfill,
+        {
+          table,
+          limit,
+        },
+      );
       summary[table] = records.length;
       for (const record of records) {
         await embedOne(ctx, {
