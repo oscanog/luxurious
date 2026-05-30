@@ -742,7 +742,7 @@ export default defineSchema({
     .index("by_ownerUserId_and_table", ["ownerUserId", "table"])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
-      dimensions: 1536,
+      dimensions: 1024,
       filterFields: ["table", "profileId", "ownerUserId"],
     }),
 });

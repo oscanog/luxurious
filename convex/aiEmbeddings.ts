@@ -26,6 +26,7 @@ export async function embedQuery(text: string) {
   });
 
   if (!response.ok) {
+    console.error("Jina API error:", await response.text());
     return null;
   }
 

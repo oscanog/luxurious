@@ -14,7 +14,7 @@ const sourceTableValidator = v.union(
   v.literal("aiKnowledgeChunks"),
 );
 
-const VECTOR_DIMENSION = 1536;
+const VECTOR_DIMENSION = 1024;
 const SOURCE_TABLES = [
   "networkMembers",
   "memberAssets",
@@ -127,5 +127,12 @@ export const backfillBatch = internalAction({
     }
 
     return summary;
+  },
+});
+
+export const testEmbed = internalAction({
+  args: {},
+  handler: async () => {
+    return await embedQuery("Hello world test string");
   },
 });

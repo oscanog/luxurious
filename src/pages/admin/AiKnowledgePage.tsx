@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
+import { extractTextFromPdf } from "@/lib/pdfTextExtractor";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
   BookOpenCheck,
@@ -18,6 +19,7 @@ import {
 } from "@/components/dashboard/FinancePageHelpers";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type KnowledgeDocument = {
   _id: Id<"aiKnowledgeDocuments">;
@@ -49,8 +51,11 @@ export function AiKnowledgePage() {
 
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [inputType, setInputType] = useState<"pdf" | "text">("pdf");
+  const [textContent, setTextContent] = useState("");
   const [query, setQuery] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Id<"aiKnowledgeDocuments"> | null>(null);
 
   const filteredDocuments = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -64,23 +69,54 @@ export function AiKnowledgePage() {
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file) {
-      toast.error("Choose a PDF first");
-      return;
-    }
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Only PDF files are supported");
-      return;
+    
+    let uploadFile = file;
+    let extractedText = "";
+
+    if (inputType === "pdf") {
+      if (!uploadFile) {
+        toast.error("Choose a PDF first");
+        return;
+      }
+      if (!uploadFile.name.toLowerCase().endsWith(".pdf")) {
+        toast.error("Only PDF files are supported");
+        return;
+      }
+      setIsUploading(true);
+      toast.loading("Reading PDF text...", { id: "ai-knowledge-upload" });
+      try {
+        extractedText = await extractTextFromPdf(uploadFile);
+      } catch (e) {
+        toast.error("Failed to read PDF.");
+        setIsUploading(false);
+        return;
+      }
+    } else {
+      if (!textContent.trim()) {
+        toast.error("Enter some text first");
+        return;
+      }
+      setIsUploading(true);
+      extractedText = textContent;
+      // Mock a text file for storage
+      uploadFile = new File([textContent], `${title || "Knowledge"}.txt`, { type: "text/plain" });
     }
 
-    setIsUploading(true);
-    toast.loading("Eating PDF...", { id: "ai-knowledge-upload" });
     try {
+      if (extractedText.length < 10) {
+        throw new Error(
+          "Could not extract enough text from this PDF. Use text-based PDFs, not scanned images.",
+        );
+      }
+
+      toast.loading(`Uploading PDF (${extractedText.length.toLocaleString()} chars)...`, { id: "ai-knowledge-upload" });
+
+      // Step 2: Upload the file to Convex storage
       const uploadUrl = await generateUploadUrl();
       const response = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": file.type || "application/pdf" },
-        body: file,
+        headers: { "Content-Type": uploadFile.type || "application/pdf" },
+        body: uploadFile,
       });
       if (!response.ok) {
         throw new Error("Upload failed");
@@ -90,12 +126,16 @@ export function AiKnowledgePage() {
         throw new Error("Storage id missing");
       }
 
+      toast.loading("Chunking & embedding...", { id: "ai-knowledge-upload" });
+
+      // Step 3: Send extracted text + file reference to backend
       const result = await ingestUploadedPdf({
-        title: title.trim() || file.name.replace(/\.pdf$/i, ""),
-        fileName: file.name,
-        mimeType: file.type || "application/pdf",
-        fileSize: file.size,
+        title: title.trim() || uploadFile.name.replace(/\.(pdf|txt)$/i, ""),
+        fileName: uploadFile.name,
+        mimeType: uploadFile.type || "application/pdf",
+        fileSize: uploadFile.size,
         storageId: storageId as Id<"_storage">,
+        extractedText,
       });
 
       toast.success(`Knowledge added: ${result.chunkCount} chunks`, {
@@ -103,6 +143,7 @@ export function AiKnowledgePage() {
       });
       setTitle("");
       setFile(null);
+      setTextContent("");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "PDF ingestion failed",
@@ -116,12 +157,13 @@ export function AiKnowledgePage() {
   }
 
   async function handleDelete(documentId: Id<"aiKnowledgeDocuments">) {
-    if (!confirm("Remove this PDF knowledge source?")) return;
     try {
       await deleteDocument({ documentId });
       toast.success("Knowledge source removed");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed");
+    } finally {
+      setDocumentToDelete(null);
     }
   }
 
@@ -162,9 +204,35 @@ export function AiKnowledgePage() {
         <SurfaceCard className="p-5 sm:p-6">
           <DashboardSectionTitle
             eyebrow="Upload"
-            title="Add PDF knowledge"
-            description="Best for text PDFs. Scanned image PDFs need OCR before upload."
+            title="Add Knowledge"
+            description="Upload PDFs or write direct text templates."
           />
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setInputType("pdf")}
+              className={cn(
+                "flex-1 rounded-xl py-2 text-xs font-bold transition-colors",
+                inputType === "pdf"
+                  ? "bg-[hsl(var(--primary))] text-white"
+                  : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--primary)/0.1)] hover:text-[hsl(var(--primary))]"
+              )}
+            >
+              PDF Document
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputType("text")}
+              className={cn(
+                "flex-1 rounded-xl py-2 text-xs font-bold transition-colors",
+                inputType === "text"
+                  ? "bg-[hsl(var(--primary))] text-white"
+                  : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--primary)/0.1)] hover:text-[hsl(var(--primary))]"
+              )}
+            >
+              Raw Text / Template
+            </button>
+          </div>
           <form
             onSubmit={(event) => void handleUpload(event)}
             className="mt-5 space-y-4"
@@ -181,30 +249,46 @@ export function AiKnowledgePage() {
               />
             </label>
 
-            <label className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.18)] px-5 py-8 text-center transition-colors hover:border-[hsl(var(--primary)/0.55)]">
-              <input
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-              <UploadCloud
-                size={32}
-                className="mb-3 text-[hsl(var(--primary))]"
-              />
-              <span className="text-sm font-black text-[hsl(var(--foreground))]">
-                {file ? file.name : "Drop PDF here or click to browse"}
-              </span>
-              <span className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                {file
-                  ? formatFileSize(file.size)
-                  : "Text PDFs only for v1 ingestion"}
-              </span>
-            </label>
+            {inputType === "pdf" ? (
+              <label
+                htmlFor="pdf-upload"
+                className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.18)] px-5 py-8 text-center transition-colors hover:border-[hsl(var(--primary)/0.55)]"
+              >
+                <input
+                  id="pdf-upload"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="sr-only"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+                <UploadCloud
+                  size={32}
+                  className="mb-3 text-[hsl(var(--primary))]"
+                />
+                <span className="text-sm font-black text-[hsl(var(--foreground))]">
+                  {file ? file.name : "Drop PDF here or click to browse"}
+                </span>
+                <span className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                  {file
+                    ? formatFileSize(file.size)
+                    : "Text PDFs only for v1 ingestion"}
+                </span>
+              </label>
+            ) : (
+              <label className="block space-y-2">
+                <span className="sr-only">Raw Text Content</span>
+                <textarea
+                  value={textContent}
+                  onChange={(event) => setTextContent(event.target.value)}
+                  placeholder="Type your knowledge rules, reminders, or templates here..."
+                  className="h-[180px] w-full resize-none rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-[hsl(var(--primary)/0.35)]"
+                />
+              </label>
+            )}
 
             <button
               type="submit"
-              disabled={isUploading || !file}
+              disabled={isUploading || (inputType === "pdf" ? !file : !textContent.trim())}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[hsl(var(--primary))] px-5 text-sm font-black text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isUploading ? (
@@ -312,7 +396,7 @@ export function AiKnowledgePage() {
                       </a>
                     )}
                     <button
-                      onClick={() => void handleDelete(document._id)}
+                      onClick={() => setDocumentToDelete(document._id)}
                       className="rounded-xl border border-red-500/20 bg-red-500/5 p-2 text-red-500 transition-colors hover:bg-red-500/10"
                       title="Remove knowledge source"
                     >
@@ -325,6 +409,16 @@ export function AiKnowledgePage() {
           </div>
         </SurfaceCard>
       </div>
+
+      <ConfirmDialog
+        isOpen={documentToDelete !== null}
+        title="Remove Knowledge Source"
+        description="Are you sure you want to remove this PDF knowledge source? The AI will no longer be able to answer questions using this document's contents."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => void handleDelete(documentToDelete!)}
+        onCancel={() => setDocumentToDelete(null)}
+      />
     </DashboardPageShell>
   );
 }

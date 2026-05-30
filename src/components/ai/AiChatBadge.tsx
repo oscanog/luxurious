@@ -3,15 +3,13 @@ import { useAction, useQuery } from "convex/react";
 import {
   AlertTriangle,
   Bot,
-  CheckCircle2,
+  Check,
+  Copy,
   MessageCircle,
   RotateCcw,
-  Search,
   Send,
   Sparkles,
-  Wrench,
   X,
-  XCircle,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -336,60 +334,59 @@ function MarkdownMessage({ content }: { content: string }) {
   return <div className="space-y-3">{blocks}</div>;
 }
 
-function ActivityTrail({ activity, pending }: { activity?: AiActivity[]; pending?: boolean }) {
-  const items = pending ? [] : activity ?? [];
-  if (items.length === 0) return null;
 
-  return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {items.map((item, index) => {
-        const Icon = item.status === "error" ? XCircle : item.kind === "search" ? Search : Wrench;
-        const tone =
-          item.status === "error"
-            ? "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-300"
-            : item.status === "warning"
-              ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              : "border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.55)] text-[hsl(var(--muted-foreground))]";
-        return (
-          <span
-            key={`${item.name}-${index}`}
-            className={cn(
-              "inline-flex max-w-full items-center gap-1.5 rounded-xl border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]",
-              pending ? "animate-pulse" : "",
-              tone,
-            )}
-            title={item.detail}
-          >
-            {item.status === "success" && !pending ? <CheckCircle2 size={12} /> : <Icon size={12} />}
-            <span className="truncate">{item.label}</span>
-            {typeof item.count === "number" ? <span>{item.count}</span> : null}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 
 function AssistantMessage({ message, isLatest }: { message: ChatMessage; isLatest: boolean }) {
   const display = useTypewriter(message.content, isLatest);
   const isTyping = display.length < message.content.length;
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    let textToCopy = message.content;
+    // Smart copy: If the AI wrapped the final message in horizontal rules (---)
+    // or markdown code blocks, extract only that part to avoid copying conversational filler.
+    const hrMatch = textToCopy.match(/(?:^|\n)---\n([\s\S]+?)\n(?:---|$)/);
+    if (hrMatch) {
+      textToCopy = hrMatch[1].trim();
+    } else {
+      const codeMatch = textToCopy.match(/```[\w]*\n([\s\S]+?)\n```/);
+      if (codeMatch) {
+        textToCopy = codeMatch[1].trim();
+      }
+    }
+
+    void navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <div className="flex gap-3">
       <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--secondary)))] text-white shadow-[0_12px_30px_-18px_hsl(var(--primary))]">
         <Bot size={16} />
       </div>
-      <div className="min-w-0 flex-1 rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm leading-6 text-[hsl(var(--foreground))] shadow-sm">
+      <div className="group relative min-w-0 flex-1 rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm leading-6 text-[hsl(var(--foreground))] shadow-sm">
         <MarkdownMessage content={display} />
         {isTyping ? (
           <span className="ml-0.5 inline-block h-4 w-1 translate-y-0.5 animate-pulse rounded-full bg-[hsl(var(--primary))]" />
         ) : null}
-        {!isTyping ? <ActivityTrail activity={message.activity} /> : null}
-        {message.model ? (
-          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
-            {message.model}
+
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[hsl(var(--muted-foreground))]">
+            {message.model ?? ""}
           </p>
-        ) : null}
+          {!isTyping && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              title="Copy smart text"
+              className="flex h-6 items-center gap-1.5 rounded-lg px-2 text-[10px] font-black uppercase tracking-wider text-[hsl(var(--muted-foreground))] opacity-0 transition-all hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] group-hover:opacity-100"
+            >
+              {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -460,8 +457,23 @@ export function AiChatBadge() {
   const aiUnavailable = settings?.isEnabled === false || settings?.hasApiKey === false;
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, isSending]);
+    const el = listRef.current;
+    if (!el) return;
+
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+
+    const observer = new MutationObserver(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    });
+
+    observer.observe(el, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => observer.disconnect();
+  }, [open]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -565,7 +577,7 @@ export function AiChatBadge() {
                 <div className="rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">
                   <span>{composingText}</span>
                   <span className="ml-0.5 inline-block h-4 w-1 translate-y-0.5 animate-pulse rounded-full bg-[hsl(var(--primary))]" />
-                  <ActivityTrail pending />
+
                 </div>
               </div>
             ) : null}

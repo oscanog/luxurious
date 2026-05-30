@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
+import zlib from "zlib";
 
 function decodePdfLiteral(raw: string) {
   let output = "";
@@ -54,21 +55,94 @@ function normalizeText(text: string) {
     .trim();
 }
 
-function extractTextFromPdf(buffer: Buffer) {
-  const pdf = buffer.toString("latin1");
-  const sections = pdf.match(/BT[\s\S]*?ET/g) ?? [pdf];
+async function extractTextFromPdf(buffer: Buffer) {
+  const pdf = buffer.toString("binary");
   const textParts: string[] = [];
 
-  for (const section of sections) {
-    for (const match of section.matchAll(/\((?:\\.|[^\\)])*\)/g)) {
-      textParts.push(decodePdfLiteral(match[0].slice(1, -1)));
-    }
-    for (const match of section.matchAll(/<([0-9A-Fa-f\s]{8,})>/g)) {
-      const decoded = decodeHexText(match[1]);
-      if (decoded) {
-        textParts.push(decoded);
+  let currentIndex = 0;
+  while (true) {
+    const streamStart = pdf.indexOf("stream", currentIndex);
+    if (streamStart === -1) break;
+    
+    // Find the end of "stream\n" or "stream\r\n"
+    let dataStart = streamStart + 6;
+    if (pdf[dataStart] === "\r") dataStart++;
+    if (pdf[dataStart] === "\n") dataStart++;
+
+    const streamEnd = pdf.indexOf("endstream", dataStart);
+    if (streamEnd === -1) break;
+
+    // Optimize: only parse FlateDecode streams that are NOT images/XObjects
+    const dictStart = pdf.lastIndexOf("<<", streamStart);
+    if (dictStart !== -1 && dictStart < streamStart) {
+      const dict = pdf.slice(dictStart, streamStart);
+      const isFlate = dict.includes("FlateDecode") || dict.includes("Flate");
+      const isImage = dict.includes("Image") || dict.includes("XObject");
+      if (!isFlate || isImage) {
+        currentIndex = streamEnd + 9;
+        continue;
       }
     }
+    
+    const compressedData = pdf.slice(dataStart, streamEnd).replace(/[\r\n]+$/, "");
+    
+    try {
+      const compressed = Buffer.from(compressedData, "binary");
+      const decompressed = zlib.unzipSync(compressed).toString("binary");
+      
+      let btIndex = 0;
+      let hasBT = false;
+      while (true) {
+        const btStart = decompressed.indexOf("BT", btIndex);
+        if (btStart === -1) break;
+        const etEnd = decompressed.indexOf("ET", btStart);
+        if (etEnd === -1) break;
+        
+        hasBT = true;
+        const section = decompressed.slice(btStart, etEnd);
+        for (const strMatch of section.matchAll(/\((?:\\.|[^\\)])*\)/g)) {
+          textParts.push(decodePdfLiteral(strMatch[0].slice(1, -1)));
+        }
+        for (const strMatch of section.matchAll(/<([0-9A-Fa-f\s]{8,})>/g)) {
+          const decoded = decodeHexText(strMatch[1]);
+          if (decoded) textParts.push(decoded);
+        }
+        btIndex = etEnd + 2;
+      }
+
+      if (!hasBT) {
+        for (const strMatch of decompressed.matchAll(/\((?:\\.|[^\\)])*\)/g)) {
+          textParts.push(decodePdfLiteral(strMatch[0].slice(1, -1)));
+        }
+        for (const strMatch of decompressed.matchAll(/<([0-9A-Fa-f\s]{8,})>/g)) {
+          const decoded = decodeHexText(strMatch[1]);
+          if (decoded) textParts.push(decoded);
+        }
+      }
+    } catch {
+      // Ignored - probably corrupt or not a text stream
+    }
+    
+    currentIndex = streamEnd + 9;
+  }
+
+  // Parse uncompressed text sections using high-performance indexOf loop
+  let btIndex = 0;
+  while (true) {
+    const btStart = pdf.indexOf("BT", btIndex);
+    if (btStart === -1) break;
+    const etEnd = pdf.indexOf("ET", btStart);
+    if (etEnd === -1) break;
+    
+    const section = pdf.slice(btStart, etEnd);
+    for (const matchMatch of section.matchAll(/\((?:\\.|[^\\)])*\)/g)) {
+      textParts.push(decodePdfLiteral(matchMatch[0].slice(1, -1)));
+    }
+    for (const matchMatch of section.matchAll(/<([0-9A-Fa-f\s]{8,})>/g)) {
+      const decoded = decodeHexText(matchMatch[1]);
+      if (decoded) textParts.push(decoded);
+    }
+    btIndex = etEnd + 2;
   }
 
   return normalizeText(textParts.join(" "));
@@ -111,6 +185,7 @@ export const ingestUploadedPdf = action({
     mimeType: v.string(),
     fileSize: v.number(),
     storageId: v.id("_storage"),
+    extractedText: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -119,16 +194,18 @@ export const ingestUploadedPdf = action({
     }
     await ctx.runQuery(internal.aiKnowledge.requireAdminForAction, { userId });
 
-    if (!args.fileName.toLowerCase().endsWith(".pdf")) {
-      throw new Error("Only PDF files are supported.");
+    const isPdf = args.fileName.toLowerCase().endsWith(".pdf");
+    const isTxt = args.fileName.toLowerCase().endsWith(".txt");
+    if (!isPdf && !isTxt) {
+      throw new Error("Only PDF and TXT files are supported.");
     }
 
     const documentId: Id<"aiKnowledgeDocuments"> = await ctx.runMutation(
       internal.aiKnowledge.createPendingDocument,
       {
-        title: args.title.trim() || args.fileName.replace(/\.pdf$/i, ""),
+        title: args.title.trim() || args.fileName.replace(/\.(pdf|txt)$/i, ""),
         fileName: args.fileName,
-        mimeType: args.mimeType || "application/pdf",
+        mimeType: args.mimeType || (isPdf ? "application/pdf" : "text/plain"),
         fileSize: args.fileSize,
         storageId: args.storageId,
         uploadedBy: userId,
@@ -136,16 +213,21 @@ export const ingestUploadedPdf = action({
     );
 
     try {
-      const blob = await ctx.storage.get(args.storageId);
-      if (!blob) {
-        throw new Error("Uploaded PDF not found in storage.");
+      let extractedText = args.extractedText ?? "";
+
+      // Use client-extracted text if available, fall back to server-side
+      if (extractedText.length < 40) {
+        const blob = await ctx.storage.get(args.storageId);
+        if (!blob) {
+          throw new Error("Uploaded PDF not found in storage.");
+        }
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        extractedText = await extractTextFromPdf(buffer);
       }
 
-      const buffer = Buffer.from(await blob.arrayBuffer());
-      const extractedText = extractTextFromPdf(buffer);
-      if (extractedText.length < 40) {
+      if (extractedText.length < 10) {
         throw new Error(
-          "Could not extract enough text from PDF. Use text-based PDFs, not scanned image PDFs.",
+          "Could not extract enough text. The document is too short or empty.",
         );
       }
 

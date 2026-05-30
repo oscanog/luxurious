@@ -397,7 +397,7 @@ async function safeKnowledgeContext(
   }
   try {
     const embedding = await embedQuery(message);
-    if (!embedding || embedding.length !== 1536) {
+    if (!embedding || embedding.length !== 1024) {
       return "";
     }
     const chunks = await searchKnowledgeChunks({
@@ -421,7 +421,7 @@ async function semanticSearch(
   if (!embedding) {
     return { query, results: [], warning: "embedding unavailable" };
   }
-  if (embedding.length !== 1536) {
+  if (embedding.length !== 1024) {
     return {
       query,
       results: [],

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, QueryCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -394,5 +395,56 @@ export const deleteEmbedding = internalMutation({
     if (existing) {
       await ctx.db.delete("aiDbEmbeddings", existing._id);
     }
+  },
+});
+
+export const purgeWrongDimension = internalMutation({
+  args: {
+    expectedDimension: v.number(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const expected = args.expectedDimension;
+    const limit = Math.min(Math.max(args.limit ?? 200, 1), 500);
+    const all = await ctx.db.query("aiDbEmbeddings").take(limit);
+    let purged = 0;
+    for (const row of all) {
+      if (row.embeddingDimension !== expected) {
+        await ctx.db.delete("aiDbEmbeddings", row._id);
+        purged += 1;
+      }
+    }
+    return { checked: all.length, purged };
+  },
+});
+
+export const scheduleReembedAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const tables = [
+      "networkMembers",
+      "memberAssets",
+      "financialAccounts",
+      "financialTransactions",
+      "academyLessons",
+      "aiKnowledgeChunks",
+    ] as const;
+
+    let scheduled = 0;
+    for (const table of tables) {
+      const docs = await ctx.db.query(table as any).take(50);
+      for (const doc of docs) {
+        await ctx.scheduler.runAfter(
+          scheduled * 200,
+          internal.aiDbEmbeddingActions.embedRecord,
+          {
+            table,
+            sourceId: doc._id,
+          },
+        );
+        scheduled += 1;
+      }
+    }
+    return { scheduled };
   },
 });

@@ -7,7 +7,7 @@
 
 ## Objective
 
-Give admins a dedicated AI knowledge page where they can upload PDF documents,
+Give admins a dedicated AI knowledge page where they can upload PDF documents or enter direct prompt templates/text,
 turn them into searchable AI context, and remove stale knowledge without code
 changes.
 
@@ -19,9 +19,9 @@ changes.
 
 ## Decisions
 
-- V1 supports text-based PDFs only.
+- V1 supports text-based PDFs and raw text input.
 - Scanned image PDFs are rejected with a clear ingestion error until OCR is added.
-- Uploaded PDFs are stored in Convex file storage.
+- Uploaded PDFs and text inputs are stored in Convex file storage as `.pdf` and `.txt`.
 - Extracted chunks are stored in Convex and embedded into the existing `aiDbEmbeddings` vector index.
 - Admins can delete a document, its chunks, its embeddings, and its storage file.
 
@@ -33,10 +33,10 @@ changes.
 - [x] Add admin-only upload URL generation.
 - [x] Add admin-only delete with chunk/embedding/storage cleanup.
 
-## Phase 2: PDF Ingestion
+## Phase 2: Knowledge Ingestion
 
-- [x] Add PDF ingestion action.
-- [x] Extract best-effort text from text-based PDFs.
+- [x] Add PDF and raw text ingestion action.
+- [x] Extract best-effort text from text-based PDFs client-side using `pdf.js`.
 - [x] Chunk extracted text for embedding.
 - [x] Schedule embedding for each chunk.
 - [x] Mark ingestion `ready` or `failed` with visible error.
@@ -46,7 +46,8 @@ changes.
 - [x] Add `/admin/ai-knowledge` route.
 - [x] Add sidebar Admin Tools entry.
 - [x] Add Admin Panel tool link.
-- [x] Add upload form, source list, search, open, and delete controls.
+- [x] Add upload form with toggle for PDF Document / Raw Text Template.
+- [x] Add source list, search, open, and delete controls.
 - [x] Keep existing admin visual style.
 
 ## Phase 4: Validation
