@@ -294,6 +294,9 @@ http.route({
         case "admin:isAdmin":
           result = await ctx.runQuery(api.admin.isAdmin, {});
           break;
+        case "admin:getAdminContext":
+          result = await ctx.runQuery(api.admin.getAdminContext, {});
+          break;
         case "admin:getPlatformStats":
           result = await ctx.runQuery(api.admin.getPlatformStats, {});
           break;
@@ -565,6 +568,20 @@ http.route({
                   : undefined,
           });
           break;
+        case "network:setMemberDirectLimit":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.setMemberDirectLimit, {
+            memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
+            directLimitOverride:
+              typeof body.args?.directLimitOverride === "number"
+                ? body.args.directLimitOverride
+                : null,
+          });
+          break;
+        case "network:backfillOrgAccessMetadata":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.network.backfillOrgAccessMetadata, {});
+          break;
         case "networkMembers:addMember":
           await ctx.runMutation(api.mobile.bootstrap, {});
           result = await ctx.runAction(api.networkMembers.addMember, {
@@ -762,6 +779,14 @@ http.route({
           result = await ctx.runMutation(api.admin.setAdminStatus, {
             userId: typeof body.args?.userId === "string" ? (body.args.userId as any) : "",
             status: body.args?.status === true || body.args?.isAdmin === true,
+          });
+          break;
+        case "admin:setAdminLevel":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.admin.setAdminLevel, {
+            userId: typeof body.args?.userId === "string" ? (body.args.userId as any) : "",
+            adminLevel:
+              body.args?.adminLevel === 2 ? 2 : body.args?.adminLevel === 1 ? 1 : 0,
           });
           break;
         case "aiAgent:sendMessage":

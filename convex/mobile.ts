@@ -24,6 +24,9 @@ export const status = query({
     const viewer = await requireMobileViewer(ctx);
     const profile = await getMobileProfileForViewer(ctx);
     const adminLevel = getUserAdminLevel(viewer);
+    const canPromoteAdmins = adminLevel >= 2;
+    const canManageAnyVisibleMember = adminLevel >= 2;
+    const canManageCapacity = adminLevel >= 2;
 
     return {
       ready: profile !== null,
@@ -39,6 +42,9 @@ export const status = query({
       },
       isAdmin: adminLevel >= 1,
       adminLevel,
+      canPromoteAdmins,
+      canManageAnyVisibleMember,
+      canManageCapacity,
     };
   },
 });
