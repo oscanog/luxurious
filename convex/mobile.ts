@@ -4,6 +4,7 @@ import {
   getMobileProfileForViewer,
   requireMobileViewer,
 } from "./mobileHelpers";
+import { getUserAdminLevel } from "./orgAccess";
 
 export const bootstrap = mutation({
   args: {},
@@ -22,7 +23,7 @@ export const status = query({
   handler: async (ctx) => {
     const viewer = await requireMobileViewer(ctx);
     const profile = await getMobileProfileForViewer(ctx);
-    const isAdmin = viewer.email === "admin@luxurious.trade" || viewer.role === "admin";
+    const adminLevel = getUserAdminLevel(viewer);
 
     return {
       ready: profile !== null,
@@ -34,8 +35,10 @@ export const status = query({
         name: viewer.name ?? "Trader",
         email: viewer.email ?? "",
         role: viewer.role ?? "member",
+        adminLevel,
       },
-      isAdmin,
+      isAdmin: adminLevel >= 1,
+      adminLevel,
     };
   },
 });

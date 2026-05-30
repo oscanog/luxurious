@@ -1,6 +1,6 @@
 # M023: RBAC Downline Capacity Management
 
-**Status:** `[pending]`\
+**Status:** `[in-progress]`\
 **Created:** 2026-05-30\
 **Last Updated:** 2026-05-30\
 **Owner:** Luxurious Desktop / Convex Backend
@@ -11,7 +11,7 @@ Add role-based org management with per-member direct downline capacity. Admins
 need clear tiers, safe promotion/demotion, and fast control over how many direct
 joined/prospect/to-invite/pending members each person can carry.
 
-This milestone is docs/spec only until implementation begins.
+Implementation started.
 
 ## Decisions
 
@@ -26,42 +26,42 @@ This milestone is docs/spec only until implementation begins.
 
 ## Phase 1: Data Model & Backfill
 
-- [ ] Extend `users` with admin tier metadata:
+- [x] Extend `users` with admin tier metadata:
   - `adminLevel?: 0 | 1 | 2`
   - `adminAssignedBy?: Id<"users">`
   - `adminAssignedAt?: number`
-- [ ] Extend `networkMembers` with capacity and ownership metadata:
+- [x] Extend `networkMembers` with capacity and ownership metadata:
   - `directLimitOverride?: number`
   - `createdByUserId?: Id<"users">`
   - `ownedByUserId?: Id<"users">`
-- [ ] Add indexes needed for ownership checks and admin screens:
+- [x] Add indexes needed for ownership checks and admin screens:
   - `networkMembers.by_createdByUserId`
   - `networkMembers.by_ownedByUserId`
-- [ ] Backfill existing members:
+- [x] Add safe backfill mutation for existing members:
   - `createdByUserId` from linked owner where safe.
   - `ownedByUserId` from viewer/profile owner where safe.
   - No destructive changes.
-- [ ] Seed Marko Nogoy as Level 2 and Maylyn as Level 1 by stable identity.
+- [x] Seed Marko Nogoy as Level 2 and Maylyn as Level 1 by stable identity.
 
 ## Phase 2: Backend Authorization
 
-- [ ] Replace broad `role === "admin"` checks with helper functions:
+- [x] Replace org-management `role === "admin"` checks with helper functions:
   - `getAdminLevel(ctx)`
   - `requireAdminLevel(ctx, minLevel)`
   - `canManageMember(ctx, viewer, member)`
   - `getEffectiveDirectLimit(member, currentDirectCount)`
-- [ ] Level 2 permissions:
+- [x] Level 2 permissions:
   - Promote/demote Level 1 admins and members.
   - Manage any visible member.
   - Set per-member capacity overrides.
-- [ ] Level 1 permissions:
+- [x] Level 1 permissions:
   - Add/edit only owned or self-created members/prospects.
   - Cannot promote/demote admins.
   - Cannot change capacity overrides.
-- [ ] Members:
+- [x] Members:
   - No admin management rights.
   - Can only view allowed org data.
-- [ ] Enforce capacity in all parent-changing mutations:
+- [x] Enforce capacity in all parent-changing mutations:
   - Add member.
   - Invite/prospect creation.
   - Reassign parent.
@@ -70,23 +70,23 @@ This milestone is docs/spec only until implementation begins.
 
 ## Phase 3: Desktop Admin UX
 
-- [ ] Add capacity indicators to org cards and inspector:
+- [x] Add capacity indicators to org cards and inspector:
   - `currentDirectCount / effectiveDirectLimit`.
   - Status breakdown: joined, invited, pending, to-invite.
-- [ ] Add Level 2 controls:
+- [x] Add Level 2 controls:
   - Promote/demote admin level.
   - Set per-member direct capacity override.
   - Edit/add under any visible member.
-- [ ] Add Level 1 constraints:
+- [x] Add Level 1 constraints:
   - Hide or disable actions outside owned/self-created scope.
   - Show clear read-only reason, not silent failure.
-- [ ] Keep existing visual style and layout. No redesign.
+- [x] Keep existing visual style and layout. No redesign.
 
 ## Phase 4: Mobile Parity
 
-- [ ] Expose admin tier, ownership, effective limit, and capacity breakdown via mobile-safe API payloads.
+- [x] Expose admin tier, ownership, effective limit, and capacity breakdown via mobile-safe API payloads.
 - [ ] Update Flutter org chart add/edit permission checks.
-- [ ] Keep mobile behavior aligned with backend authorization, not client trust.
+- [x] Keep mobile behavior aligned with backend authorization, not client trust.
 
 ## Phase 5: Validation
 
@@ -95,8 +95,14 @@ This milestone is docs/spec only until implementation begins.
 - [ ] Test Maylyn Level 1 can manage only owned/self-created members.
 - [ ] Test member cannot bypass capacity via add, reassign, reconnect, or status update.
 - [ ] Test member with 12 current directs and default 3 still has effective limit 12.
-- [ ] Run `npx convex codegen`.
+- [x] Run `npx convex codegen`.
 - [ ] Run `npm run lint`.
+
+## Implementation Notes
+
+- `npm run lint` currently fails on existing repo-wide lint debt outside M023, plus strict checks in existing org chart files.
+- `npx tsc --noEmit` passes after M023 changes.
+- Backfill is implemented as `network:backfillOrgAccessMetadata`; run from Level 2 admin context because it mutates production org ownership metadata.
 
 ## Acceptance Criteria
 

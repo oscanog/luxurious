@@ -4,12 +4,20 @@ import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import {
+  buildDirectStatusCounts,
+  canAddUnderParent,
+  canManageMember,
+  DEFAULT_DIRECT_LIMIT,
+  getEffectiveDirectLimit,
+  getUserAdminLevel,
+  requireAdminLevel,
+  resolveOwnedByUserId,
+} from "./orgAccess";
+import {
   getMobileProfileForViewerOrThrow,
   listUnifiedNetworkMembers,
   requireMobileViewer,
 } from "./mobileHelpers";
-
-const MAX_DIRECT_DOWNLINES = 1000000;
 
 async function countDirectChildren(
   ctx: QueryCtx | MutationCtx,
@@ -21,7 +29,7 @@ async function countDirectChildren(
     .withIndex("by_profileId_and_parentMemberId", (q) =>
       q.eq("profileId", profileId).eq("parentMemberId", parentId),
     )
-    .take(MAX_DIRECT_DOWNLINES + 1);
+    .take(1000);
   return children.length;
 }
 
@@ -35,17 +43,24 @@ export const inviteMember = mutation({
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
     const now = Date.now();
-    
+
     // Find viewer to set as parent
     const viewer = await ctx.db
       .query("networkMembers")
-      .withIndex("by_profileId_and_isViewer", (q) => q.eq("profileId", profile._id).eq("isViewer", true))
+      .withIndex("by_profileId_and_isViewer", (q) =>
+        q.eq("profileId", profile._id).eq("isViewer", true),
+      )
       .unique();
 
     if (viewer) {
-      const childCount = await countDirectChildren(ctx, profile._id, viewer._id);
-      if (childCount >= MAX_DIRECT_DOWNLINES) {
-        throw new Error(`Parent already has ${MAX_DIRECT_DOWNLINES} direct downlines.`);
+      const childCount = await countDirectChildren(
+        ctx,
+        profile._id,
+        viewer._id,
+      );
+      const limit = getEffectiveDirectLimit(viewer, childCount);
+      if (childCount >= limit) {
+        throw new Error(`Parent already has ${limit} direct downlines.`);
       }
     }
 
@@ -59,6 +74,8 @@ export const inviteMember = mutation({
       sortOrder: now, // Simplistic sort order
       bonchatUsername: args.bonchatUsername,
       yepbitUsername: args.yepbitUsername,
+      createdByUserId: profile.userId,
+      ownedByUserId: profile.userId,
       createdAt: now,
       updatedAt: now,
     });
@@ -67,6 +84,112 @@ export const inviteMember = mutation({
       sourceId: memberId,
     });
     return memberId;
+  },
+});
+
+export const setMemberDirectLimit = mutation({
+  args: {
+    memberId: v.id("networkMembers"),
+    directLimitOverride: v.union(v.number(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminLevel(ctx, 2);
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member = members.find((entry) => entry._id === args.memberId) ?? null;
+    if (!member) {
+      throw new Error("Member not found.");
+    }
+
+    const currentDirectCount = members.filter(
+      (entry) => entry.parentMemberId === member._id,
+    ).length;
+    const nextLimit =
+      args.directLimitOverride === null
+        ? undefined
+        : Math.max(
+            DEFAULT_DIRECT_LIMIT,
+            currentDirectCount,
+            Math.floor(args.directLimitOverride),
+          );
+
+    await ctx.db.patch("networkMembers", args.memberId, {
+      directLimitOverride: nextLimit,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      success: true,
+      memberId: args.memberId,
+      effectiveDirectLimit:
+        nextLimit ?? getEffectiveDirectLimit(member, currentDirectCount),
+    };
+  },
+});
+
+export const backfillOrgAccessMetadata = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { user: actor } = await requireAdminLevel(ctx, 2);
+    const now = Date.now();
+    let updatedUsers = 0;
+    let updatedMembers = 0;
+
+    const users = await ctx.db.query("users").take(1000);
+    for (const user of users) {
+      const level = getUserAdminLevel(user);
+      const normalizedName = (user.name ?? "").trim().toLowerCase();
+      const shouldPatch =
+        (level > 0 && user.adminLevel !== level) ||
+        (level > 0 && user.role !== "admin") ||
+        (normalizedName === "marko nogoy" && user.adminLevel !== 2) ||
+        (normalizedName === "maylyn" && user.adminLevel !== 1);
+      if (shouldPatch) {
+        await ctx.db.patch("users", user._id, {
+          role: level > 0 ? "admin" : user.role,
+          adminLevel: level,
+          adminAssignedBy: actor._id,
+          adminAssignedAt: now,
+        });
+        updatedUsers += 1;
+      }
+    }
+
+    const members = await ctx.db.query("networkMembers").take(1000);
+    const profiles = await ctx.db.query("mobileProfiles").take(1000);
+    const profileUserById = new Map(
+      profiles.map((profile) => [profile._id, profile.userId]),
+    );
+    const memberById = new Map(members.map((member) => [member._id, member]));
+
+    for (const member of members) {
+      const parent = member.parentMemberId
+        ? memberById.get(member.parentMemberId)
+        : null;
+      const profileUserId = profileUserById.get(member.profileId);
+      const createdByUserId =
+        member.createdByUserId ?? profileUserId ?? member.userId;
+      const ownedByUserId =
+        member.ownedByUserId ??
+        member.userId ??
+        (parent
+          ? resolveOwnedByUserId(createdByUserId ?? actor._id, parent)
+          : createdByUserId);
+
+      if (
+        createdByUserId !== member.createdByUserId ||
+        ownedByUserId !== member.ownedByUserId
+      ) {
+        await ctx.db.patch("networkMembers", member._id, {
+          createdByUserId,
+          ownedByUserId,
+          updatedAt: now,
+        });
+        updatedMembers += 1;
+      }
+    }
+
+    return { success: true, updatedUsers, updatedMembers };
   },
 });
 
@@ -80,13 +203,18 @@ export const updateMemberSocials = mutation({
   },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const member = await ctx.db.get(args.memberId);
-    
-    if (!member || member.profileId !== profile._id) {
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    if (!viewer) throw new Error("Viewer not found.");
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member = members.find((entry) => entry._id === args.memberId) ?? null;
+
+    if (!member || !canManageMember(viewer, profile, member)) {
       throw new Error("Member not found or access denied.");
     }
 
-    await ctx.db.patch(args.memberId, {
+    await ctx.db.patch("networkMembers", args.memberId, {
       bonchatUsername: args.bonchatUsername?.trim() || undefined,
       yepbitUsername: args.yepbitUsername?.trim() || undefined,
       bonchatId: args.bonchatId?.trim() || undefined,
@@ -112,6 +240,10 @@ type OrgTreeNode = {
   directChildrenCount: number;
   totalDownlineCount: number;
   allowAdd?: boolean;
+  canManage?: boolean;
+  directLimitOverride?: number;
+  effectiveDirectLimit: number;
+  directStatusCounts: Record<NetworkMember["status"], number>;
   city?: string;
   province?: string;
   country?: string;
@@ -136,7 +268,12 @@ type OrgTreeNode = {
     totalDownlines: number;
     invitedCount: number;
     pendingCount: number;
+    directChildrenCount: number;
     uplineId: Id<"networkMembers"> | null;
+    canManage?: boolean;
+    directLimitOverride?: number;
+    effectiveDirectLimit: number;
+    directStatusCounts: Record<NetworkMember["status"], number>;
     city?: string;
     province?: string;
     country?: string;
@@ -155,8 +292,12 @@ type OrgTreeNode = {
   children: OrgTreeNode[];
 };
 
-type DeleteMode = "reconnect" | "cascade";
 type MobileDeleteCtx = QueryCtx | MutationCtx;
+type OrgAccessContext = {
+  viewer: Doc<"users"> | null;
+  profile: Doc<"mobileProfiles"> | null;
+  adminLevel: 0 | 1 | 2;
+};
 type DeleteImpact = {
   memberId: Id<"networkMembers">;
   memberName: string;
@@ -168,20 +309,16 @@ type DeleteImpact = {
   subtreeLinkedAccountCount: number;
 };
 
-function isOrgAdmin(viewer: Doc<"users">) {
-  return viewer.email === "admin@luxurious.trade" || viewer.role === "admin";
-}
-
 async function requireOrgAdmin(ctx: MobileDeleteCtx) {
-  const viewer = await requireMobileViewer(ctx);
-  if (!isOrgAdmin(viewer)) {
-    throw new Error("Admin access required.");
-  }
-  return viewer;
+  const { user } = await requireAdminLevel(ctx, 1);
+  return user;
 }
 
 function buildParentLookup(members: NetworkMember[]) {
-  const parentLookup = new Map<Id<"networkMembers"> | "root", NetworkMember[]>();
+  const parentLookup = new Map<
+    Id<"networkMembers"> | "root",
+    NetworkMember[]
+  >();
 
   for (const member of members) {
     const parentKey = member.parentMemberId ?? "root";
@@ -204,12 +341,39 @@ function getRank(totalDownlines: number) {
 function buildTree(
   parentLookup: Map<Id<"networkMembers"> | "root", NetworkMember[]>,
   parentId: Id<"networkMembers"> | "root",
-  latestAssetsMap?: Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>
+  latestAssetsMap?: Map<
+    Id<"networkMembers">,
+    { name: string; value: number; currency: string; createdAt: number } | null
+  >,
+  access?: OrgAccessContext,
 ): OrgTreeNode[] {
   const children = parentLookup.get(parentId) ?? [];
   return children.map((member) => {
     const totalDownlines = countDescendants(parentLookup, member._id);
     const latestAsset = latestAssetsMap?.get(member._id) ?? null;
+    const directChildren = parentLookup.get(member._id) ?? [];
+    const directChildrenCount = directChildren.length;
+    const directStatusCounts = buildDirectStatusCounts(directChildren);
+    const effectiveDirectLimit = getEffectiveDirectLimit(
+      member,
+      directChildrenCount,
+    );
+    const canManage = access?.viewer
+      ? canManageMember(
+          access.viewer,
+          access.profile,
+          member,
+          access.adminLevel,
+        )
+      : false;
+    const canAdd = access?.viewer
+      ? canAddUnderParent(
+          access.viewer,
+          access.profile,
+          member,
+          access.adminLevel,
+        ) && directChildrenCount < effectiveDirectLimit
+      : false;
     return {
       id: member._id,
       parentMemberId: member.parentMemberId ?? null,
@@ -217,9 +381,13 @@ function buildTree(
       roleTitle: member.roleTitle,
       status: member.status,
       isViewer: member.isViewer,
-      directChildrenCount: (parentLookup.get(member._id) ?? []).length,
+      directChildrenCount,
       totalDownlineCount: totalDownlines,
-      allowAdd: true,
+      allowAdd: canAdd,
+      canManage,
+      directLimitOverride: member.directLimitOverride,
+      effectiveDirectLimit,
+      directStatusCounts,
       city: member.city,
       province: member.province,
       country: member.country,
@@ -239,18 +407,23 @@ function buildTree(
         totalDownlines: totalDownlines,
         invitedCount: 0,
         pendingCount: 0,
-        uplineId: (member.parentMemberId as any),
+        directChildrenCount,
+        uplineId: member.parentMemberId as any,
+        canManage,
+        directLimitOverride: member.directLimitOverride,
+        effectiveDirectLimit,
+        directStatusCounts,
         city: member.city,
         province: member.province,
         country: member.country,
         locationAddress: member.locationAddress,
         latitude: member.latitude,
         longitude: member.longitude,
-        allowAdd: true,
+        allowAdd: canAdd,
         latestAsset,
         investmentStartedAt: member.investmentStartedAt,
       },
-      children: buildTree(parentLookup, member._id, latestAssetsMap),
+      children: buildTree(parentLookup, member._id, latestAssetsMap, access),
     };
   });
 }
@@ -260,7 +433,10 @@ function countDescendants(
   memberId: Id<"networkMembers">,
 ): number {
   const children = parentLookup.get(memberId) ?? [];
-  return children.reduce((sum, child) => sum + 1 + countDescendants(parentLookup, child._id), 0);
+  return children.reduce(
+    (sum, child) => sum + 1 + countDescendants(parentLookup, child._id),
+    0,
+  );
 }
 
 function collectDescendantIds(
@@ -309,11 +485,16 @@ function buildDeleteImpact(
     directChildrenCount: directChildren.length,
     totalDescendantCount: descendants.length,
     subtreeMemberCount: subtree.length,
-    subtreeLinkedAccountCount: subtree.filter((entry) => entry.userId !== undefined).length,
+    subtreeLinkedAccountCount: subtree.filter(
+      (entry) => entry.userId !== undefined,
+    ).length,
   };
 }
 
-function resolveParentUserId(nextParent: NetworkMember | null, viewer: Doc<"users">) {
+function resolveParentUserId(
+  nextParent: NetworkMember | null,
+  viewer: Doc<"users">,
+) {
   if (nextParent === null) {
     return null;
   }
@@ -363,10 +544,15 @@ async function findDirectUplineForProfile(
   return await ctx.db.get("networkMembers", canonicalRoot.parentMemberId);
 }
 
-async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProfiles">) {
+async function purgeProfileScopedData(
+  ctx: MutationCtx,
+  profile: Doc<"mobileProfiles">,
+) {
   const profileMembers = await ctx.db
     .query("networkMembers")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const member of profileMembers) {
     await ctx.db.delete("networkMembers", member._id);
@@ -382,7 +568,9 @@ async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProf
 
   const deviceTokens = await ctx.db
     .query("mobileDeviceTokens")
-    .withIndex("by_profileId_and_updatedAt", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_updatedAt", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const row of deviceTokens) {
     await ctx.db.delete("mobileDeviceTokens", row._id);
@@ -390,7 +578,9 @@ async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProf
 
   const transactions = await ctx.db
     .query("financialTransactions")
-    .withIndex("by_profileId_and_occurredAt", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_occurredAt", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const row of transactions) {
     await ctx.db.delete("financialTransactions", row._id);
@@ -398,7 +588,9 @@ async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProf
 
   const accounts = await ctx.db
     .query("financialAccounts")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const row of accounts) {
     await ctx.db.delete("financialAccounts", row._id);
@@ -406,7 +598,9 @@ async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProf
 
   const budgets = await ctx.db
     .query("budgetPlans")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const row of budgets) {
     await ctx.db.delete("budgetPlans", row._id);
@@ -414,7 +608,9 @@ async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProf
 
   const debts = await ctx.db
     .query("debtPlans")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const row of debts) {
     await ctx.db.delete("debtPlans", row._id);
@@ -422,7 +618,9 @@ async function purgeProfileScopedData(ctx: MutationCtx, profile: Doc<"mobileProf
 
   const installments = await ctx.db
     .query("installmentPlans")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profile._id),
+    )
     .collect();
   for (const row of installments) {
     await ctx.db.delete("installmentPlans", row._id);
@@ -482,12 +680,18 @@ async function purgeLinkedAccount(ctx: MutationCtx, userId: Id<"users">) {
     await purgeProfileScopedData(ctx, profile);
   }
 
-  const wallets = await ctx.db.query("wallets").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+  const wallets = await ctx.db
+    .query("wallets")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
   for (const row of wallets) {
     await ctx.db.delete("wallets", row._id);
   }
 
-  const trades = await ctx.db.query("trades").withIndex("by_user", (q) => q.eq("userId", userId)).collect();
+  const trades = await ctx.db
+    .query("trades")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
   for (const row of trades) {
     await ctx.db.delete("trades", row._id);
   }
@@ -578,7 +782,11 @@ async function purgeLinkedAccount(ctx: MutationCtx, userId: Id<"users">) {
 function buildOverview(
   members: NetworkMember[],
   directUpline?: NetworkMember | null,
-  latestAssetsMap?: Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>
+  latestAssetsMap?: Map<
+    Id<"networkMembers">,
+    { name: string; value: number; currency: string; createdAt: number } | null
+  >,
+  access?: OrgAccessContext,
 ) {
   const membersById = new Map<Id<"networkMembers">, NetworkMember>();
   const parentLookup = buildParentLookup(members);
@@ -599,10 +807,16 @@ function buildOverview(
     currentParentId = parent.parentMemberId ?? null;
   }
 
-  const joinedCount = members.filter((member) => member.status === "joined").length;
-  const invitedCount = members.filter((member) => member.status === "invited").length;
-  const pendingCount = members.filter((member) => member.status === "pending").length;
-  const directMembers = viewer ? parentLookup.get(viewer._id) ?? [] : [];
+  const joinedCount = members.filter(
+    (member) => member.status === "joined",
+  ).length;
+  const invitedCount = members.filter(
+    (member) => member.status === "invited",
+  ).length;
+  const pendingCount = members.filter(
+    (member) => member.status === "pending",
+  ).length;
+  const directMembers = viewer ? (parentLookup.get(viewer._id) ?? []) : [];
   const toInviteCount = Math.max(6 - directMembers.length, 0);
   const downlineCount = viewer ? countDescendants(parentLookup, viewer._id) : 0;
 
@@ -610,6 +824,29 @@ function buildOverview(
   if (viewer) {
     const totalDownlines = countDescendants(parentLookup, viewer._id);
     const latestAsset = latestAssetsMap?.get(viewer._id) ?? null;
+    const directChildren = parentLookup.get(viewer._id) ?? [];
+    const directChildrenCount = directChildren.length;
+    const directStatusCounts = buildDirectStatusCounts(directChildren);
+    const effectiveDirectLimit = getEffectiveDirectLimit(
+      viewer,
+      directChildrenCount,
+    );
+    const canManage = access?.viewer
+      ? canManageMember(
+          access.viewer,
+          access.profile,
+          viewer,
+          access.adminLevel,
+        )
+      : false;
+    const canAdd = access?.viewer
+      ? canAddUnderParent(
+          access.viewer,
+          access.profile,
+          viewer,
+          access.adminLevel,
+        ) && directChildrenCount < effectiveDirectLimit
+      : false;
     const viewerNode: OrgTreeNode = {
       id: viewer._id,
       parentMemberId: viewer.parentMemberId ?? null,
@@ -617,9 +854,13 @@ function buildOverview(
       roleTitle: viewer.roleTitle,
       status: viewer.status,
       isViewer: viewer.isViewer,
-      directChildrenCount: (parentLookup.get(viewer._id) ?? []).length,
+      directChildrenCount,
       totalDownlineCount: totalDownlines,
-      allowAdd: true,
+      allowAdd: canAdd,
+      canManage,
+      directLimitOverride: viewer.directLimitOverride,
+      effectiveDirectLimit,
+      directStatusCounts,
       city: viewer.city,
       province: viewer.province,
       country: viewer.country,
@@ -639,7 +880,12 @@ function buildOverview(
         totalDownlines: totalDownlines,
         invitedCount: 0,
         pendingCount: 0,
-        uplineId: (viewer.parentMemberId as any),
+        directChildrenCount,
+        uplineId: viewer.parentMemberId as any,
+        canManage,
+        directLimitOverride: viewer.directLimitOverride,
+        effectiveDirectLimit,
+        directStatusCounts,
         city: viewer.city,
         province: viewer.province,
         country: viewer.country,
@@ -650,63 +896,92 @@ function buildOverview(
         latestAsset,
         investmentStartedAt: viewer.investmentStartedAt,
       },
-      children: buildTree(parentLookup, viewer._id, latestAssetsMap),
+      children: buildTree(parentLookup, viewer._id, latestAssetsMap, access),
     };
 
     if (directUpline) {
       const uplineDownlines = totalDownlines + 1;
       const uplineAsset = latestAssetsMap?.get(directUpline._id) ?? null;
-      treeRoots = [{
-        id: directUpline._id,
-        parentMemberId: directUpline.parentMemberId ?? null,
-        name: directUpline.name,
-        roleTitle: directUpline.roleTitle,
-        status: directUpline.status,
-        isViewer: false,
-        directChildrenCount: 1,
-        totalDownlineCount: uplineDownlines,
-        allowAdd: false,
-        city: directUpline.city,
-        province: directUpline.province,
-        country: directUpline.country,
-        locationAddress: directUpline.locationAddress,
-        latitude: directUpline.latitude,
-        longitude: directUpline.longitude,
-        latestAsset: uplineAsset,
-        investmentStartedAt: directUpline.investmentStartedAt,
-        member: {
-          id: directUpline.userId ?? (directUpline._id as any),
+      const uplineChildren = [viewer];
+      const uplineStatusCounts = buildDirectStatusCounts(uplineChildren);
+      const uplineEffectiveLimit = getEffectiveDirectLimit(directUpline, 1);
+      treeRoots = [
+        {
+          id: directUpline._id,
+          parentMemberId: directUpline.parentMemberId ?? null,
           name: directUpline.name,
-          email: directUpline.email ?? "",
           roleTitle: directUpline.roleTitle,
-          rank: getRank(uplineDownlines),
           status: directUpline.status,
-          avatarInitials: directUpline.name.substring(0, 2).toUpperCase(),
-          totalDownlines: uplineDownlines,
-          invitedCount: 0,
-          pendingCount: 0,
-          uplineId: (directUpline.parentMemberId as any),
+          isViewer: false,
+          directChildrenCount: 1,
+          totalDownlineCount: uplineDownlines,
+          allowAdd: false,
+          canManage: access?.viewer
+            ? canManageMember(
+                access.viewer,
+                access.profile,
+                directUpline,
+                access.adminLevel,
+              )
+            : false,
+          directLimitOverride: directUpline.directLimitOverride,
+          effectiveDirectLimit: uplineEffectiveLimit,
+          directStatusCounts: uplineStatusCounts,
           city: directUpline.city,
           province: directUpline.province,
           country: directUpline.country,
           locationAddress: directUpline.locationAddress,
           latitude: directUpline.latitude,
           longitude: directUpline.longitude,
-          allowAdd: false,
           latestAsset: uplineAsset,
           investmentStartedAt: directUpline.investmentStartedAt,
+          member: {
+            id: directUpline.userId ?? (directUpline._id as any),
+            name: directUpline.name,
+            email: directUpline.email ?? "",
+            roleTitle: directUpline.roleTitle,
+            rank: getRank(uplineDownlines),
+            status: directUpline.status,
+            avatarInitials: directUpline.name.substring(0, 2).toUpperCase(),
+            totalDownlines: uplineDownlines,
+            invitedCount: 0,
+            pendingCount: 0,
+            directChildrenCount: 1,
+            uplineId: directUpline.parentMemberId as any,
+            canManage: access?.viewer
+              ? canManageMember(
+                  access.viewer,
+                  access.profile,
+                  directUpline,
+                  access.adminLevel,
+                )
+              : false,
+            directLimitOverride: directUpline.directLimitOverride,
+            effectiveDirectLimit: uplineEffectiveLimit,
+            directStatusCounts: uplineStatusCounts,
+            city: directUpline.city,
+            province: directUpline.province,
+            country: directUpline.country,
+            locationAddress: directUpline.locationAddress,
+            latitude: directUpline.latitude,
+            longitude: directUpline.longitude,
+            allowAdd: false,
+            latestAsset: uplineAsset,
+            investmentStartedAt: directUpline.investmentStartedAt,
+          },
+          children: [viewerNode],
         },
-        children: [viewerNode],
-      }];
+      ];
     } else {
-      treeRoots = buildTree(parentLookup, "root", latestAssetsMap);
+      treeRoots = buildTree(parentLookup, "root", latestAssetsMap, access);
     }
   } else {
-    treeRoots = buildTree(parentLookup, "root");
+    treeRoots = buildTree(parentLookup, "root", undefined, access);
   }
 
   return {
-    viewer: viewer == null
+    viewer:
+      viewer == null
         ? null
         : {
             id: viewer._id,
@@ -736,6 +1011,35 @@ function buildOverview(
       isViewer: member.isViewer,
       parentMemberId: member.parentMemberId ?? null,
       directChildrenCount: (parentLookup.get(member._id) ?? []).length,
+      directLimitOverride: member.directLimitOverride,
+      effectiveDirectLimit: getEffectiveDirectLimit(
+        member,
+        (parentLookup.get(member._id) ?? []).length,
+      ),
+      directStatusCounts: buildDirectStatusCounts(
+        parentLookup.get(member._id) ?? [],
+      ),
+      canManage: access?.viewer
+        ? canManageMember(
+            access.viewer,
+            access.profile,
+            member,
+            access.adminLevel,
+          )
+        : false,
+      allowAdd: access?.viewer
+        ? canAddUnderParent(
+            access.viewer,
+            access.profile,
+            member,
+            access.adminLevel,
+          ) &&
+          (parentLookup.get(member._id) ?? []).length <
+            getEffectiveDirectLimit(
+              member,
+              (parentLookup.get(member._id) ?? []).length,
+            )
+        : false,
       bonchatId: member.bonchatId,
       bonchatUsername: member.bonchatUsername,
       yepbitId: member.yepbitId,
@@ -758,6 +1062,14 @@ export const getDashboard = query({
   args: {},
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewerUser = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    const access = {
+      viewer: viewerUser,
+      profile,
+      adminLevel: getUserAdminLevel(viewerUser),
+    };
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const directUpline = await findDirectUplineForProfile(ctx, profile);
 
@@ -780,9 +1092,14 @@ export const getDashboard = query({
     const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
     const latestAssetByEmail = new Map<string, Doc<"memberAssets">>();
     const latestAssetByName = new Map<string, Doc<"memberAssets">>();
-    const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
-    
-    const sortedAssets = [...allAssets].sort((a, b) => a.createdAt - b.createdAt);
+    const latestAssetByMember = new Map<
+      Id<"networkMembers">,
+      Doc<"memberAssets">
+    >();
+
+    const sortedAssets = [...allAssets].sort(
+      (a, b) => a.createdAt - b.createdAt,
+    );
     for (const asset of sortedAssets) {
       const uId = memberIdToUserId.get(asset.memberId);
       const nameKey = memberIdToNameKey.get(asset.memberId);
@@ -796,11 +1113,19 @@ export const getDashboard = query({
       latestAssetByMember.set(asset.memberId, asset);
     }
 
-    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
+    const latestAssetsMap = new Map<
+      Id<"networkMembers">,
+      {
+        name: string;
+        value: number;
+        currency: string;
+        createdAt: number;
+      } | null
+    >();
     for (const m of allMembersList) {
       let latest: Doc<"memberAssets"> | undefined;
       const nameKey = m.name.trim().toLowerCase();
-      
+
       if (m.userId) {
         latest = latestAssetByUser.get(m.userId);
       }
@@ -813,7 +1138,7 @@ export const getDashboard = query({
       if (!latest) {
         latest = latestAssetByMember.get(m._id);
       }
-      
+
       if (latest) {
         latestAssetsMap.set(m._id, {
           name: latest.name,
@@ -824,7 +1149,7 @@ export const getDashboard = query({
       }
     }
 
-    return buildOverview(members, directUpline, latestAssetsMap);
+    return buildOverview(members, directUpline, latestAssetsMap, access);
   },
 });
 
@@ -832,6 +1157,14 @@ export const getTree = query({
   args: {},
   handler: async (ctx) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewerUser = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    const access = {
+      viewer: viewerUser,
+      profile,
+      adminLevel: getUserAdminLevel(viewerUser),
+    };
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const directUpline = await findDirectUplineForProfile(ctx, profile);
 
@@ -854,9 +1187,14 @@ export const getTree = query({
     const latestAssetByUser = new Map<Id<"users">, Doc<"memberAssets">>();
     const latestAssetByEmail = new Map<string, Doc<"memberAssets">>();
     const latestAssetByName = new Map<string, Doc<"memberAssets">>();
-    const latestAssetByMember = new Map<Id<"networkMembers">, Doc<"memberAssets">>();
-    
-    const sortedAssets = [...allAssets].sort((a, b) => a.createdAt - b.createdAt);
+    const latestAssetByMember = new Map<
+      Id<"networkMembers">,
+      Doc<"memberAssets">
+    >();
+
+    const sortedAssets = [...allAssets].sort(
+      (a, b) => a.createdAt - b.createdAt,
+    );
     for (const asset of sortedAssets) {
       const uId = memberIdToUserId.get(asset.memberId);
       const nameKey = memberIdToNameKey.get(asset.memberId);
@@ -870,11 +1208,19 @@ export const getTree = query({
       latestAssetByMember.set(asset.memberId, asset);
     }
 
-    const latestAssetsMap = new Map<Id<"networkMembers">, { name: string; value: number; currency: string; createdAt: number } | null>();
+    const latestAssetsMap = new Map<
+      Id<"networkMembers">,
+      {
+        name: string;
+        value: number;
+        currency: string;
+        createdAt: number;
+      } | null
+    >();
     for (const m of allMembersList) {
       let latest: Doc<"memberAssets"> | undefined;
       const nameKey = m.name.trim().toLowerCase();
-      
+
       if (m.userId) {
         latest = latestAssetByUser.get(m.userId);
       }
@@ -887,7 +1233,7 @@ export const getTree = query({
       if (!latest) {
         latest = latestAssetByMember.get(m._id);
       }
-      
+
       if (latest) {
         latestAssetsMap.set(m._id, {
           name: latest.name,
@@ -898,7 +1244,7 @@ export const getTree = query({
       }
     }
 
-    return buildOverview(members, directUpline, latestAssetsMap).tree;
+    return buildOverview(members, directUpline, latestAssetsMap, access).tree;
   },
 });
 
@@ -907,8 +1253,9 @@ export const getDeleteMemberImpact = query({
     memberId: v.id("networkMembers"),
   },
   handler: async (ctx, args) => {
-    await requireOrgAdmin(ctx);
+    const viewer = await requireOrgAdmin(ctx);
     const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const adminLevel = getUserAdminLevel(viewer);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const member = members.find((entry) => entry._id === args.memberId) ?? null;
 
@@ -917,6 +1264,9 @@ export const getDeleteMemberImpact = query({
     }
     if (member.isViewer) {
       throw new Error("Viewer root cannot be deleted.");
+    }
+    if (!canManageMember(viewer, profile, member, adminLevel)) {
+      throw new Error("You can only manage members you own or created.");
     }
 
     return buildDeleteImpact(buildParentLookup(members), member);
@@ -961,19 +1311,21 @@ export const listMembersPaginated = query({
   },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    
+
     let query;
     if (args.status) {
       query = ctx.db
         .query("networkMembers")
-        .withIndex("by_profileId_and_status", (q) => 
-          q.eq("profileId", profile._id).eq("status", args.status as any)
+        .withIndex("by_profileId_and_status", (q) =>
+          q.eq("profileId", profile._id).eq("status", args.status as any),
         )
         .order("desc");
     } else {
       query = ctx.db
         .query("networkMembers")
-        .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+        .withIndex("by_profileId_and_sortOrder", (q) =>
+          q.eq("profileId", profile._id),
+        )
         .order("desc");
     }
 
@@ -1000,8 +1352,8 @@ export const reassignMemberParent = mutation({
   },
   handler: async (ctx, args) => {
     const viewer = await requireMobileViewer(ctx);
-    const isAdmin = viewer.email === "admin@luxurious.trade" || viewer.role === "admin";
-    if (!isAdmin) {
+    const adminLevel = getUserAdminLevel(viewer);
+    if (adminLevel < 1) {
       throw new Error("Admin access required.");
     }
 
@@ -1016,11 +1368,15 @@ export const reassignMemberParent = mutation({
     if (member.isViewer) {
       throw new Error("Viewer root cannot be moved.");
     }
+    if (!canManageMember(viewer, profile, member, adminLevel)) {
+      throw new Error("You can only manage members you own or created.");
+    }
 
     const nextParent =
       args.newParentMemberId === null
         ? null
-        : members.find((entry) => entry._id === args.newParentMemberId) ?? null;
+        : (members.find((entry) => entry._id === args.newParentMemberId) ??
+          null);
 
     if (args.newParentMemberId !== null && nextParent === null) {
       throw new Error("New parent not found.");
@@ -1031,15 +1387,23 @@ export const reassignMemberParent = mutation({
     if (nextParent?.status !== undefined && nextParent.status !== "joined") {
       throw new Error("New parent must be joined.");
     }
+    if (
+      nextParent &&
+      !canAddUnderParent(viewer, profile, nextParent, adminLevel)
+    ) {
+      throw new Error("You cannot add downlines under this member.");
+    }
 
-    // Enforce max direct downlines on new parent
     if (nextParent) {
       const existingChildren = parentLookup.get(nextParent._id) ?? [];
-      // Exclude the member being moved (they may already be a child of this parent)
       const netChildren = existingChildren.filter((c) => c._id !== member._id);
-      if (netChildren.length >= MAX_DIRECT_DOWNLINES) {
+      const limit = getEffectiveDirectLimit(
+        nextParent,
+        existingChildren.length,
+      );
+      if (netChildren.length >= limit) {
         throw new Error(
-          `Cannot reassign: ${nextParent.name} already has ${MAX_DIRECT_DOWNLINES} direct downlines.`,
+          `Cannot reassign: ${nextParent.name} already has ${limit} direct downlines.`,
         );
       }
     }
@@ -1051,7 +1415,7 @@ export const reassignMemberParent = mutation({
     }
 
     const now = Date.now();
-    await ctx.db.patch(args.memberId, {
+    await ctx.db.patch("networkMembers", args.memberId, {
       parentMemberId: args.newParentMemberId,
       updatedAt: now,
     });
@@ -1064,14 +1428,18 @@ export const reassignMemberParent = mutation({
       const existingParentId = member.parentMemberId;
       const directChildren = parentLookup.get(member._id) ?? [];
       for (const child of directChildren) {
-        await ctx.db.patch(child._id, {
+        await ctx.db.patch("networkMembers", child._id, {
           parentMemberId: existingParentId,
           updatedAt: now,
         });
-        await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
-          table: "networkMembers",
-          sourceId: child._id,
-        });
+        await ctx.scheduler.runAfter(
+          0,
+          internal.aiDbEmbeddingActions.embedRecord,
+          {
+            table: "networkMembers",
+            sourceId: child._id,
+          },
+        );
       }
     }
 
@@ -1092,6 +1460,7 @@ export const deleteMember = mutation({
   handler: async (ctx, args) => {
     const viewer = await requireOrgAdmin(ctx);
     const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const adminLevel = getUserAdminLevel(viewer);
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const parentLookup = buildParentLookup(members);
     const member = members.find((entry) => entry._id === args.memberId) ?? null;
@@ -1101,6 +1470,9 @@ export const deleteMember = mutation({
     }
     if (member.isViewer) {
       throw new Error("Viewer root cannot be deleted.");
+    }
+    if (!canManageMember(viewer, profile, member, adminLevel)) {
+      throw new Error("You can only manage members you own or created.");
     }
 
     const directChildren = parentLookup.get(member._id) ?? [];
@@ -1115,7 +1487,8 @@ export const deleteMember = mutation({
       requestedParentId = args.newParentMemberId ?? null;
 
       if (requestedParentId !== null) {
-        nextParent = members.find((entry) => entry._id === requestedParentId) ?? null;
+        nextParent =
+          members.find((entry) => entry._id === requestedParentId) ?? null;
         if (!nextParent) {
           throw new Error("New parent not found.");
         }
@@ -1125,21 +1498,30 @@ export const deleteMember = mutation({
         if (nextParent.status !== "joined") {
           throw new Error("New parent must be joined.");
         }
+        if (!canAddUnderParent(viewer, profile, nextParent, adminLevel)) {
+          throw new Error("You cannot reconnect downlines under this member.");
+        }
       }
 
       const descendantIds = new Set(descendants.map((entry) => entry._id));
       if (requestedParentId !== null && descendantIds.has(requestedParentId)) {
-        throw new Error("Member cannot reconnect descendants under their own subtree.");
+        throw new Error(
+          "Member cannot reconnect descendants under their own subtree.",
+        );
       }
 
-      // Enforce max direct downlines on reconnect target
       if (nextParent) {
         const existingChildrenOfTarget = parentLookup.get(nextParent._id) ?? [];
-        // Children of the deleted member will attach here; existing children minus the deleted member itself
-        const currentCount = existingChildrenOfTarget.filter((c) => c._id !== member._id).length;
-        if (currentCount + directChildren.length > MAX_DIRECT_DOWNLINES) {
+        const currentCount = existingChildrenOfTarget.filter(
+          (c) => c._id !== member._id,
+        ).length;
+        const limit = getEffectiveDirectLimit(
+          nextParent,
+          existingChildrenOfTarget.length,
+        );
+        if (currentCount + directChildren.length > limit) {
           throw new Error(
-            `Cannot reconnect: ${nextParent.name} would exceed ${MAX_DIRECT_DOWNLINES} direct downlines (has ${currentCount}, reconnecting ${directChildren.length}).`,
+            `Cannot reconnect: ${nextParent.name} would exceed ${limit} direct downlines (has ${currentCount}, reconnecting ${directChildren.length}).`,
           );
         }
       }
@@ -1163,7 +1545,8 @@ export const deleteMember = mutation({
       }
     }
 
-    const membersToDelete = args.mode === "cascade" ? [...descendants, member] : [member];
+    const membersToDelete =
+      args.mode === "cascade" ? [...descendants, member] : [member];
     const userIdsToDelete = Array.from(
       new Set(
         membersToDelete
@@ -1179,40 +1562,63 @@ export const deleteMember = mutation({
 
     for (const target of membersToDelete) {
       await ctx.db.delete("networkMembers", target._id);
-      await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.deleteRecordEmbedding, {
-        table: "networkMembers",
-        sourceId: target._id,
-      });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.aiDbEmbeddingActions.deleteRecordEmbedding,
+        {
+          table: "networkMembers",
+          sourceId: target._id,
+        },
+      );
     }
 
     return {
       success: true,
-      mode: args.mode as DeleteMode,
+      mode: args.mode,
       deletedMemberCount: membersToDelete.length,
       purgedAccountCount,
       affectedDownlineCount: impact.totalDescendantCount,
       reconnectedDownlineCount:
-        args.mode === "reconnect" && requestedParentId !== null ? directChildren.length : 0,
+        args.mode === "reconnect" && requestedParentId !== null
+          ? directChildren.length
+          : 0,
       orphanedDownlineCount:
-        args.mode === "reconnect" && requestedParentId === null ? directChildren.length : 0,
+        args.mode === "reconnect" && requestedParentId === null
+          ? directChildren.length
+          : 0,
     };
   },
 });
-
 
 export const getMember = query({
   args: { memberId: v.id("networkMembers") },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewerUser = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
     const members = await listUnifiedNetworkMembers(ctx, profile._id);
     const member = members.find((entry) => entry._id === args.memberId) ?? null;
     if (!member) {
       return null;
     }
     const parentLookup = buildParentLookup(members);
-    const directChildrenCount = (parentLookup.get(member._id) ?? []).length;
+    const directChildren = parentLookup.get(member._id) ?? [];
+    const directChildrenCount = directChildren.length;
     const totalDownlines = countDescendants(parentLookup, member._id);
-    const pendingCount = (parentLookup.get(member._id) ?? []).filter(c => c.status === "pending").length;
+    const directStatusCounts = buildDirectStatusCounts(directChildren);
+    const effectiveDirectLimit = getEffectiveDirectLimit(
+      member,
+      directChildrenCount,
+    );
+    const adminLevel = getUserAdminLevel(viewerUser);
+    const canManage = viewerUser
+      ? canManageMember(viewerUser, profile, member, adminLevel)
+      : false;
+    const allowAdd =
+      viewerUser !== null &&
+      canAddUnderParent(viewerUser, profile, member, adminLevel) &&
+      directChildrenCount < effectiveDirectLimit;
 
     const latestAssetDoc = await ctx.db
       .query("memberAssets")
@@ -1240,9 +1646,14 @@ export const getMember = query({
       bonchatUsername: member.bonchatUsername,
       yepbitUsername: member.yepbitUsername,
       totalDownlines: totalDownlines,
-      invitedCount: 0, // Placeholder
+      invitedCount: directStatusCounts.invited,
       directChildrenCount: directChildrenCount,
-      pendingCount: pendingCount,
+      pendingCount: directStatusCounts.pending,
+      directStatusCounts,
+      directLimitOverride: member.directLimitOverride,
+      effectiveDirectLimit,
+      canManage,
+      allowAdd,
       city: member.city,
       province: member.province,
       country: member.country,
@@ -1263,8 +1674,22 @@ export const addMemberAsset = mutation({
     currency: v.string(),
   },
   handler: async (ctx, args) => {
-    const member = await ctx.db.get(args.memberId);
+    const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) throw new Error("Member not found");
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const visibleMember =
+      members.find((entry) => entry._id === args.memberId) ?? null;
+    if (
+      !viewer ||
+      !visibleMember ||
+      !canManageMember(viewer, profile, visibleMember)
+    ) {
+      throw new Error("Member not found or access denied.");
+    }
 
     const now = Date.now();
     const assetId = await ctx.db.insert("memberAssets", {
@@ -1287,15 +1712,20 @@ export const getMemberAssets = query({
     memberId: v.id("networkMembers"),
   },
   handler: async (ctx, args) => {
-    const member = await ctx.db.get(args.memberId);
+    const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) return [];
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    if (!members.some((entry) => entry._id === args.memberId)) {
+      return [];
+    }
 
     const nameKey = member.name.trim().toLowerCase();
     const allMembersList = await ctx.db.query("networkMembers").collect();
-    
+
     const targetMemberIds = new Set<Id<"networkMembers">>();
     targetMemberIds.add(args.memberId);
-    
+
     for (const m of allMembersList) {
       if (member.userId && m.userId === member.userId) {
         targetMemberIds.add(m._id);
@@ -1320,7 +1750,7 @@ export const getMemberAssets = query({
       uniqueAssetsMap.set(assetKey, asset);
     }
     const deduplicatedAssets = Array.from(uniqueAssetsMap.values());
-    
+
     return deduplicatedAssets.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
@@ -1330,13 +1760,27 @@ export const deleteMemberAsset = mutation({
     assetId: v.id("memberAssets"),
   },
   handler: async (ctx, args) => {
-    const asset = await ctx.db.get(args.assetId);
+    const asset = await ctx.db.get("memberAssets", args.assetId);
     if (!asset) throw new Error("Asset not found");
-    await ctx.db.delete(args.assetId);
-    await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.deleteRecordEmbedding, {
-      table: "memberAssets",
-      sourceId: args.assetId,
-    });
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member =
+      members.find((entry) => entry._id === asset.memberId) ?? null;
+    if (!viewer || !member || !canManageMember(viewer, profile, member)) {
+      throw new Error("Asset not found or access denied.");
+    }
+    await ctx.db.delete("memberAssets", args.assetId);
+    await ctx.scheduler.runAfter(
+      0,
+      internal.aiDbEmbeddingActions.deleteRecordEmbedding,
+      {
+        table: "memberAssets",
+        sourceId: args.assetId,
+      },
+    );
   },
 });
 
@@ -1347,9 +1791,19 @@ export const updateMemberAsset = mutation({
     currency: v.string(),
   },
   handler: async (ctx, args) => {
-    const asset = await ctx.db.get(args.assetId);
+    const asset = await ctx.db.get("memberAssets", args.assetId);
     if (!asset) throw new Error("Asset not found");
-    await ctx.db.patch(args.assetId, {
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member =
+      members.find((entry) => entry._id === asset.memberId) ?? null;
+    if (!viewer || !member || !canManageMember(viewer, profile, member)) {
+      throw new Error("Asset not found or access denied.");
+    }
+    await ctx.db.patch("memberAssets", args.assetId, {
       value: args.value,
       currency: args.currency,
     });

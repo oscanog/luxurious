@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { 
-  X, 
-  ChevronRight, 
-  ChevronLeft, 
-  User, 
-  Mail, 
-  Phone, 
-  Globe, 
-  Check, 
+import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  X,
+  ChevronRight,
+  ChevronLeft,
+  User,
+  Mail,
+  Phone,
+  Globe,
+  Check,
   Zap,
   UserPlus,
-  MapPin
+  MapPin,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -25,11 +26,26 @@ interface AddMemberStepperProps {
   onSuccess?: () => void;
 }
 
-type Step = "type" | "identity" | "contact" | "location" | "platform" | "work" | "summary" | "success";
+type Step =
+  | "type"
+  | "identity"
+  | "contact"
+  | "location"
+  | "platform"
+  | "work"
+  | "summary"
+  | "success";
 
-export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMemberStepperProps) {
+export function AddMemberStepper({
+  parentId,
+  isOpen,
+  onClose,
+  onSuccess,
+}: AddMemberStepperProps) {
   const [step, setStep] = useState<Step>("type");
-  const [memberType, setMemberType] = useState<"joined" | "to-invite">("joined");
+  const [memberType, setMemberType] = useState<"joined" | "to-invite">(
+    "joined",
+  );
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -50,11 +66,15 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
   });
-  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [credentials, setCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
   const inviteMember = useAction(api.networkMembers.addMember);
+  const adminContext = useQuery(api.admin.getAdminContext);
 
   // Auto-save logic
   useEffect(() => {
@@ -65,10 +85,13 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
         const parsed = JSON.parse(saved);
         const restoredFormData = { ...parsed.formData };
         if (restoredFormData.roleTitle) {
-          restoredFormData.role = restoredFormData.roleTitle.toLowerCase() === "admin" ? "admin" : "member";
+          restoredFormData.role =
+            restoredFormData.roleTitle.toLowerCase() === "admin"
+              ? "admin"
+              : "member";
           delete restoredFormData.roleTitle;
         }
-        setFormData(prev => ({ ...prev, ...restoredFormData }));
+        setFormData((prev) => ({ ...prev, ...restoredFormData }));
         setStep(parsed.step);
         setMemberType(parsed.memberType);
       } catch (e) {
@@ -79,7 +102,10 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
 
   useEffect(() => {
     if (step !== "success" && isOpen) {
-      localStorage.setItem(`draft_onboarding_${parentId}`, JSON.stringify({ formData, step, memberType }));
+      localStorage.setItem(
+        `draft_onboarding_${parentId}`,
+        JSON.stringify({ formData, step, memberType }),
+      );
     }
   }, [formData, step, memberType, parentId, isOpen]);
 
@@ -93,13 +119,15 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
         return;
       }
       setStep("contact");
-    }
-    else if (step === "contact") {
+    } else if (step === "contact") {
       if (memberType === "joined" && !formData.email.trim()) {
         toast.error("Email is required for Full Members");
         return;
       }
-      if (formData.email.trim() && !/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
+      if (
+        formData.email.trim() &&
+        !/^\S+@\S+\.\S+$/.test(formData.email.trim())
+      ) {
         toast.error("Invalid email format");
         return;
       }
@@ -108,14 +136,11 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
       } else {
         setStep("location");
       }
-    }
-    else if (step === "platform") {
+    } else if (step === "platform") {
       setStep("location");
-    }
-    else if (step === "location") {
+    } else if (step === "location") {
       setStep("work");
-    }
-    else if (step === "work") {
+    } else if (step === "work") {
       if (memberType === "joined" && !formData.investmentStartedAt) {
         toast.error("Investment Start Date is required");
         return;
@@ -134,8 +159,7 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
       } else {
         setStep("contact");
       }
-    }
-    else if (step === "work") setStep("location");
+    } else if (step === "work") setStep("location");
     else if (step === "summary") setStep("work");
   };
 
@@ -147,7 +171,7 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
     setIsSubmitting(true);
     try {
       const result = await inviteMember({
-        parentId: parentId as any,
+        parentId: parentId as Id<"networkMembers">,
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email || undefined,
@@ -157,10 +181,12 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
         bonchatUsername: formData.bonchatUsername || undefined,
         yepbitId: formData.yepbitId || undefined,
         yepbitUsername: formData.yepbitUsername || undefined,
-        type: memberType as any,
-        role: formData.role,
+        type: memberType,
+        role: adminContext?.canPromoteAdmins ? formData.role : "member",
         currentWork: formData.currentWork || undefined,
-        investmentStartedAt: formData.investmentStartedAt ? new Date(formData.investmentStartedAt).getTime() : undefined,
+        investmentStartedAt: formData.investmentStartedAt
+          ? new Date(formData.investmentStartedAt).getTime()
+          : undefined,
         city: formData.city || undefined,
         province: formData.province || undefined,
         country: formData.country || undefined,
@@ -170,9 +196,9 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
       });
 
       if (result.credentials) {
-        setCredentials({ 
-          email: result.credentials.username, 
-          password: result.credentials.password 
+        setCredentials({
+          email: result.credentials.username,
+          password: result.credentials.password,
         });
         setStep("success");
         localStorage.removeItem(`draft_onboarding_${parentId}`);
@@ -193,7 +219,7 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
   const smartPaste = async (field: keyof typeof formData) => {
     try {
       const text = await navigator.clipboard.readText();
-      setFormData(prev => ({ ...prev, [field]: text.trim() }));
+      setFormData((prev) => ({ ...prev, [field]: text.trim() }));
       toast.success(`Pasted into ${field}`);
     } catch (e) {
       toast.error("Clipboard access denied");
@@ -219,17 +245,24 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
               <UserPlus size={20} />
             </div>
             <div>
-              <h3 className="font-black uppercase tracking-tight text-sm">Add New Member</h3>
+              <h3 className="font-black uppercase tracking-tight text-sm">
+                Add New Member
+              </h3>
               <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">
-                {step === "type" ? "select flow" : step === "success" ? "Success" : (
-                  memberType === "joined" 
-                    ? `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "platform" ? 3 : step === "location" ? 4 : step === "work" ? 5 : 6} of 6`
-                    : `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "location" ? 3 : step === "work" ? 4 : 5} of 5`
-                )}
+                {step === "type"
+                  ? "select flow"
+                  : step === "success"
+                    ? "Success"
+                    : memberType === "joined"
+                      ? `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "platform" ? 3 : step === "location" ? 4 : step === "work" ? 5 : 6} of 6`
+                      : `Step ${step === "identity" ? 1 : step === "contact" ? 2 : step === "location" ? 3 : step === "work" ? 4 : 5} of 5`}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="h-10 w-10 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center transition-colors">
+          <button
+            onClick={onClose}
+            className="h-10 w-10 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -239,41 +272,61 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               <div className="text-center mb-8">
                 <h4 className="text-xl font-bold">What are we adding?</h4>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">Choose the type of membership to start with.</p>
+                <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">
+                  Choose the type of membership to start with.
+                </p>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <button 
+                <button
                   onClick={() => setMemberType("joined")}
                   className={cn(
                     "flex flex-col items-center gap-4 p-6 rounded-[24px] border-2 transition-all text-center",
-                    memberType === "joined" 
-                      ? "bg-[hsl(var(--primary)/0.05)] border-[hsl(var(--primary))] shadow-xl" 
-                      : "bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--muted-foreground)/0.3)]"
+                    memberType === "joined"
+                      ? "bg-[hsl(var(--primary)/0.05)] border-[hsl(var(--primary))] shadow-xl"
+                      : "bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--muted-foreground)/0.3)]",
                   )}
                 >
-                  <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center transition-colors", memberType === "joined" ? "bg-[hsl(var(--primary))] text-white" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]")}>
+                  <div
+                    className={cn(
+                      "h-12 w-12 rounded-2xl flex items-center justify-center transition-colors",
+                      memberType === "joined"
+                        ? "bg-[hsl(var(--primary))] text-white"
+                        : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]",
+                    )}
+                  >
                     <Zap size={24} />
                   </div>
                   <div>
                     <p className="font-bold">Full Member</p>
-                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1 uppercase tracking-wider">Ready to trade</p>
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1 uppercase tracking-wider">
+                      Ready to trade
+                    </p>
                   </div>
                 </button>
-                <button 
+                <button
                   onClick={() => setMemberType("to-invite")}
                   className={cn(
                     "flex flex-col items-center gap-4 p-6 rounded-[24px] border-2 transition-all text-center",
-                    memberType === "to-invite" 
-                      ? "bg-[hsl(var(--primary)/0.05)] border-[hsl(var(--primary))] shadow-xl" 
-                      : "bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--muted-foreground)/0.3)]"
+                    memberType === "to-invite"
+                      ? "bg-[hsl(var(--primary)/0.05)] border-[hsl(var(--primary))] shadow-xl"
+                      : "bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--muted-foreground)/0.3)]",
                   )}
                 >
-                  <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center transition-colors", memberType === "to-invite" ? "bg-[hsl(var(--primary))] text-white" : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]")}>
+                  <div
+                    className={cn(
+                      "h-12 w-12 rounded-2xl flex items-center justify-center transition-colors",
+                      memberType === "to-invite"
+                        ? "bg-[hsl(var(--primary))] text-white"
+                        : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]",
+                    )}
+                  >
                     <User size={24} />
                   </div>
                   <div>
                     <p className="font-bold">Prospect</p>
-                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1 uppercase tracking-wider">In-discussion</p>
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1 uppercase tracking-wider">
+                      In-discussion
+                    </p>
                   </div>
                 </button>
               </div>
@@ -283,25 +336,25 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
           {step === "identity" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               <div className="grid grid-cols-2 gap-4">
-                <InputGroup 
-                  label="First Name" 
-                  value={formData.firstName} 
-                  onChange={v => setFormData(p => ({ ...p, firstName: v }))}
+                <InputGroup
+                  label="First Name"
+                  value={formData.firstName}
+                  onChange={(v) => setFormData((p) => ({ ...p, firstName: v }))}
                   onPaste={() => smartPaste("firstName")}
                 />
-                <InputGroup 
-                  label="Last Name" 
-                  value={formData.lastName} 
-                  onChange={v => setFormData(p => ({ ...p, lastName: v }))}
+                <InputGroup
+                  label="Last Name"
+                  value={formData.lastName}
+                  onChange={(v) => setFormData((p) => ({ ...p, lastName: v }))}
                   onPaste={() => smartPaste("lastName")}
                 />
               </div>
               <div>
-                <InputGroup 
-                  label="Birthday" 
-                  type="date" 
-                  value={formData.birthday} 
-                  onChange={v => setFormData(p => ({ ...p, birthday: v }))}
+                <InputGroup
+                  label="Birthday"
+                  type="date"
+                  value={formData.birthday}
+                  onChange={(v) => setFormData((p) => ({ ...p, birthday: v }))}
                   placeholder="(optional)"
                 />
                 {formData.birthday && calculateAge(formData.birthday) && (
@@ -311,15 +364,26 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                 )}
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] ml-1">Role Title</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] ml-1">
+                  Role Title
+                </label>
                 <div className="relative">
-                  <select 
-                    value={formData.role} 
-                    onChange={(e) => setFormData(p => ({ ...p, role: e.target.value as "admin" | "member" }))}
+                  <select
+                    value={
+                      adminContext?.canPromoteAdmins ? formData.role : "member"
+                    }
+                    onChange={(e) =>
+                      setFormData((p) => ({
+                        ...p,
+                        role: e.target.value as "admin" | "member",
+                      }))
+                    }
                     className="w-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-[18px] p-4 pr-10 text-sm font-semibold text-[hsl(var(--foreground))] outline-none appearance-none cursor-pointer focus:border-[hsl(var(--primary))] focus:ring-4 focus:ring-[hsl(var(--primary)/0.1)] transition-all"
                   >
                     <option value="member">Member</option>
-                    <option value="admin">Admin</option>
+                    {adminContext?.canPromoteAdmins && (
+                      <option value="admin">Admin</option>
+                    )}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[hsl(var(--muted-foreground))]">
                     <ChevronRight size={16} className="rotate-90" />
@@ -331,21 +395,23 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
 
           {step === "contact" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-              <InputGroup 
-                label="Email Address" 
-                type="email" 
+              <InputGroup
+                label="Email Address"
+                type="email"
                 icon={<Mail size={16} />}
-                value={formData.email} 
-                onChange={v => setFormData(p => ({ ...p, email: v }))}
+                value={formData.email}
+                onChange={(v) => setFormData((p) => ({ ...p, email: v }))}
                 onPaste={() => smartPaste("email")}
-                placeholder={memberType === "to-invite" ? "(optional)" : undefined}
+                placeholder={
+                  memberType === "to-invite" ? "(optional)" : undefined
+                }
               />
-              <InputGroup 
-                label="Phone Number" 
-                type="tel" 
+              <InputGroup
+                label="Phone Number"
+                type="tel"
                 icon={<Phone size={16} />}
-                value={formData.phone} 
-                onChange={v => setFormData(p => ({ ...p, phone: v }))}
+                value={formData.phone}
+                onChange={(v) => setFormData((p) => ({ ...p, phone: v }))}
                 onPaste={() => smartPaste("phone")}
                 placeholder="(optional)"
               />
@@ -355,35 +421,39 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
           {step === "platform" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               <div className="grid grid-cols-2 gap-4">
-                <InputGroup 
-                  label="Bonchat ID" 
+                <InputGroup
+                  label="Bonchat ID"
                   icon={<Globe size={16} />}
-                  value={formData.bonchatId} 
-                  onChange={v => setFormData(p => ({ ...p, bonchatId: v }))}
+                  value={formData.bonchatId}
+                  onChange={(v) => setFormData((p) => ({ ...p, bonchatId: v }))}
                   onPaste={() => smartPaste("bonchatId")}
                   placeholder="(optional)"
                 />
-                <InputGroup 
-                  label="Bonchat Username" 
-                  value={formData.bonchatUsername} 
-                  onChange={v => setFormData(p => ({ ...p, bonchatUsername: v }))}
+                <InputGroup
+                  label="Bonchat Username"
+                  value={formData.bonchatUsername}
+                  onChange={(v) =>
+                    setFormData((p) => ({ ...p, bonchatUsername: v }))
+                  }
                   onPaste={() => smartPaste("bonchatUsername")}
                   placeholder="(optional)"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <InputGroup 
-                  label="Yepbit ID" 
+                <InputGroup
+                  label="Yepbit ID"
                   icon={<Globe size={16} />}
-                  value={formData.yepbitId} 
-                  onChange={v => setFormData(p => ({ ...p, yepbitId: v }))}
+                  value={formData.yepbitId}
+                  onChange={(v) => setFormData((p) => ({ ...p, yepbitId: v }))}
                   onPaste={() => smartPaste("yepbitId")}
                   placeholder="(optional)"
                 />
-                <InputGroup 
-                  label="Yepbit Username" 
-                  value={formData.yepbitUsername} 
-                  onChange={v => setFormData(p => ({ ...p, yepbitUsername: v }))}
+                <InputGroup
+                  label="Yepbit Username"
+                  value={formData.yepbitUsername}
+                  onChange={(v) =>
+                    setFormData((p) => ({ ...p, yepbitUsername: v }))
+                  }
                   onPaste={() => smartPaste("yepbitUsername")}
                   placeholder="(optional)"
                 />
@@ -394,34 +464,36 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
           {step === "location" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               <div className="grid grid-cols-2 gap-4">
-                <InputGroup 
-                  label="City" 
-                  value={formData.city} 
-                  onChange={v => setFormData(p => ({ ...p, city: v }))}
+                <InputGroup
+                  label="City"
+                  value={formData.city}
+                  onChange={(v) => setFormData((p) => ({ ...p, city: v }))}
                   onPaste={() => smartPaste("city")}
                   placeholder="(optional)"
                 />
-                <InputGroup 
-                  label="Province / State" 
-                  value={formData.province} 
-                  onChange={v => setFormData(p => ({ ...p, province: v }))}
+                <InputGroup
+                  label="Province / State"
+                  value={formData.province}
+                  onChange={(v) => setFormData((p) => ({ ...p, province: v }))}
                   onPaste={() => smartPaste("province")}
                   placeholder="(optional)"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <InputGroup 
-                  label="Country" 
-                  value={formData.country} 
-                  onChange={v => setFormData(p => ({ ...p, country: v }))}
+                <InputGroup
+                  label="Country"
+                  value={formData.country}
+                  onChange={(v) => setFormData((p) => ({ ...p, country: v }))}
                   onPaste={() => smartPaste("country")}
                   placeholder="(optional)"
                 />
               </div>
-              <InputGroup 
-                label="Location Address" 
-                value={formData.locationAddress} 
-                onChange={v => setFormData(p => ({ ...p, locationAddress: v }))}
+              <InputGroup
+                label="Location Address"
+                value={formData.locationAddress}
+                onChange={(v) =>
+                  setFormData((p) => ({ ...p, locationAddress: v }))
+                }
                 onPaste={() => smartPaste("locationAddress")}
                 placeholder="Full address (optional)"
               />
@@ -429,23 +501,32 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
               <div className="pt-2">
                 <button
                   onClick={async () => {
-                    const query = [formData.locationAddress, formData.city, formData.province, formData.country]
+                    const query = [
+                      formData.locationAddress,
+                      formData.city,
+                      formData.province,
+                      formData.country,
+                    ]
                       .filter(Boolean)
                       .join(", ");
                     if (!query) {
-                      toast.error("Please enter some location details to geocode");
+                      toast.error(
+                        "Please enter some location details to geocode",
+                      );
                       return;
                     }
-                    
+
                     setIsGeocoding(true);
                     try {
-                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                      const res = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`,
+                      );
                       const data = await res.json();
                       if (data && data.length > 0) {
-                        setFormData(p => ({
+                        setFormData((p) => ({
                           ...p,
                           latitude: parseFloat(data[0].lat),
-                          longitude: parseFloat(data[0].lon)
+                          longitude: parseFloat(data[0].lon),
                         }));
                         toast.success("Location resolved successfully!");
                       } else {
@@ -467,11 +548,14 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                   ) : (
                     <MapPin size={16} />
                   )}
-                  {formData.latitude ? "Coordinates Resolved" : "Resolve Coordinates"}
+                  {formData.latitude
+                    ? "Coordinates Resolved"
+                    : "Resolve Coordinates"}
                 </button>
                 {formData.latitude && (
                   <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-2 font-mono">
-                    Lat: {formData.latitude.toFixed(4)}, Lng: {formData.longitude?.toFixed(4)}
+                    Lat: {formData.latitude.toFixed(4)}, Lng:{" "}
+                    {formData.longitude?.toFixed(4)}
                   </p>
                 )}
               </div>
@@ -481,17 +565,19 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
           {step === "work" && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               {memberType === "joined" && (
-                <InputGroup 
+                <InputGroup
                   label="Investment Start Date *"
                   type="date"
-                  value={formData.investmentStartedAt} 
-                  onChange={v => setFormData(p => ({ ...p, investmentStartedAt: v }))}
+                  value={formData.investmentStartedAt}
+                  onChange={(v) =>
+                    setFormData((p) => ({ ...p, investmentStartedAt: v }))
+                  }
                 />
               )}
-              <InputGroup 
-                label="Work Occupation" 
-                value={formData.currentWork} 
-                onChange={v => setFormData(p => ({ ...p, currentWork: v }))}
+              <InputGroup
+                label="Work Occupation"
+                value={formData.currentWork}
+                onChange={(v) => setFormData((p) => ({ ...p, currentWork: v }))}
                 onPaste={() => smartPaste("currentWork")}
                 placeholder="(optional)"
               />
@@ -504,31 +590,61 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                 <SummaryItem label="First Name" value={formData.firstName} />
                 <SummaryItem label="Last Name" value={formData.lastName} />
                 <SummaryItem label="Birthday" value={formData.birthday} />
-                <SummaryItem label="Role Title" value={formData.role === "admin" ? "Admin" : "Member"} />
+                <SummaryItem
+                  label="Role Title"
+                  value={
+                    adminContext?.canPromoteAdmins && formData.role === "admin"
+                      ? "Admin"
+                      : "Member"
+                  }
+                />
                 <SummaryItem label="Email" value={formData.email} />
                 <SummaryItem label="Phone" value={formData.phone} />
                 {memberType === "joined" && (
                   <>
-                    <SummaryItem label="Bonchat ID" value={formData.bonchatId} />
-                    <SummaryItem label="Bonchat Username" value={formData.bonchatUsername} />
+                    <SummaryItem
+                      label="Bonchat ID"
+                      value={formData.bonchatId}
+                    />
+                    <SummaryItem
+                      label="Bonchat Username"
+                      value={formData.bonchatUsername}
+                    />
                     <SummaryItem label="Yepbit ID" value={formData.yepbitId} />
-                    <SummaryItem label="Yepbit Username" value={formData.yepbitUsername} />
+                    <SummaryItem
+                      label="Yepbit Username"
+                      value={formData.yepbitUsername}
+                    />
                   </>
                 )}
-                <SummaryItem label="Work Occupation" value={formData.currentWork} />
+                <SummaryItem
+                  label="Work Occupation"
+                  value={formData.currentWork}
+                />
                 <SummaryItem label="City" value={formData.city} />
                 <SummaryItem label="Province" value={formData.province} />
                 <SummaryItem label="Country" value={formData.country} />
-                <SummaryItem label="Location Address" value={formData.locationAddress} />
+                <SummaryItem
+                  label="Location Address"
+                  value={formData.locationAddress}
+                />
                 {memberType === "joined" && (
-                  <SummaryItem label="Investment Start Date" value={formData.investmentStartedAt} />
+                  <SummaryItem
+                    label="Investment Start Date"
+                    value={formData.investmentStartedAt}
+                  />
                 )}
               </div>
 
               {memberType === "joined" && (
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold flex flex-col gap-1 leading-relaxed">
-                  <span className="font-bold uppercase tracking-wider text-[10px]">Credentials Notice</span>
-                  <span>Manual email send of credentials generated is not done yet. Please note down credentials on the next screen.</span>
+                  <span className="font-bold uppercase tracking-wider text-[10px]">
+                    Credentials Notice
+                  </span>
+                  <span>
+                    Manual email send of credentials generated is not done yet.
+                    Please note down credentials on the next screen.
+                  </span>
                 </div>
               )}
             </div>
@@ -540,7 +656,9 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
                 <Check size={32} />
               </div>
               <h4 className="text-2xl font-bold">Welcome Aboard!</h4>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Member has been added to the network.</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                Member has been added to the network.
+              </p>
             </div>
           )}
         </div>
@@ -607,25 +725,25 @@ export function AddMemberStepper({ parentId, isOpen, onClose, onSuccess }: AddMe
           onSuccess?.();
         }}
         onSendEmail={async () => {
-          await new Promise(r => setTimeout(r, 1500)); // Stub for api.email.sendEmail
+          await new Promise((r) => setTimeout(r, 1500)); // Stub for api.email.sendEmail
         }}
       />
     </div>
   );
 }
 
-function InputGroup({ 
-  label, 
-  value, 
-  onChange, 
-  type = "text", 
+function InputGroup({
+  label,
+  value,
+  onChange,
+  type = "text",
   icon,
   onPaste,
-  placeholder
-}: { 
-  label: string; 
-  value: string; 
-  onChange: (v: string) => void; 
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
   type?: string;
   icon?: React.ReactNode;
   onPaste?: () => void;
@@ -634,9 +752,11 @@ function InputGroup({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] ml-1">{label}</label>
+        <label className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] ml-1">
+          {label}
+        </label>
         {onPaste && (
-          <button 
+          <button
             onClick={onPaste}
             className="text-[10px] font-bold text-[hsl(var(--primary))] hover:underline"
           >
@@ -645,15 +765,19 @@ function InputGroup({
         )}
       </div>
       <div className="relative">
-        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">{icon}</div>}
-        <input 
+        {icon && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+            {icon}
+          </div>
+        )}
+        <input
           type={type}
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
             "w-full rounded-[18px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-3.5 pr-4 text-sm font-semibold outline-none transition-all focus:border-[hsl(var(--primary))] focus:ring-4 focus:ring-[hsl(var(--primary)/0.1)] placeholder:italic placeholder:text-[hsl(var(--muted-foreground)/0.5)]",
-            icon ? "pl-11" : "pl-4"
+            icon ? "pl-11" : "pl-4",
           )}
         />
       </div>
@@ -664,8 +788,12 @@ function InputGroup({
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[hsl(var(--muted)/0.15)] p-3.5 rounded-xl border border-[hsl(var(--border))]">
-      <span className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">{label}</span>
-      <span className="text-xs font-bold text-[hsl(var(--foreground))]">{value || "—"}</span>
+      <span className="text-[9px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] block mb-1">
+        {label}
+      </span>
+      <span className="text-xs font-bold text-[hsl(var(--foreground))]">
+        {value || "—"}
+      </span>
     </div>
   );
 }

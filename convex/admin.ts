@@ -3,8 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { action, internalMutation, mutation, query } from "./_generated/server";
-
-const ROOT_ADMIN_EMAIL = "admin@luxurious.trade";
+import { getUserAdminLevel, ROOT_ADMIN_EMAIL } from "./orgAccess";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -17,7 +16,7 @@ function assertValidEmail(email: string) {
 }
 
 function isRootOrAdmin(user: { email?: string; role?: string } | null) {
-  return user?.email === ROOT_ADMIN_EMAIL || user?.role === "admin";
+  return getUserAdminLevel(user) >= 1;
 }
 
 type UpdateUserEmailResult = {
@@ -37,6 +36,25 @@ export const isAdmin = query({
     if (!userId) return false;
     const user = await ctx.db.get("users", userId);
     return isRootOrAdmin(user);
+  },
+});
+
+export const getAdminContext = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return { isAdmin: false, adminLevel: 0 as const };
+    }
+    const user = await ctx.db.get("users", userId);
+    const adminLevel = getUserAdminLevel(user);
+    return {
+      isAdmin: adminLevel >= 1,
+      adminLevel,
+      canPromoteAdmins: adminLevel >= 2,
+      canManageAnyVisibleMember: adminLevel >= 2,
+      canManageCapacity: adminLevel >= 2,
+    };
   },
 });
 
@@ -232,10 +250,14 @@ export const updateUserEmailInternal = internalMutation({
     }
 
     for (const memberId of patchedMemberIds) {
-      await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
-        table: "networkMembers",
-        sourceId: memberId,
-      });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.aiDbEmbeddingActions.embedRecord,
+        {
+          table: "networkMembers",
+          sourceId: memberId,
+        },
+      );
     }
 
     return {
@@ -250,20 +272,52 @@ export const updateUserEmailInternal = internalMutation({
   },
 });
 
-
 export const setAdminStatus = mutation({
   args: { userId: v.id("users"), status: v.boolean() },
   handler: async (ctx, args) => {
     const currentUserId = await getAuthUserId(ctx);
     if (!currentUserId) throw new Error("Not authenticated");
     const currentUser = await ctx.db.get("users", currentUserId);
-    
-    // Only existing admins can promote others
-    if (!isRootOrAdmin(currentUser)) {
+
+    if (getUserAdminLevel(currentUser) < 2) {
       throw new Error("Unauthorized");
     }
 
-    await ctx.db.patch("users", args.userId, { role: args.status ? "admin" : "member" });
+    await ctx.db.patch("users", args.userId, {
+      role: args.status ? "admin" : "member",
+      adminLevel: args.status ? 1 : 0,
+      adminAssignedBy: currentUserId,
+      adminAssignedAt: Date.now(),
+    });
+  },
+});
+
+export const setAdminLevel = mutation({
+  args: {
+    userId: v.id("users"),
+    adminLevel: v.union(v.literal(0), v.literal(1), v.literal(2)),
+  },
+  handler: async (ctx, args) => {
+    const currentUserId = await getAuthUserId(ctx);
+    if (!currentUserId) throw new Error("Not authenticated");
+    const currentUser = await ctx.db.get("users", currentUserId);
+    if (getUserAdminLevel(currentUser) < 2) {
+      throw new Error("Level 2 admin required.");
+    }
+    const target = await ctx.db.get("users", args.userId);
+    if (!target) {
+      throw new Error("User not found.");
+    }
+    if (target.email === ROOT_ADMIN_EMAIL && args.adminLevel < 2) {
+      throw new Error("Root admin cannot be demoted.");
+    }
+
+    await ctx.db.patch("users", args.userId, {
+      role: args.adminLevel > 0 ? "admin" : "member",
+      adminLevel: args.adminLevel,
+      adminAssignedBy: currentUserId,
+      adminAssignedAt: Date.now(),
+    });
   },
 });
 
@@ -277,8 +331,8 @@ export const getPlatformStats = query({
 
     const totalTrades = await ctx.db.query("trades").collect();
     const totalUsers = await ctx.db.query("users").collect();
-    const openPositions = totalTrades.filter(t => t.status === "open").length;
-    
+    const openPositions = totalTrades.filter((t) => t.status === "open").length;
+
     return {
       userCount: totalUsers.length,
       tradeCount: totalTrades.length,
@@ -298,9 +352,9 @@ export const getUsers = query({
     const users = await ctx.db.query("users").collect();
     const wallets = await ctx.db.query("wallets").collect();
 
-    return users.map(u => ({
+    return users.map((u) => ({
       ...u,
-      balance: wallets.find(w => w.userId === u._id)?.balance ?? 0,
+      balance: wallets.find((w) => w.userId === u._id)?.balance ?? 0,
     }));
   },
 });
@@ -323,7 +377,10 @@ export const resetBalance = mutation({
     if (wallet) {
       await ctx.db.patch("wallets", wallet._id, { balance: args.amount });
     } else {
-      await ctx.db.insert("wallets", { userId: args.userId, balance: args.amount });
+      await ctx.db.insert("wallets", {
+        userId: args.userId,
+        balance: args.amount,
+      });
     }
   },
 });
@@ -339,12 +396,15 @@ export const getAllTrades = query({
     const trades = await ctx.db.query("trades").order("desc").collect();
     const users = await ctx.db.query("users").collect();
 
-    return trades.map(t => {
-      const user = users.find(u => u._id === t.userId);
+    return trades.map((t) => {
+      const user = users.find((u) => u._id === t.userId);
       // Simple mock P/L for display
-      const pnl = t.status === "closed" 
-        ? ((t.exitPrice ?? 0) - t.entryPrice) * (t.side === "long" ? 1 : -1) * (t.amount / t.entryPrice)
-        : (Math.random() - 0.5) * 200; // Floating mock
+      const pnl =
+        t.status === "closed"
+          ? ((t.exitPrice ?? 0) - t.entryPrice) *
+            (t.side === "long" ? 1 : -1) *
+            (t.amount / t.entryPrice)
+          : (Math.random() - 0.5) * 200; // Floating mock
 
       return {
         ...t,

@@ -17,7 +17,15 @@ import {
 import {
   getMobileProfileByUserId,
   getMobileProfileForViewerOrThrow,
+  listUnifiedNetworkMembers,
 } from "./mobileHelpers";
+import {
+  canAddUnderParent,
+  canManageMember,
+  getEffectiveDirectLimit,
+  getUserAdminLevel,
+  resolveOwnedByUserId,
+} from "./orgAccess";
 
 const addMemberArgs = {
   type: v.union(v.literal("joined"), v.literal("to-invite")),
@@ -85,6 +93,22 @@ type UpdateMemberEmailResult = {
   invalidatedSessionCount: number;
 };
 
+function buildParentLookup(
+  members: Array<{
+    _id: Id<"networkMembers">;
+    parentMemberId?: Id<"networkMembers"> | null;
+  }>,
+) {
+  const parentLookup = new Map<Id<"networkMembers"> | "root", typeof members>();
+  for (const member of members) {
+    const parentKey = member.parentMemberId ?? "root";
+    const list = parentLookup.get(parentKey) ?? [];
+    list.push(member);
+    parentLookup.set(parentKey, list);
+  }
+  return parentLookup;
+}
+
 export const updateSocialIds = mutation({
   args: {
     memberId: v.id("networkMembers"),
@@ -96,7 +120,7 @@ export const updateSocialIds = mutation({
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
 
-    const member = await ctx.db.get(args.memberId);
+    const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) throw new Error("Member not found");
 
     if (member.profileId !== profile._id) {
@@ -104,7 +128,7 @@ export const updateSocialIds = mutation({
     }
 
     const { memberId, ...updates } = args;
-    await ctx.db.patch(memberId, {
+    await ctx.db.patch("networkMembers", memberId, {
       ...updates,
       updatedAt: Date.now(),
     });
@@ -122,20 +146,29 @@ export const createMemberRecord = internalMutation({
     ...addMemberArgs,
   },
   handler: async (ctx, args) => {
-    const profile = await getMobileProfileByUserId(ctx, args.viewerUserId);
-    if (!profile) {
+    const viewerProfile = await getMobileProfileByUserId(
+      ctx,
+      args.viewerUserId,
+    );
+    if (!viewerProfile) {
       throw new Error("Mobile profile missing. Call mobile:bootstrap first.");
     }
 
     const parent = await ctx.db.get("networkMembers", args.parentId);
-    if (!parent || parent.profileId !== profile._id) {
+    if (!parent) {
       throw new Error("Parent node not found");
+    }
+    const targetProfile = await ctx.db.get("mobileProfiles", parent.profileId);
+    if (!targetProfile) {
+      throw new Error("Parent profile missing.");
     }
 
     const existingChildren = await ctx.db
       .query("networkMembers")
       .withIndex("by_profileId_and_parentMemberId", (q) =>
-        q.eq("profileId", profile._id).eq("parentMemberId", args.parentId),
+        q
+          .eq("profileId", targetProfile._id)
+          .eq("parentMemberId", args.parentId),
       )
       .take(1000);
 
@@ -143,12 +176,15 @@ export const createMemberRecord = internalMutation({
     const name = buildMemberName(args);
 
     const memberRole = args.role ?? "member";
-    const defaultRoleTitle = args.type === "joined" 
-      ? (memberRole === "admin" ? "Admin Lead" : "Active Member")
-      : "Prospect";
+    const defaultRoleTitle =
+      args.type === "joined"
+        ? memberRole === "admin"
+          ? "Admin Lead"
+          : "Active Member"
+        : "Prospect";
 
     const memberId = await ctx.db.insert("networkMembers", {
-      profileId: profile._id,
+      profileId: targetProfile._id,
       userId: args.authUserId,
       parentMemberId: args.parentId,
       firstName: args.firstName.trim(),
@@ -175,6 +211,8 @@ export const createMemberRecord = internalMutation({
       locationAddress: args.locationAddress?.trim() || undefined,
       latitude: args.latitude,
       longitude: args.longitude,
+      createdByUserId: args.viewerUserId,
+      ownedByUserId: resolveOwnedByUserId(args.viewerUserId, parent),
       createdAt: now,
       updatedAt: now,
     });
@@ -184,14 +222,14 @@ export const createMemberRecord = internalMutation({
     });
 
     if (args.authUserId) {
-      const authUser = await ctx.db.get(args.authUserId);
+      const authUser = await ctx.db.get("users", args.authUserId);
       if (!authUser) {
         throw new Error("Created auth user missing.");
       }
 
-      await ctx.db.patch(authUser._id, {
+      await ctx.db.patch("users", authUser._id, {
         role: memberRole,
-        uplineId: args.viewerUserId,
+        uplineId: parent.userId ?? args.viewerUserId,
         lastUplineId: authUser.uplineId ?? null,
       });
 
@@ -234,12 +272,30 @@ export const validateAddMemberTarget = internalQuery({
       throw new Error("Mobile profile missing. Call mobile:bootstrap first.");
     }
 
-    const parent = await ctx.db.get("networkMembers", args.parentId);
-    if (!parent || parent.profileId !== profile._id) {
+    const viewer = await ctx.db.get("users", args.viewerUserId);
+    if (!viewer) {
+      throw new Error("Viewer not found.");
+    }
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const parent = members.find((entry) => entry._id === args.parentId) ?? null;
+    if (!parent) {
       throw new Error("Parent node not found");
     }
+    if (parent.status !== "joined") {
+      throw new Error("Parent must be joined.");
+    }
+    const adminLevel = getUserAdminLevel(viewer);
+    if (!canAddUnderParent(viewer, profile, parent, adminLevel)) {
+      throw new Error("You cannot add downlines under this member.");
+    }
+    const parentLookup = buildParentLookup(members);
+    const currentChildren = parentLookup.get(parent._id) ?? [];
+    const limit = getEffectiveDirectLimit(parent, currentChildren.length);
+    if (currentChildren.length >= limit) {
+      throw new Error(`Parent already has ${limit} direct downlines.`);
+    }
 
-    return { profileId: profile._id };
+    return { profileId: profile._id, canPromoteAdmins: adminLevel >= 2 };
   },
 });
 
@@ -278,10 +334,14 @@ export const addMember = action({
       throw new Error("Email required for joined member.");
     }
 
-    await ctx.runQuery(internal.networkMembers.validateAddMemberTarget, {
+    const targetValidation: {
+      profileId: Id<"mobileProfiles">;
+      canPromoteAdmins: boolean;
+    } = await ctx.runQuery(internal.networkMembers.validateAddMemberTarget, {
       viewerUserId,
       parentId: args.parentId,
     });
+    const memberRole = targetValidation.canPromoteAdmins ? args.role : "member";
 
     let authUserId: Id<"users"> | undefined;
     let credentials: { username: string; password: string } | null = null;
@@ -307,7 +367,7 @@ export const addMember = action({
           name: buildMemberName(args),
           email,
           phone: args.phone?.trim() || undefined,
-          role: args.role ?? "member",
+          role: memberRole,
         },
         shouldLinkViaEmail: false,
       });
@@ -324,6 +384,7 @@ export const addMember = action({
         viewerUserId,
         authUserId,
         ...args,
+        role: memberRole,
       },
     );
 
@@ -404,17 +465,17 @@ export const getMemberAuthInfo = internalQuery({
     memberId: v.id("networkMembers"),
   },
   handler: async (ctx, args) => {
-    const viewer = await ctx.db.get(args.viewerUserId);
+    const viewer = await ctx.db.get("users", args.viewerUserId);
     if (!viewer) throw new Error("Viewer not found.");
-    if (viewer.email !== "admin@luxurious.trade" && viewer.role !== "admin") {
+    if (getUserAdminLevel(viewer) < 1) {
       throw new Error("Admin access required.");
     }
 
-    const member = await ctx.db.get(args.memberId);
+    const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) throw new Error("Member not found.");
     if (!member.userId) throw new Error("Member has no linked account.");
 
-    const user = await ctx.db.get(member.userId);
+    const user = await ctx.db.get("users", member.userId);
     if (!user) throw new Error("Linked user not found.");
     if (!user.email) throw new Error("User has no email on record.");
 
@@ -434,10 +495,18 @@ export const getMemberDetailsForJoin = internalQuery({
   handler: async (ctx, args) => {
     const profile = await getMobileProfileByUserId(ctx, args.viewerUserId);
     if (!profile) throw new Error("Viewer mobile profile not found");
+    const viewer = await ctx.db.get("users", args.viewerUserId);
+    if (!viewer) throw new Error("Viewer not found");
 
-    const member = await ctx.db.get(args.memberId);
+    const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) throw new Error("Member not found");
-    if (member.profileId !== profile._id) throw new Error("Unauthorized access");
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const visibleMember =
+      members.find((entry) => entry._id === args.memberId) ?? null;
+    if (!visibleMember) throw new Error("Unauthorized access");
+    if (!canManageMember(viewer, profile, visibleMember)) {
+      throw new Error("You can only manage members you own or created.");
+    }
     if (member.userId) throw new Error("Member is already joined");
 
     return {
@@ -466,11 +535,11 @@ export const completeMemberJoin = internalMutation({
     yepbitUsername: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const member = await ctx.db.get(args.memberId);
+    const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) throw new Error("Member not found");
 
     const now = Date.now();
-    await ctx.db.patch(args.memberId, {
+    await ctx.db.patch("networkMembers", args.memberId, {
       userId: args.authUserId,
       status: "joined",
       email: args.email,
@@ -483,11 +552,14 @@ export const completeMemberJoin = internalMutation({
       sourceId: args.memberId,
     });
 
-    const authUser = await ctx.db.get(args.authUserId);
+    const authUser = await ctx.db.get("users", args.authUserId);
     if (authUser) {
-      await ctx.db.patch(args.authUserId, {
+      const parent = member.parentMemberId
+        ? await ctx.db.get("networkMembers", member.parentMemberId)
+        : null;
+      await ctx.db.patch("users", args.authUserId, {
         role: "member",
-        uplineId: args.viewerUserId,
+        uplineId: parent?.userId ?? member.ownedByUserId ?? args.viewerUserId,
         lastUplineId: authUser.uplineId ?? null,
       });
 
@@ -608,13 +680,22 @@ export const updateMemberStatus = mutation({
   },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    const member = await ctx.db.get(args.memberId);
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    if (!viewer) throw new Error("Viewer not found");
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member = members.find((entry) => entry._id === args.memberId) ?? null;
     if (!member) throw new Error("Member not found");
-    if (member.profileId !== profile._id) throw new Error("Unauthorized");
+    if (!canManageMember(viewer, profile, member)) {
+      throw new Error("You can only manage members you own or created.");
+    }
 
     // If status is joined but no userId is set, client must call joinExistingMember action instead!
     if (args.status === "joined" && !member.userId) {
-      throw new Error("Cannot change status to joined without creating auth credentials. Use joinExistingMember action.");
+      throw new Error(
+        "Cannot change status to joined without creating auth credentials. Use joinExistingMember action.",
+      );
     }
 
     const updates: any = {
@@ -631,7 +712,7 @@ export const updateMemberStatus = mutation({
       updates.roleTitle = "Prospect";
     }
 
-    await ctx.db.patch(args.memberId, updates);
+    await ctx.db.patch("networkMembers", args.memberId, updates);
     await ctx.scheduler.runAfter(0, internal.aiDbEmbeddingActions.embedRecord, {
       table: "networkMembers",
       sourceId: args.memberId,
@@ -645,15 +726,19 @@ export const updateMemberInvestmentDate = mutation({
     investmentStartedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await getMobileProfileForViewerOrThrow(ctx);
-    const member = await ctx.db.get(args.memberId);
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    if (!viewer) throw new Error("Viewer not found");
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member = members.find((entry) => entry._id === args.memberId) ?? null;
     if (!member) throw new Error("Member not found");
-    
-    // Allow if it's in the same profile, or if we are editing a downline from the unified tree
-    // The client only sends valid member IDs they can see in their tree.
-    // If needed, more strict descendant validation could be added here.
-    
-    await ctx.db.patch(args.memberId, {
+    if (!canManageMember(viewer, profile, member)) {
+      throw new Error("You can only manage members you own or created.");
+    }
+
+    await ctx.db.patch("networkMembers", args.memberId, {
       investmentStartedAt: args.investmentStartedAt,
       updatedAt: Date.now(),
     });
@@ -675,11 +760,19 @@ export const updateMemberLocation = mutation({
     longitude: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await getMobileProfileForViewerOrThrow(ctx);
-    const member = await ctx.db.get(args.memberId);
+    const profile = await getMobileProfileForViewerOrThrow(ctx);
+    const viewer = profile.userId
+      ? await ctx.db.get("users", profile.userId)
+      : null;
+    if (!viewer) throw new Error("Viewer not found");
+    const members = await listUnifiedNetworkMembers(ctx, profile._id);
+    const member = members.find((entry) => entry._id === args.memberId) ?? null;
     if (!member) throw new Error("Member not found");
-    
-    await ctx.db.patch(args.memberId, {
+    if (!canManageMember(viewer, profile, member)) {
+      throw new Error("You can only manage members you own or created.");
+    }
+
+    await ctx.db.patch("networkMembers", args.memberId, {
       city: args.city,
       province: args.province,
       country: args.country,
@@ -699,15 +792,20 @@ export const getAnalyticsStats = query({
   args: { rootMemberId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await getMobileProfileForViewerOrThrow(ctx);
-    
+
     // Fetch all members for the profile
     const members = await ctx.db
       .query("networkMembers")
-      .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profile._id))
+      .withIndex("by_profileId_and_sortOrder", (q) =>
+        q.eq("profileId", profile._id),
+      )
       .collect();
 
     const allAssets = await ctx.db.query("memberAssets").collect();
-    const latestAssetByMember = new Map<string, { value: number; currency: string }>();
+    const latestAssetByMember = new Map<
+      string,
+      { value: number; currency: string }
+    >();
     for (const asset of allAssets) {
       const existing = latestAssetByMember.get(asset.memberId);
       if (!existing || asset.createdAt > (existing as any).createdAt) {
@@ -723,7 +821,7 @@ export const getAnalyticsStats = query({
     if (args.rootMemberId) {
       const rootId = args.rootMemberId;
       const descendants = new Set<string>([rootId]);
-      
+
       const parentToChildren = new Map<string, string[]>();
       for (const m of members) {
         if (m.parentMemberId) {
@@ -747,7 +845,7 @@ export const getAnalyticsStats = query({
         }
       }
 
-      filteredMembers = members.filter(m => descendants.has(m._id));
+      filteredMembers = members.filter((m) => descendants.has(m._id));
     }
 
     const joinsByDate: Record<string, number> = {};
@@ -758,19 +856,19 @@ export const getAnalyticsStats = query({
     for (const member of filteredMembers) {
       if (member.joinedAt) {
         const d = new Date(member.joinedAt);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         joinsByDate[key] = (joinsByDate[key] || 0) + 1;
       }
       if (member.investmentStartedAt) {
         const d = new Date(member.investmentStartedAt);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         investmentsByDate[key] = (investmentsByDate[key] || 0) + 1;
       }
-      
-      const status = member.status || 'unknown';
+
+      const status = member.status || "unknown";
       statusDistribution[status] = (statusDistribution[status] || 0) + 1;
-      
-      const role = member.roleTitle || 'Prospect';
+
+      const role = member.roleTitle || "Prospect";
       roleDistribution[role] = (roleDistribution[role] || 0) + 1;
     }
 
@@ -780,7 +878,7 @@ export const getAnalyticsStats = query({
       investmentsByDate,
       statusDistribution,
       roleDistribution,
-      members: filteredMembers.map(m => ({
+      members: filteredMembers.map((m) => ({
         id: m._id,
         name: m.name,
         roleTitle: m.roleTitle,

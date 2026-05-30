@@ -94,7 +94,20 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Other: "#94a3b8",
 };
 
-const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const DEFAULT_ACCOUNTS: AccountSeed[] = [
   {
@@ -126,7 +139,12 @@ const DEFAULT_ACCOUNTS: AccountSeed[] = [
 const DEFAULT_BUDGETS: BudgetSeed[] = [
   { category: "Dining Out", limitAmount: 600, color: "#f59e0b", sortOrder: 0 },
   { category: "Groceries", limitAmount: 1000, color: "#22c55e", sortOrder: 1 },
-  { category: "Entertainment", limitAmount: 150, color: "#3b82f6", sortOrder: 2 },
+  {
+    category: "Entertainment",
+    limitAmount: 150,
+    color: "#3b82f6",
+    sortOrder: 2,
+  },
   { category: "Shopping", limitAmount: 500, color: "#ef4444", sortOrder: 3 },
 ];
 
@@ -348,12 +366,14 @@ const DEFAULT_TRANSACTIONS: TransactionSeed[] = [
   },
 ];
 
-export async function requireMobileViewer(ctx: MobileCtx): Promise<MobileViewer> {
+export async function requireMobileViewer(
+  ctx: MobileCtx,
+): Promise<MobileViewer> {
   const userId = await getAuthUserId(ctx);
   if (!userId) {
     throw new Error("Not authenticated");
   }
-  const user = await ctx.db.get(userId);
+  const user = await ctx.db.get("users", userId);
   if (!user) {
     throw new Error("Authenticated user missing.");
   }
@@ -391,7 +411,7 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
 
   if (existing) {
     const storedDisplayName = existing.displayName.trim();
-    await ctx.db.patch(existing._id, {
+    await ctx.db.patch("mobileProfiles", existing._id, {
       userId: viewer._id,
       viewerKey: `auth_${viewer._id}`,
       displayName:
@@ -404,11 +424,14 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
       avatarScale: existing.avatarScale ?? 1,
       updatedAt: now,
     });
-    const existingMembers = await listNetworkMembersForProfile(ctx, existing._id);
+    const existingMembers = await listNetworkMembersForProfile(
+      ctx,
+      existing._id,
+    );
     if (existingMembers.length === 0) {
       await syncNetworkMembersForViewer(ctx, existing._id, viewer, now);
     }
-    return await ctx.db.get(existing._id);
+    return await ctx.db.get("mobileProfiles", existing._id);
   }
 
   const profileId = await ctx.db.insert("mobileProfiles", {
@@ -487,7 +510,7 @@ export async function ensureMobileProfileForViewer(ctx: MutationCtx) {
     });
   }
 
-  return await ctx.db.get(profileId);
+  return await ctx.db.get("mobileProfiles", profileId);
 }
 
 export async function listNetworkMembersForProfile(
@@ -496,7 +519,9 @@ export async function listNetworkMembersForProfile(
 ) {
   return await ctx.db
     .query("networkMembers")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profileId))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profileId),
+    )
     .take(64);
 }
 
@@ -507,13 +532,17 @@ export async function listUnifiedNetworkMembers(
   const profile = await ctx.db.get("mobileProfiles", profileId);
   const primaryMembers = await ctx.db
     .query("networkMembers")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profileId))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profileId),
+    )
     .collect();
 
-  const primaryViewer = primaryMembers.find((member) => member.isViewer) ?? null;
-  const canonicalMembers = profile?.userId && primaryViewer
-    ? await listCanonicalDownlineMembers(ctx, profile, primaryViewer)
-    : [];
+  const primaryViewer =
+    primaryMembers.find((member) => member.isViewer) ?? null;
+  const canonicalMembers =
+    profile?.userId && primaryViewer
+      ? await listCanonicalDownlineMembers(ctx, profile, primaryViewer)
+      : [];
   const allMembers: Doc<"networkMembers">[] =
     canonicalMembers.length > 0 && primaryViewer
       ? [primaryViewer, ...canonicalMembers]
@@ -521,7 +550,7 @@ export async function listUnifiedNetworkMembers(
   const processedUserIds = new Set<string>();
   const profileQueue = [{ profileId, members: allMembers }];
   const userIdToParentMemberId = new Map<Id<"users">, Id<"networkMembers">>();
-  
+
   for (const m of allMembers) {
     if (m.userId && !m.isViewer) {
       userIdToParentMemberId.set(m.userId, m._id);
@@ -546,7 +575,9 @@ export async function listUnifiedNetworkMembers(
         for (const linkedProfile of linkedProfiles) {
           const childMembers = await ctx.db
             .query("networkMembers")
-            .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", linkedProfile._id))
+            .withIndex("by_profileId_and_sortOrder", (q) =>
+              q.eq("profileId", linkedProfile._id),
+            )
             .collect();
 
           if (childMembers.length === 0) {
@@ -558,16 +589,18 @@ export async function listUnifiedNetworkMembers(
             continue;
           }
 
-          const parentMemberIdInParentTree = userIdToParentMemberId.get(linkedUserId) || member._id;
+          const parentMemberIdInParentTree =
+            userIdToParentMemberId.get(linkedUserId) || member._id;
           const remappedMembers: Doc<"networkMembers">[] = [];
 
           for (const cm of childMembers) {
             if (cm.isViewer) {
               continue;
             }
-            const remappedParentId = cm.parentMemberId === childViewer._id 
-              ? parentMemberIdInParentTree 
-              : cm.parentMemberId;
+            const remappedParentId =
+              cm.parentMemberId === childViewer._id
+                ? parentMemberIdInParentTree
+                : cm.parentMemberId;
 
             remappedMembers.push({
               ...cm,
@@ -583,7 +616,10 @@ export async function listUnifiedNetworkMembers(
             }
           }
 
-          profileQueue.push({ profileId: linkedProfile._id, members: remappedMembers });
+          profileQueue.push({
+            profileId: linkedProfile._id,
+            members: remappedMembers,
+          });
         }
       }
     }
@@ -592,7 +628,11 @@ export async function listUnifiedNetworkMembers(
   const userIdToInvestmentDate = new Map<Id<"users">, number>();
   const allDbMembers = await ctx.db.query("networkMembers").collect();
   for (const m of allDbMembers) {
-    if (m.userId && m.investmentStartedAt !== undefined && m.investmentStartedAt !== null) {
+    if (
+      m.userId &&
+      m.investmentStartedAt !== undefined &&
+      m.investmentStartedAt !== null
+    ) {
       const existing = userIdToInvestmentDate.get(m.userId);
       if (existing === undefined || m.investmentStartedAt < existing) {
         userIdToInvestmentDate.set(m.userId, m.investmentStartedAt);
@@ -604,7 +644,10 @@ export async function listUnifiedNetworkMembers(
     const m = allMembers[i];
     if (m && m.userId) {
       const canonicalDate = userIdToInvestmentDate.get(m.userId);
-      if (canonicalDate !== undefined && m.investmentStartedAt !== canonicalDate) {
+      if (
+        canonicalDate !== undefined &&
+        m.investmentStartedAt !== canonicalDate
+      ) {
         allMembers[i] = {
           ...m,
           investmentStartedAt: canonicalDate,
@@ -653,9 +696,14 @@ async function listCanonicalDownlineMembers(
   for (const root of externalRoots) {
     const profileMembers = await ctx.db
       .query("networkMembers")
-      .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", root.profileId))
+      .withIndex("by_profileId_and_sortOrder", (q) =>
+        q.eq("profileId", root.profileId),
+      )
       .collect();
-    const parentLookup = new Map<Id<"networkMembers">, Doc<"networkMembers">[]>();
+    const parentLookup = new Map<
+      Id<"networkMembers">,
+      Doc<"networkMembers">[]
+    >();
     for (const member of profileMembers) {
       if (!member.parentMemberId) {
         continue;
@@ -704,6 +752,8 @@ async function seedDefaultNetworkMembers(
       sortOrder: member.sortOrder,
       joinedAt: member.joinedAt,
       userId: member.userId,
+      createdByUserId: member.userId,
+      ownedByUserId: member.userId,
       createdAt: now,
       updatedAt: now,
     });
@@ -719,7 +769,7 @@ async function seedDefaultNetworkMembers(
     if (!memberId || !parentMemberId) {
       continue;
     }
-    await ctx.db.patch(memberId, { parentMemberId });
+    await ctx.db.patch("networkMembers", memberId, { parentMemberId });
   }
 }
 
@@ -731,7 +781,7 @@ async function syncNetworkMembersForViewer(
 ) {
   const existingMembers = await listNetworkMembersForProfile(ctx, profileId);
   for (const member of existingMembers) {
-    await ctx.db.delete(member._id);
+    await ctx.db.delete("networkMembers", member._id);
   }
   const seeds = await buildNetworkSeedsForViewer(ctx, viewer);
   await seedDefaultNetworkMembers(ctx, profileId, seeds, now);
@@ -914,9 +964,14 @@ function buildProspectNames(viewer: MobileViewer): [string, string] {
   }
 
   function buildName(offset: number) {
-    const first = firstNames[(hash + offset) % firstNames.length] ?? firstNames[0] ?? "Amara";
+    const first =
+      firstNames[(hash + offset) % firstNames.length] ??
+      firstNames[0] ??
+      "Amara";
     const last =
-      lastNames[(hash + (offset * 3)) % lastNames.length] ?? lastNames[0] ?? "Torres";
+      lastNames[(hash + offset * 3) % lastNames.length] ??
+      lastNames[0] ??
+      "Torres";
     return `${first} ${last}`;
   }
 
@@ -929,7 +984,9 @@ export async function listAccountsForProfile(
 ) {
   return await ctx.db
     .query("financialAccounts")
-    .withIndex("by_profileId_and_sortOrder", (q) => q.eq("profileId", profileId))
+    .withIndex("by_profileId_and_sortOrder", (q) =>
+      q.eq("profileId", profileId),
+    )
     .take(20);
 }
 

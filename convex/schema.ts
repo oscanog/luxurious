@@ -19,6 +19,9 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     // ── Custom fields ──
     role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
+    adminLevel: v.optional(v.union(v.literal(0), v.literal(1), v.literal(2))),
+    adminAssignedBy: v.optional(v.id("users")),
+    adminAssignedAt: v.optional(v.number()),
     uplineId: v.optional(v.union(v.id("users"), v.null())),
     lastUplineId: v.optional(v.union(v.id("users"), v.null())),
   })
@@ -31,7 +34,7 @@ export default defineSchema({
     userId: v.id("users"),
     balance: v.number(), // Virtual USD
   }).index("by_user", ["userId"]),
-  
+
   trades: defineTable({
     userId: v.id("users"),
     symbol: v.string(),
@@ -47,28 +50,30 @@ export default defineSchema({
 
   // -- Trading Academy --
   academyLevels: defineTable({
-    order: v.number(),          // 1, 2, 3...
-    title: v.string(),          // "Market Foundations"
-    subtitle: v.string(),       // "Freshman"
-    color: v.string(),          // "hsl(221 83% 53%)"
+    order: v.number(), // 1, 2, 3...
+    title: v.string(), // "Market Foundations"
+    subtitle: v.string(), // "Freshman"
+    color: v.string(), // "hsl(221 83% 53%)"
     description: v.string(),
   }).index("by_order", ["order"]),
 
   academyLessons: defineTable({
     levelId: v.id("academyLevels"),
-    order: v.number(),          // 1, 2, 3...
-    slug: v.string(),           // "1.1"
+    order: v.number(), // 1, 2, 3...
+    slug: v.string(), // "1.1"
     title: v.string(),
-    duration: v.string(),       // "5 min"
-    content: v.string(),        // Full lesson text
-  }).index("by_level", ["levelId"])
+    duration: v.string(), // "5 min"
+    content: v.string(), // Full lesson text
+  })
+    .index("by_level", ["levelId"])
     .index("by_slug", ["slug"]),
 
   academyProgress: defineTable({
     userId: v.id("users"),
-    lessonSlug: v.string(),     // "1.1"
+    lessonSlug: v.string(), // "1.1"
     completedAt: v.number(),
-  }).index("by_user", ["userId"])
+  })
+    .index("by_user", ["userId"])
     .index("by_user_and_slug", ["userId", "lessonSlug"]),
 
   mobileProfiles: defineTable({
@@ -95,7 +100,9 @@ export default defineSchema({
     avatarRotationQuarterTurns: v.optional(v.number()),
     avatarScale: v.optional(v.number()),
     avatarStorageId: v.optional(v.id("_storage")),
-    tier: v.optional(v.union(v.literal("free"), v.literal("silver"), v.literal("gold"))),
+    tier: v.optional(
+      v.union(v.literal("free"), v.literal("silver"), v.literal("gold")),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -158,7 +165,10 @@ export default defineSchema({
       "processingStatus",
       "createdAt",
     ])
-    .index("by_processingStatus_and_createdAt", ["processingStatus", "createdAt"]),
+    .index("by_processingStatus_and_createdAt", [
+      "processingStatus",
+      "createdAt",
+    ]),
 
   socialPosts: defineTable({
     authorUserId: v.id("users"),
@@ -289,8 +299,16 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_profileId_and_occurredAt", ["profileId", "occurredAt"])
-    .index("by_profileId_and_kind_and_occurredAt", ["profileId", "kind", "occurredAt"])
-    .index("by_profileId_and_category_and_occurredAt", ["profileId", "category", "occurredAt"])
+    .index("by_profileId_and_kind_and_occurredAt", [
+      "profileId",
+      "kind",
+      "occurredAt",
+    ])
+    .index("by_profileId_and_category_and_occurredAt", [
+      "profileId",
+      "category",
+      "occurredAt",
+    ])
     .index("by_accountId_and_occurredAt", ["accountId", "occurredAt"]),
 
   budgetPlans: defineTable({
@@ -341,7 +359,7 @@ export default defineSchema({
       v.literal("joined"),
       v.literal("invited"),
       v.literal("pending"),
-      v.literal("to-invite")
+      v.literal("to-invite"),
     ),
     parentMemberId: v.optional(v.union(v.id("networkMembers"), v.null())),
     isViewer: v.boolean(),
@@ -362,6 +380,9 @@ export default defineSchema({
     locationAddress: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    directLimitOverride: v.optional(v.number()),
+    createdByUserId: v.optional(v.id("users")),
+    ownedByUserId: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -369,6 +390,8 @@ export default defineSchema({
     .index("by_profileId_and_parentMemberId", ["profileId", "parentMemberId"])
     .index("by_profileId_and_status", ["profileId", "status"])
     .index("by_profileId_and_isViewer", ["profileId", "isViewer"])
+    .index("by_createdByUserId", ["createdByUserId"])
+    .index("by_ownedByUserId", ["ownedByUserId"])
     .index("by_userId", ["userId"])
     .index("by_email", ["email"]),
 
@@ -385,7 +408,11 @@ export default defineSchema({
   invitations: defineTable({
     uplineId: v.id("users"),
     email: v.string(),
-    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("expired"),
+    ),
     sentAt: v.number(),
     code: v.string(), // Unique invitation code
   })
@@ -398,7 +425,11 @@ export default defineSchema({
     title: v.string(),
     description: v.optional(v.string()),
     date: v.string(), // ISO date string
-    category: v.union(v.literal("financial"), v.literal("personal"), v.literal("network")),
+    category: v.union(
+      v.literal("financial"),
+      v.literal("personal"),
+      v.literal("network"),
+    ),
     isDone: v.boolean(),
   })
     .index("by_profileId", ["profileId"])
@@ -411,7 +442,11 @@ export default defineSchema({
     totalAmount: v.optional(v.number()),
     date: v.optional(v.string()),
     category: v.optional(v.string()),
-    status: v.union(v.literal("pending"), v.literal("processed"), v.literal("failed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processed"),
+      v.literal("failed"),
+    ),
   })
     .index("by_profileId", ["profileId"])
     .index("by_status", ["status"]),
@@ -431,7 +466,11 @@ export default defineSchema({
     profileId: v.id("mobileProfiles"),
     subject: v.string(),
     message: v.string(),
-    status: v.union(v.literal("open"), v.literal("resolved"), v.literal("closed")),
+    status: v.union(
+      v.literal("open"),
+      v.literal("resolved"),
+      v.literal("closed"),
+    ),
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     createdAt: v.number(),
   })
@@ -451,7 +490,7 @@ export default defineSchema({
       v.literal("active"),
       v.literal("tp_hit"),
       v.literal("sl_hit"),
-      v.literal("cancelled")
+      v.literal("cancelled"),
     ),
     result: v.optional(v.number()),
     riskReward: v.optional(v.string()),
@@ -474,7 +513,7 @@ export default defineSchema({
       v.literal("london"),
       v.literal("new_york"),
       v.literal("asia"),
-      v.literal("custom")
+      v.literal("custom"),
     ),
     dayOfWeek: v.number(),
     time: v.string(),
@@ -500,7 +539,8 @@ export default defineSchema({
     status: v.union(v.literal("success"), v.literal("error")),
     notes: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_signal", ["signalId"])
+  })
+    .index("by_signal", ["signalId"])
     .index("by_user", ["userId"]),
 
   sessionAttendance: defineTable({
@@ -508,7 +548,8 @@ export default defineSchema({
     userId: v.id("users"),
     sessionTime: v.string(), // "3pm", "6pm", etc.
     attended: v.boolean(),
-  }).index("by_date_and_user", ["date", "userId"])
+  })
+    .index("by_date_and_user", ["date", "userId"])
     .index("by_userId", ["userId"]),
 
   apkReleases: defineTable({
@@ -537,12 +578,12 @@ export default defineSchema({
         canvasJson: v.string(),
         order: v.number(),
         thumbnail: v.optional(v.id("_storage")),
-        transition: v.optional(v.string()),       // "fade"|"slide-left"|"slide-right"|"zoom"|"none"
+        transition: v.optional(v.string()), // "fade"|"slide-left"|"slide-right"|"zoom"|"none"
         transitionDuration: v.optional(v.number()), // ms
-      })
+      }),
     ),
-    slideWidth: v.number(),    // default 1920
-    slideHeight: v.number(),   // default 1080
+    slideWidth: v.number(), // default 1920
+    slideHeight: v.number(), // default 1080
     coverThumbnail: v.optional(v.id("_storage")),
     createdBy: v.id("users"),
     updatedAt: v.number(),
@@ -561,14 +602,13 @@ export default defineSchema({
         id: v.string(),
         canvasJson: v.string(),
         order: v.number(),
-      })
+      }),
     ),
     slideWidth: v.number(),
     slideHeight: v.number(),
     thumbnail: v.optional(v.id("_storage")),
     isSystem: v.boolean(), // true = shipped with app
-  })
-    .index("by_category", ["category"]),
+  }).index("by_category", ["category"]),
 
   aiSettings: defineTable({
     key: v.literal("default"),
@@ -602,13 +642,16 @@ export default defineSchema({
     lastToolResults: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_userId_and_updatedAt", ["userId", "updatedAt"]),
+  }).index("by_userId_and_updatedAt", ["userId", "updatedAt"]),
 
   aiChatMessages: defineTable({
     threadId: v.id("aiChatThreads"),
     userId: v.id("users"),
-    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("system"),
+    ),
     content: v.string(),
     model: v.optional(v.string()),
     provider: v.optional(v.string()),
@@ -627,10 +670,13 @@ export default defineSchema({
     model: v.string(),
     inputTokens: v.number(),
     outputTokens: v.number(),
-    status: v.union(v.literal("success"), v.literal("error"), v.literal("blocked")),
+    status: v.union(
+      v.literal("success"),
+      v.literal("error"),
+      v.literal("blocked"),
+    ),
     createdAt: v.number(),
-  })
-    .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+  }).index("by_userId_and_createdAt", ["userId", "createdAt"]),
 
   aiSettingsAuditEvents: defineTable({
     adminUserId: v.id("users"),
