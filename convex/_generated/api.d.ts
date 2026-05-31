@@ -32,6 +32,7 @@ import type * as init from "../init.js";
 import type * as invitations from "../invitations.js";
 import type * as milestones from "../milestones.js";
 import type * as mobile from "../mobile.js";
+import type * as mobileAuth from "../mobileAuth.js";
 import type * as mobileHelpers from "../mobileHelpers.js";
 import type * as network from "../network.js";
 import type * as networkMembers from "../networkMembers.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   invitations: typeof invitations;
   milestones: typeof milestones;
   mobile: typeof mobile;
+  mobileAuth: typeof mobileAuth;
   mobileHelpers: typeof mobileHelpers;
   network: typeof network;
   networkMembers: typeof networkMembers;

@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { auth } from "./auth";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -67,10 +67,19 @@ http.route({
       return jsonResponse({ error: "Missing email or password." }, 400);
     }
 
+    const email = String(body.email).trim().toLowerCase();
+    const hasPasswordAccount = await ctx.runQuery(
+      internal.mobileAuth.hasPasswordAccount,
+      { email },
+    );
+    if (!hasPasswordAccount) {
+      return jsonResponse({ error: "Email not found." }, 401);
+    }
+
     const result = await ctx.runAction(api.auth.signIn, {
       provider: "password",
       params: {
-        email: String(body.email).trim().toLowerCase(),
+        email,
         password: String(body.password),
         flow: "signIn",
       },
@@ -78,7 +87,7 @@ http.route({
     }).catch(() => null);
 
     if (!result?.tokens) {
-      return jsonResponse({ error: "Invalid credentials." }, 401);
+      return jsonResponse({ error: "Password does not match." }, 401);
     }
 
     return jsonResponse({ tokens: result.tokens });
