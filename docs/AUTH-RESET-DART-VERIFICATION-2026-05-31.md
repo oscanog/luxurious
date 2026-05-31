@@ -20,18 +20,18 @@ Backend target:
 ## Flow Tested
 
 1. Signed in as Marko Nogoy.
-   - Email: `sehun4244@gmail.com`
+   - Email: `[REDACTED_ADMIN_EMAIL]`
    - Result: success.
 2. Loaded `network:getDashboard`.
 3. Found Melvin Nogoy in dashboard members.
    - Member id: `md7fd4nxhvh3h0bc2q2seb9ags86xnxj`
 4. Called `networkMembers:resetMemberPassword`.
-   - Backend returned email: `melvin.billionaire@gmail.com`
+   - Backend returned email: `[REDACTED_TARGET_EMAIL]`
    - Temporary password generated, not stored in this document.
 5. Signed out Marko Nogoy.
-6. Tried sign-in with wrong email `m.viner001@gmail.com` and new temporary password.
+6. Tried sign-in with stale remembered email and new temporary password.
    - Result: failed as expected.
-7. Tried sign-in with returned email `melvin.billionaire@gmail.com` and same temporary password.
+7. Tried sign-in with returned email and same temporary password.
    - Result: success.
    - Session loaded as Melvin Nogoy.
 8. Signed out Melvin Nogoy.
@@ -40,13 +40,9 @@ Backend target:
 
 Dart-level mobile backend flow works.
 
-Flutter should work if user enters exact reset email:
+Flutter should work if user enters exact reset email returned by the credential dialog.
 
-`melvin.billionaire@gmail.com`
-
-Flutter will fail if remembered email remains:
-
-`m.viner001@gmail.com`
+Flutter will fail if remembered email remains in the field.
 
 ## Mistake Confirmed
 
@@ -59,11 +55,11 @@ The reset password belongs to the account email returned by backend. It does not
 On phone:
 
 1. Clear remembered email/password.
-2. Enter `melvin.billionaire@gmail.com`.
+2. Enter the email shown in the reset credential dialog.
 3. Enter latest temporary password from Dart test output.
 4. Sign in.
 5. Change password in Profile.
 6. Sign out.
-7. Sign in with `melvin.billionaire@gmail.com` and new password.
+7. Sign in with the returned email and new password.
 
-Do not use `m.viner001@gmail.com` unless admin changes Melvin's login email first.
+Do not use an old remembered email unless admin changes the member login email first.

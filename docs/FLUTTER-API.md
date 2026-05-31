@@ -30,8 +30,8 @@ Flutter talks to Convex through plain HTTP JSON routes.
 
 ```json
 {
-  "email": "alice@luxurious.trade",
-  "password": "password123"
+  "email": "user@example.com",
+  "password": "<password>"
 }
 ```
 

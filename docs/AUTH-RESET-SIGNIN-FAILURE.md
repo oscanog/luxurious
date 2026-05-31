@@ -6,11 +6,11 @@ Boss could not sign in after admin reset from mobile org chart. Mobile showed `S
 
 ## What Happened
 
-The reset was done while signed in as Marko Nogoy (`sehun4244@gmail.com`). That is admin account context, not necessarily target login.
+The reset was done while signed in as the admin account. That is admin account context, not necessarily target login.
 
-The reset dialog generated credentials for Melvin Nogoy. Screenshot showed login email `melvin.billionaire@gmail.com`.
+The reset dialog generated credentials for the target member. Screenshot showed the target member login email.
 
-The failed login screenshot showed different email in login field: `m.viner001@gmail.com`. App had "Remember password" enabled, so old remembered email stayed in field. New temporary password was paired with old remembered email, so Convex Auth rejected sign-in.
+The failed login screenshot showed a different email in the login field. App had "Remember password" enabled, so old remembered email stayed in field. New temporary password was paired with old remembered email, so Convex Auth rejected sign-in.
 
 ## Why Bug Occurred
 

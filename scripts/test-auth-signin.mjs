@@ -1,8 +1,8 @@
 import { ConvexHttpClient } from "convex/browser";
 
-const [email, password = "password123"] = process.argv.slice(2);
+const [email, password] = process.argv.slice(2);
 
-if (!email) {
+if (!email || !password) {
   console.error("Usage: node scripts/test-auth-signin.mjs <email> [password]");
   process.exit(1);
 }

@@ -6,7 +6,7 @@ Mobile sign-in failed after Marko generated credentials for Melvin because the t
 
 ## What happened
 
-- Generated credential used `melvin.billionaire@gmail.com`.
+- Generated credential used a target member email.
 - Backend sign-in succeeds when the exact generated password is used.
 - Backend sign-in fails when the digit `0` is typed as letter `O`.
 - Before the fix, the mobile HTTP sign-in route could return a generic server error for bad password attempts, making Flutter show an unhelpful `Sign-in failed` message.

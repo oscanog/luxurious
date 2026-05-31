@@ -9,7 +9,7 @@
 
 ## Reproduction
 
-1. Sign in with `alice@luxurious.trade` / `password123`.
+1. Sign in with a seeded admin account and password provided out-of-band.
 2. Open `/admin/presentations/q974v3wv2jwhjd3fb4jrbnvjp586xgx4/edit`.
 3. Click theme toggle in left sidebar.
 4. App freezes before console can flush usable stack.

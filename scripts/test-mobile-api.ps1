@@ -1,6 +1,7 @@
 param(
   [string]$BaseUrl = "https://polished-eagle-138.convex.site",
   [string]$ViewerKey = "e2e-smoke",
+  [string]$SeedPassword,
   [switch]$SeedUsers,
   [switch]$TestAuth
 )
@@ -89,8 +90,12 @@ foreach ($case in $mutationCases) {
 }
 
 if ($SeedUsers) {
+  if ([string]::IsNullOrWhiteSpace($SeedPassword)) {
+    throw "SeedPassword is required when -SeedUsers is used."
+  }
   try {
-    $seedOut = npx convex run seed:seedUsersWithPasswords '{}' --prod
+    $seedPayload = @{ seedPassword = $SeedPassword } | ConvertTo-Json -Compress
+    $seedOut = npx convex run seed:seedUsersWithPasswords $seedPayload --prod
     $results.Add([pscustomobject]@{ kind = "seed"; name = "seed:seedUsersWithPasswords"; ok = $true; detail = ($seedOut -join "`n") })
     Write-Case "seed:seedUsersWithPasswords" "PASS" "created or already linked"
   } catch {
@@ -100,6 +105,9 @@ if ($SeedUsers) {
 }
 
 if ($TestAuth) {
+  if ([string]::IsNullOrWhiteSpace($SeedPassword)) {
+    throw "SeedPassword is required when -TestAuth is used."
+  }
   $authChecks = @(
     @{ email = "alice@luxurious.trade"; role = "admin" },
     @{ email = "clara@luxurious.trade"; role = "member" }
@@ -107,7 +115,7 @@ if ($TestAuth) {
 
   foreach ($authCase in $authChecks) {
     try {
-      $authOut = node .\scripts\test-auth-signin.mjs $authCase.email password123
+      $authOut = node .\scripts\test-auth-signin.mjs $authCase.email $SeedPassword
       $results.Add([pscustomobject]@{ kind = "auth"; name = "auth:signIn:$($authCase.role)"; ok = $true; detail = ($authOut -join "`n") })
       Write-Case "auth:signIn:$($authCase.role)" "PASS" $authCase.email
     } catch {

@@ -1,7 +1,6 @@
-# Test Credentials
+# Test Accounts
 
-All test users share the same password:
-**Password:** `password123`
+Seeded test accounts require a password supplied at seed time. Do not commit shared passwords.
 
 ## Administrators
 | Name | Email | Role |
@@ -22,5 +21,5 @@ All test users share the same password:
 ## Login Instructions
 1. Go to the login page.
 2. Enter any email above.
-3. Enter `password123`.
+3. Enter the seed password provided out-of-band.
 4. Click **Sign In**.

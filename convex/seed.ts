@@ -195,8 +195,15 @@ export const patchSeedUser = internalMutation({
 });
 
 export const seedUsersWithPasswords = action({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    seedPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const seedPassword = args.seedPassword.trim();
+    if (seedPassword.length < 12) {
+      throw new Error("Seed password must be at least 12 characters.");
+    }
+
     for (const u of SEED_USERS) {
       // 1. Create auth account (this also creates the user row)
       try {
@@ -204,7 +211,7 @@ export const seedUsersWithPasswords = action({
           provider: "password",
           account: {
             id: u.email,
-            secret: "password123",
+            secret: seedPassword,
           },
           profile: {
             name: u.name,
@@ -335,10 +342,14 @@ export const wipeAll = action({
 });
 
 export const seedAll = action({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    seedPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
     await ctx.runMutation(internal.seed.clearDatabase, {});
-    await ctx.runAction(api.seed.seedUsersWithPasswords, {});
+    await ctx.runAction(api.seed.seedUsersWithPasswords, {
+      seedPassword: args.seedPassword,
+    });
     await ctx.runMutation(internal.seed.seedDemoHierarchy, {});
   },
 });
