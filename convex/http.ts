@@ -376,6 +376,9 @@ http.route({
             rootMemberId: typeof body.args?.rootMemberId === "string" ? body.args.rootMemberId : undefined,
           });
           break;
+        case "aiKnowledge:listDocuments":
+          result = await ctx.runQuery(api.aiKnowledge.listDocuments, {});
+          break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
       }
@@ -906,6 +909,27 @@ http.route({
           result = await ctx.runMutation(api.networkMembers.updateMemberInvestmentDate, {
             memberId: typeof body.args?.memberId === "string" ? (body.args.memberId as any) : "",
             investmentStartedAt: typeof body.args?.investmentStartedAt === "number" ? body.args.investmentStartedAt : undefined,
+          });
+          break;
+        case "aiKnowledge:generateUploadUrl":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.aiKnowledge.generateUploadUrl, {});
+          break;
+        case "aiKnowledge:deleteDocument":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.aiKnowledge.deleteDocument, {
+            documentId: typeof body.args?.documentId === "string" ? (body.args.documentId as any) : "",
+          });
+          break;
+        case "aiKnowledgeActions:ingestUploadedPdf":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runAction(api.aiKnowledgeActions.ingestUploadedPdf, {
+            title: typeof body.args?.title === "string" ? body.args.title : "",
+            fileName: typeof body.args?.fileName === "string" ? body.args.fileName : "",
+            mimeType: typeof body.args?.mimeType === "string" ? body.args.mimeType : "",
+            fileSize: typeof body.args?.fileSize === "number" ? body.args.fileSize : 0,
+            storageId: typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
+            extractedText: typeof body.args?.extractedText === "string" ? body.args.extractedText : undefined,
           });
           break;
         default:
