@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { Search, X, ChevronLeft, ChevronRight, User, TrendingUp, PieChart as PieIcon, BarChart3, BarChart2, Activity, DollarSign, Layers, Focus } from "lucide-react";
+import { Search, X, ChevronLeft, ChevronRight, User, TrendingUp, PieChart as PieIcon, BarChart3, BarChart2, Activity, DollarSign, Layers, Focus, MapPin } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 
@@ -654,8 +654,9 @@ export function MemberSidebar({
           ) : (
             <>
               <div className="p-4 border-b border-[hsl(var(--border))] flex items-center justify-between">
-                <h2 className="font-bold text-sm uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                  {viewMode === "map" ? "Members Missing Location" : "Available Members"}
+                <h2 className="font-black text-sm uppercase tracking-wider text-[hsl(var(--foreground))] flex items-center gap-2">
+                  <User size={18} className="text-[hsl(43,96%,48%)]" />
+                  {viewMode === "map" ? "Members Missing Location" : "AVAILABLE MEMBERS"}
                 </h2>
                 <button onClick={onToggle} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
                   <X size={18} />

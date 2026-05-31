@@ -591,10 +591,26 @@ export async function listUnifiedNetworkMembers(
 
           const parentMemberIdInParentTree =
             userIdToParentMemberId.get(linkedUserId) || member._id;
+          const childMemberById = new Map(
+            childMembers.map((cm) => [cm._id, cm]),
+          );
+          const ancestorIds = new Set<Id<"networkMembers">>();
+          let currentAncestorId = childViewer.parentMemberId ?? null;
+          let guard = 0;
+          while (currentAncestorId && guard < 20) {
+            const ancestor = childMemberById.get(currentAncestorId);
+            if (!ancestor) {
+              break;
+            }
+            ancestorIds.add(ancestor._id);
+            currentAncestorId = ancestor.parentMemberId ?? null;
+            guard += 1;
+          }
+
           const remappedMembers: Doc<"networkMembers">[] = [];
 
           for (const cm of childMembers) {
-            if (cm.isViewer) {
+            if (cm.isViewer || ancestorIds.has(cm._id)) {
               continue;
             }
             const remappedParentId =
@@ -685,7 +701,11 @@ async function listCanonicalDownlineMembers(
   }
   const linkedRoots = [...rootByKey.values()];
   const externalRoots = linkedRoots.filter(
-    (member) => !member.isViewer && member.profileId !== profile._id,
+    (member) =>
+      !member.isViewer &&
+      member.profileId !== profile._id &&
+      member.parentMemberId !== undefined &&
+      member.parentMemberId !== null,
   );
   if (externalRoots.length === 0) {
     return [];

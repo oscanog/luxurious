@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
   Bell,
   Bot,
   BookOpen,
@@ -157,7 +158,7 @@ const ADMIN_ITEMS: Array<{
 const PATH_LABELS: Record<NavPath, string> = {
   "/": "Dashboard",
   "/dashboard": "Dashboard",
-  "/org-chart": "Organization Chart",
+  "/org-chart": "ORG STUDIO",
   "/members": "Members",
   "/social-feed": "Members Testimonal",
   "/social-feed/new": "New Testimonial",
@@ -609,7 +610,10 @@ export function AdminLayout({
 
       <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         {!isPresentationEditor && (
-          <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.94)] backdrop-blur">
+          <header className={cn(
+            "sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--card)/0.94)] backdrop-blur",
+            location.pathname === "/org-chart" ? "hidden md:block" : "block"
+          )}>
             <div className="flex min-h-[88px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:items-center">
               <div className="flex items-center gap-3 xl:justify-self-start shrink-0">
                 <button
@@ -618,15 +622,22 @@ export function AdminLayout({
                 >
                   <Menu size={20} />
                 </button>
-                <div className="hidden sm:block">
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
-                    Luxurious Desktop
-                  </p>
-                  <h2 className="text-base font-black text-[hsl(var(--foreground))]">
-                    {activeLabel}
-                  </h2>
+                <div className="hidden sm:flex items-center gap-3">
+                  {location.pathname === "/org-chart" && (
+                    <Link to="/" className="text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] transition-colors">
+                      <ArrowLeft size={24} />
+                    </Link>
+                  )}
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[hsl(var(--muted-foreground))]">
+                      Luxurious Desktop
+                    </p>
+                    <h2 className="text-base font-black text-[hsl(var(--foreground))]">
+                      {activeLabel}
+                    </h2>
+                  </div>
                 </div>
-                <div className="sm:hidden">
+                <div className="sm:hidden flex items-center gap-3">
                   <h2 className="text-sm font-black text-[hsl(var(--foreground))]">
                     {activeLabel}
                   </h2>

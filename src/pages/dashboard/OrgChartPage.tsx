@@ -18,10 +18,13 @@ import {
   ArrowLeft, 
   Focus, 
   Users, 
+  Contact,
   Search, 
   SlidersHorizontal,
   ChartColumn,
   Map as MapIcon,
+  MapPin,
+  RefreshCw,
   Info,
   Network,
   Check,
@@ -33,6 +36,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { OrgCardNode, type OrgCardData } from "../../components/org-chart/OrgCardNode";
 import { MemberSidebar } from "../../components/org-chart/MemberSidebar";
+import { MemberAddressDirectoryDrawer } from "../../components/org-chart/MemberAddressDirectoryDrawer";
 import { MemberInspector } from "../../components/org-chart/MemberInspector";
 import { AddMemberStepper } from "../../components/org-chart/AddMemberStepper";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -67,7 +71,7 @@ export type OrgFlowData = {
 
 const NODE_WIDTH = 240;
 const HORIZONTAL_GAP = 92;
-const VERTICAL_GAP = 230;
+const VERTICAL_GAP = 350;
 
 const nodeTypes = {
   "org-card": OrgCardNode,
@@ -409,6 +413,7 @@ function OrgChartContent() {
   const dashboard = useQuery(api.network.getDashboard);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAddressDirectoryOpen, setIsAddressDirectoryOpen] = useState(false);
   const [selectedSidebarMember, setSelectedSidebarMember] = useState<Doc<"users"> | null>(null);
   const [targetManagerId, setTargetManagerId] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -626,7 +631,10 @@ function OrgChartContent() {
       <MemberSidebar
         currentPivotId={effectiveSelectedId || ""}
         isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        onToggle={() => {
+          setIsSidebarOpen(!isSidebarOpen);
+          if (!isSidebarOpen) setIsAddressDirectoryOpen(false);
+        }}
         visibleMembers={visibleMembers}
         selectedMember={selectedSidebarMember}
         setSelectedMember={setSelectedSidebarMember}
@@ -653,16 +661,56 @@ function OrgChartContent() {
           .map(n => ({ id: n.id, name: n.name, role: n.roleTitle, email: n.member.email }))
         }
       />
-      <div className="flex items-center justify-between gap-4 pb-6">
-        <Link
-          to="/"
-          className="flex h-12 w-12 items-center justify-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))]"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft size={34} />
-        </Link>
-        
-        <div className="flex-1 max-w-md">
+      
+      <MemberAddressDirectoryDrawer 
+        isOpen={isAddressDirectoryOpen} 
+        onToggle={() => {
+          setIsAddressDirectoryOpen(!isAddressDirectoryOpen);
+          if (!isAddressDirectoryOpen) setIsSidebarOpen(false);
+        }} 
+        members={dashboard?.members ?? []}
+      />
+
+      {/* Mobile Navbar */}
+      <div className="md:hidden flex items-center justify-between pb-4">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))] active:scale-95"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft size={24} />
+          </Link>
+          <h1 className="text-lg font-black tracking-wide text-[hsl(var(--foreground))] uppercase">ORG STUDIO</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Block 2: Address Directory (Mobile) */}
+          <button
+            onClick={() => {
+              setIsAddressDirectoryOpen(!isAddressDirectoryOpen);
+              if (!isAddressDirectoryOpen) setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-xl transition-colors bg-[hsl(var(--card))] border border-[hsl(var(--border))]",
+              isAddressDirectoryOpen ? "bg-[hsl(43,96%,48%)] text-black border-transparent" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+            )}
+            title="Address Directory"
+          >
+            <Contact size={20} />
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+            title="Refresh"
+          >
+            <RefreshCw size={20} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6">
+        {/* Search Bar */}
+        <div className="flex-1 max-w-md w-full order-2 md:order-1">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={18} />
             <input 
@@ -675,44 +723,19 @@ function OrgChartContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))]">
-            <button
-              onClick={() => setViewMode("canvas")}
-              className={cn("flex h-10 px-3 gap-2 items-center justify-center rounded-xl transition-colors font-bold text-sm", viewMode === "canvas" ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
-              title="Canvas View"
-            >
-              <Network size={16} />
-              <span className="hidden sm:inline">Canvas</span>
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={cn("flex h-10 px-3 gap-2 items-center justify-center rounded-xl transition-colors font-bold text-sm", viewMode === "map" ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
-              title="Map View"
-            >
-              <MapIcon size={16} />
-              <span className="hidden sm:inline">Map</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] relative">
+        {/* Toolbars */}
+        <div className="flex items-center gap-3 overflow-x-auto scrollbar-none order-1 md:order-2 w-full md:w-auto relative">
+          {/* Block 1: View Controls */}
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] shrink-0 relative">
             <button 
-              onClick={() => {
-                setShowFilters(!showFilters);
-                setShowStats(false);
-                setShowInfo(false);
-              }}
+              onClick={() => { setShowFilters(!showFilters); setShowStats(false); setShowInfo(false); }}
               className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showFilters ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Filters"
             >
               <SlidersHorizontal size={18} />
             </button>
             <button 
-              onClick={() => {
-                setShowStats(!showStats);
-                setShowFilters(false);
-                setShowInfo(false);
-              }}
+              onClick={() => { setShowStats(!showStats); setShowFilters(false); setShowInfo(false); }}
               className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showStats ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Statistics"
             >
@@ -720,25 +743,20 @@ function OrgChartContent() {
             </button>
             <button 
               onClick={() => setShowMinimap(!showMinimap)}
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-                showMinimap ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-              )}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showMinimap ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Minimap"
             >
               <MapIcon size={18} />
             </button>
             <button 
-              onClick={() => {
-                setShowInfo(!showInfo);
-                setShowFilters(false);
-                setShowStats(false);
-              }}
+              onClick={() => { setShowInfo(!showInfo); setShowFilters(false); setShowStats(false); }}
               className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", showInfo ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
               title="Info"
             >
               <Info size={18} />
             </button>
+
+            {/* Filters/Stats Popovers (placed relative to Block 1 so they don't break layout) */}
 
             {/* Filters Popover */}
             {showFilters && (
@@ -833,18 +851,72 @@ function OrgChartContent() {
               </div>
             )}
           </div>
-          
-          <button 
-            onClick={handleToggleHierarchyView}
-            className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-[hsl(var(--card))] text-[hsl(43,96%,48%)] shadow-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] hover:scale-[1.05] active:scale-[0.95] transition-all"
-            title={isProjectionView ? "Projection View (All)" : "Real Hierarchy (Joined Only)"}
-          >
-            {isProjectionView ? (
-              <Users size={22} strokeWidth={2.5} />
-            ) : (
-              <Network size={22} strokeWidth={2.5} />
-            )}
-          </button>
+
+          {/* Desktop Only: Address Directory Button */}
+          <div className="hidden md:flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] shrink-0">
+            <button
+              onClick={() => {
+                setIsAddressDirectoryOpen(!isAddressDirectoryOpen);
+                if (!isAddressDirectoryOpen) setIsSidebarOpen(false);
+              }}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                isAddressDirectoryOpen ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              )}
+              title="Address Directory"
+            >
+              <Contact size={18} />
+            </button>
+          </div>
+
+          {/* Block 2: Available Members (Desktop & Mobile Toolbars Row) */}
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] shrink-0">
+            <button
+              onClick={() => {
+                setIsSidebarOpen(!isSidebarOpen);
+                if (!isSidebarOpen) setIsAddressDirectoryOpen(false);
+              }}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                isSidebarOpen ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              )}
+              title="Available Members"
+            >
+              <Users size={18} />
+            </button>
+          </div>
+
+          {/* Block 3: Hierarchy Toggle */}
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] shrink-0">
+            <button
+              onClick={handleToggleHierarchyView}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                isProjectionView ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              )}
+              title="Toggle Prospect vs Real Hierarchy"
+            >
+              {isProjectionView ? <Users size={18} /> : <Network size={18} />}
+            </button>
+          </div>
+
+          {/* Block 4: Map/Canvas Toggle */}
+          <div className="flex items-center gap-1.5 rounded-[18px] bg-[hsl(var(--card))] px-2 py-1.5 shadow-lg border border-[hsl(var(--border))] shrink-0">
+            <button
+              onClick={() => setViewMode("canvas")}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", viewMode === "canvas" ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
+              title="Canvas View"
+            >
+              <Network size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-colors", viewMode === "map" ? "bg-[hsl(43,96%,48%)] text-black" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]")}
+              title="Map View"
+            >
+              <MapPin size={16} />
+            </button>
+          </div>
         </div>
       </div>
 

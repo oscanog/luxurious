@@ -4,6 +4,7 @@ import { MutationCtx, QueryCtx } from "./_generated/server";
 
 export const DEFAULT_DIRECT_LIMIT = 3;
 export const ROOT_ADMIN_EMAIL = "admin@luxurious.trade";
+const MARKO_ADMIN_EMAIL = "sehun4244@gmail.com";
 
 export type AdminLevel = 0 | 1 | 2;
 type Ctx = QueryCtx | MutationCtx;
@@ -41,14 +42,13 @@ export function getUserAdminLevel(
     return 0;
   }
   const email = normalize(user.email);
-  const name = normalize(user.name);
-  if (email === ROOT_ADMIN_EMAIL || name === "marko nogoy") {
+  if (email === ROOT_ADMIN_EMAIL || email === MARKO_ADMIN_EMAIL) {
     return 2;
   }
   if (user.adminLevel === 2) {
     return 2;
   }
-  if (user.adminLevel === 1 || name === "maylyn" || user.role === "admin") {
+  if (user.adminLevel === 1 || user.role === "admin") {
     return 1;
   }
   return 0;
