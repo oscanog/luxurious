@@ -51,6 +51,10 @@ const addMemberArgs = {
   role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
 } as const;
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 function buildMemberName(args: {
   firstName: string;
   middleName?: string;
@@ -479,9 +483,28 @@ export const getMemberAuthInfo = internalQuery({
     if (!user) throw new Error("Linked user not found.");
     if (!user.email) throw new Error("User has no email on record.");
 
+    const passwordAccounts = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) =>
+        q.eq("userId", member.userId).eq("provider", "password"),
+      )
+      .take(10);
+    if (passwordAccounts.length === 0) {
+      throw new Error("Linked user has no password login account.");
+    }
+
+    const userEmail = normalizeEmail(user.email);
+    const passwordAccount =
+      passwordAccounts.find(
+        (account) => normalizeEmail(account.providerAccountId) === userEmail,
+      ) ?? (passwordAccounts.length === 1 ? passwordAccounts[0] : null);
+    if (!passwordAccount) {
+      throw new Error("Linked user has multiple password login accounts.");
+    }
+
     return {
       userId: member.userId,
-      email: user.email,
+      email: normalizeEmail(passwordAccount.providerAccountId),
       name: member.name,
     };
   },

@@ -70,7 +70,7 @@ http.route({
     const result = await ctx.runAction(api.auth.signIn, {
       provider: "password",
       params: {
-        email: String(body.email),
+        email: String(body.email).trim().toLowerCase(),
         password: String(body.password),
         flow: "signIn",
       },
