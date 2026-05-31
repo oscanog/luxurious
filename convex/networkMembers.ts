@@ -478,15 +478,16 @@ export const getMemberAuthInfo = internalQuery({
     const member = await ctx.db.get("networkMembers", args.memberId);
     if (!member) throw new Error("Member not found.");
     if (!member.userId) throw new Error("Member has no linked account.");
+    const linkedUserId = member.userId;
 
-    const user = await ctx.db.get("users", member.userId);
+    const user = await ctx.db.get("users", linkedUserId);
     if (!user) throw new Error("Linked user not found.");
     if (!user.email) throw new Error("User has no email on record.");
 
     const passwordAccounts = await ctx.db
       .query("authAccounts")
       .withIndex("userIdAndProvider", (q) =>
-        q.eq("userId", member.userId).eq("provider", "password"),
+        q.eq("userId", linkedUserId).eq("provider", "password"),
       )
       .take(10);
     if (passwordAccounts.length === 0) {
