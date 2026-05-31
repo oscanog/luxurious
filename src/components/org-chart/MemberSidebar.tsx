@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { Search, X, ChevronLeft, ChevronRight, User, TrendingUp, PieChart as PieIcon, BarChart3, BarChart2, Activity, DollarSign, Layers, Focus, MapPin } from "lucide-react";
+import { Search, X, ChevronLeft, ChevronRight, User, TrendingUp, PieChart as PieIcon, BarChart3, BarChart2, Activity, DollarSign, Layers, Focus } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 
