@@ -4,6 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import {
   BookOpenCheck,
   FileText,
+  ImageIcon,
   LoaderCircle,
   Search,
   Trash2,
@@ -51,7 +52,7 @@ export function AiKnowledgePage() {
 
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [inputType, setInputType] = useState<"pdf" | "text">("pdf");
+  const [inputType, setInputType] = useState<"pdf" | "image" | "text">("pdf");
   const [textContent, setTextContent] = useState("");
   const [query, setQuery] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -91,6 +92,20 @@ export function AiKnowledgePage() {
         setIsUploading(false);
         return;
       }
+    } else if (inputType === "image") {
+      if (!uploadFile) {
+        toast.error("Choose an image first");
+        return;
+      }
+      const imgFile = uploadFile;
+      const validExts = [".jpg", ".jpeg", ".png", ".webp"];
+      if (!validExts.some((ext) => imgFile.name.toLowerCase().endsWith(ext))) {
+        toast.error("Only JPG, PNG, and WebP images are supported");
+        return;
+      }
+      setIsUploading(true);
+      // Image extraction is server-side via vision API — no client extraction needed
+      extractedText = "";
     } else {
       if (!textContent.trim()) {
         toast.error("Enter some text first");
@@ -103,13 +118,18 @@ export function AiKnowledgePage() {
     }
 
     try {
-      if (extractedText.length < 10) {
+      if (inputType !== "image" && extractedText.length < 10) {
         throw new Error(
-          "Could not extract enough text from this PDF. Use text-based PDFs, not scanned images.",
+          "Could not extract enough text. Use text-based PDFs, not scanned images.",
         );
       }
 
-      toast.loading(`Uploading PDF (${extractedText.length.toLocaleString()} chars)...`, { id: "ai-knowledge-upload" });
+      toast.loading(
+        inputType === "image"
+          ? "Uploading image for vision processing..."
+          : `Uploading file (${extractedText.length.toLocaleString()} chars)...`,
+        { id: "ai-knowledge-upload" },
+      );
 
       // Step 2: Upload the file to Convex storage
       const uploadUrl = await generateUploadUrl();
@@ -126,7 +146,10 @@ export function AiKnowledgePage() {
         throw new Error("Storage id missing");
       }
 
-      toast.loading("Chunking & embedding...", { id: "ai-knowledge-upload" });
+      toast.loading(
+        inputType === "image" ? "Extracting text from image..." : "Chunking & embedding...",
+        { id: "ai-knowledge-upload" },
+      );
 
       // Step 3: Send extracted text + file reference to backend
       const result = await ingestUploadedPdf({
@@ -135,7 +158,7 @@ export function AiKnowledgePage() {
         mimeType: uploadFile.type || "application/pdf",
         fileSize: uploadFile.size,
         storageId: storageId as Id<"_storage">,
-        extractedText,
+        extractedText: extractedText || undefined,
       });
 
       toast.success(`Knowledge added: ${result.chunkCount} chunks`, {
@@ -172,7 +195,7 @@ export function AiKnowledgePage() {
       <DashboardPageHero
         eyebrow="AI Knowledge"
         title="PDF Knowledge Eater"
-        description="Upload text-based PDF documents so Luxurious AI can search them as additional knowledge. Remove stale sources any time."
+        description="Upload PDFs, images, or write direct text templates for AI knowledge."
         icon={BookOpenCheck}
         badges={[
           { label: `${documents?.length ?? 0} sources`, tone: "primary" },
@@ -205,7 +228,7 @@ export function AiKnowledgePage() {
           <DashboardSectionTitle
             eyebrow="Upload"
             title="Add Knowledge"
-            description="Upload PDFs or write direct text templates."
+            description="Upload PDFs, images, or write direct text templates."
           />
           <div className="mt-4 flex gap-2">
             <button
@@ -219,6 +242,18 @@ export function AiKnowledgePage() {
               )}
             >
               PDF Document
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputType("image")}
+              className={cn(
+                "flex-1 rounded-xl py-2 text-xs font-bold transition-colors",
+                inputType === "image"
+                  ? "bg-[hsl(var(--primary))] text-white"
+                  : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--primary)/0.1)] hover:text-[hsl(var(--primary))]"
+              )}
+            >
+              Image
             </button>
             <button
               type="button"
@@ -274,6 +309,31 @@ export function AiKnowledgePage() {
                     : "Text PDFs only for v1 ingestion"}
                 </span>
               </label>
+            ) : inputType === "image" ? (
+              <label
+                htmlFor="image-upload"
+                className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.18)] px-5 py-8 text-center transition-colors hover:border-[hsl(var(--primary)/0.55)]"
+              >
+                <input
+                  id="image-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  className="sr-only"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+                <ImageIcon
+                  size={32}
+                  className="mb-3 text-[hsl(var(--primary))]"
+                />
+                <span className="text-sm font-black text-[hsl(var(--foreground))]">
+                  {file ? file.name : "Drop image here or click to browse"}
+                </span>
+                <span className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                  {file
+                    ? formatFileSize(file.size)
+                    : "JPG, PNG, or WebP — text extracted via AI vision"}
+                </span>
+              </label>
             ) : (
               <label className="block space-y-2">
                 <span className="sr-only">Raw Text Content</span>
@@ -288,7 +348,7 @@ export function AiKnowledgePage() {
 
             <button
               type="submit"
-              disabled={isUploading || (inputType === "pdf" ? !file : !textContent.trim())}
+              disabled={isUploading || (inputType === "text" ? !textContent.trim() : !file)}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[hsl(var(--primary))] px-5 text-sm font-black text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isUploading ? (
@@ -296,7 +356,7 @@ export function AiKnowledgePage() {
               ) : (
                 <UploadCloud size={18} />
               )}
-              {isUploading ? "Eating PDF" : "Upload and ingest"}
+              {isUploading ? "Processing..." : "Upload and ingest"}
             </button>
           </form>
         </SurfaceCard>
@@ -334,7 +394,7 @@ export function AiKnowledgePage() {
                   className="text-[hsl(var(--muted-foreground)/0.45)]"
                 />
                 <p className="text-sm font-bold text-[hsl(var(--muted-foreground))]">
-                  No PDF knowledge sources yet.
+                  No knowledge sources yet.
                 </p>
               </div>
             ) : (

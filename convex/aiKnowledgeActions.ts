@@ -6,6 +6,21 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 import zlib from "zlib";
+import { decryptSecret } from "./aiCrypto";
+
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+
+function isImageFile(fileName: string) {
+  const lower = fileName.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function imageMimeType(fileName: string) {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
+}
 
 function decodePdfLiteral(raw: string) {
   let output = "";
@@ -148,6 +163,59 @@ async function extractTextFromPdf(buffer: Buffer) {
   return normalizeText(textParts.join(" "));
 }
 
+async function extractTextFromImage(
+  buffer: Buffer,
+  mimeType: string,
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+) {
+  const base64 = buffer.toString("base64");
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: dataUrl },
+            },
+            {
+              type: "text",
+              text: "Extract ALL visible text, labels, headings, table data, and diagram annotations from this image. Then provide a detailed description of the image content for knowledge retrieval. Output the extracted text first, then the description. Be thorough.",
+            },
+          ],
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 4000,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Vision API failed (${response.status}): ${body.slice(0, 200)}`,
+    );
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content ?? "";
+  return normalizeText(content);
+}
+
 function chunkText(text: string) {
   const maxChunkLength = 2800;
   const chunks: string[] = [];
@@ -196,16 +264,27 @@ export const ingestUploadedPdf = action({
 
     const isPdf = args.fileName.toLowerCase().endsWith(".pdf");
     const isTxt = args.fileName.toLowerCase().endsWith(".txt");
-    if (!isPdf && !isTxt) {
-      throw new Error("Only PDF and TXT files are supported.");
+    const isImage = isImageFile(args.fileName);
+    if (!isPdf && !isTxt && !isImage) {
+      throw new Error(
+        "Only PDF, TXT, and image files (JPG, PNG, WebP) are supported.",
+      );
     }
 
     const documentId: Id<"aiKnowledgeDocuments"> = await ctx.runMutation(
       internal.aiKnowledge.createPendingDocument,
       {
-        title: args.title.trim() || args.fileName.replace(/\.(pdf|txt)$/i, ""),
+        title:
+          args.title.trim() ||
+          args.fileName.replace(/\.(pdf|txt|jpe?g|png|webp)$/i, ""),
         fileName: args.fileName,
-        mimeType: args.mimeType || (isPdf ? "application/pdf" : "text/plain"),
+        mimeType:
+          args.mimeType ||
+          (isPdf
+            ? "application/pdf"
+            : isImage
+              ? imageMimeType(args.fileName)
+              : "text/plain"),
         fileSize: args.fileSize,
         storageId: args.storageId,
         uploadedBy: userId,
@@ -215,11 +294,35 @@ export const ingestUploadedPdf = action({
     try {
       let extractedText = args.extractedText ?? "";
 
-      // Use client-extracted text if available, fall back to server-side
-      if (extractedText.length < 40) {
+      if (isImage) {
+        // Image files: use DeepSeek vision API for text extraction
+        const settings = await ctx.runQuery(
+          internal.aiSettings.getSettingsForAction,
+          {},
+        );
+        if (!settings.encryptedApiKey) {
+          throw new Error(
+            "DeepSeek API key is required for image text extraction.",
+          );
+        }
+        const apiKey = decryptSecret(settings.encryptedApiKey);
         const blob = await ctx.storage.get(args.storageId);
         if (!blob) {
-          throw new Error("Uploaded PDF not found in storage.");
+          throw new Error("Uploaded image not found in storage.");
+        }
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        extractedText = await extractTextFromImage(
+          buffer,
+          imageMimeType(args.fileName),
+          apiKey,
+          settings.baseUrl,
+          settings.defaultModel,
+        );
+      } else if (extractedText.length < 40) {
+        // PDF/TXT: use client-extracted text or fall back to server-side
+        const blob = await ctx.storage.get(args.storageId);
+        if (!blob) {
+          throw new Error("Uploaded file not found in storage.");
         }
         const buffer = Buffer.from(await blob.arrayBuffer());
         extractedText = await extractTextFromPdf(buffer);
@@ -227,7 +330,9 @@ export const ingestUploadedPdf = action({
 
       if (extractedText.length < 10) {
         throw new Error(
-          "Could not extract enough text. The document is too short or empty.",
+          isImage
+            ? "Could not extract enough text from this image. The image may be blank or contain no readable content."
+            : "Could not extract enough text. The document is too short or empty.",
         );
       }
 
