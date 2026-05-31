@@ -75,9 +75,9 @@ http.route({
         flow: "signIn",
       },
       calledBy: "mobile",
-    });
+    }).catch(() => null);
 
-    if (!result.tokens) {
+    if (!result?.tokens) {
       return jsonResponse({ error: "Invalid credentials." }, 401);
     }
 

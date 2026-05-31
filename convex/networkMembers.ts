@@ -67,9 +67,10 @@ function buildMemberName(args: {
 }
 
 function randomDigits(length: number) {
+  const digits = "23456789";
   let value = "";
   for (let i = 0; i < length; i += 1) {
-    value += Math.floor(Math.random() * 10).toString();
+    value += digits[Math.floor(Math.random() * digits.length)];
   }
   return value;
 }
