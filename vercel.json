@@ -6,8 +6,7 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Frame-Options", "value": "ALLOW-FROM https://melvz.com" },
-        { "key": "Content-Security-Policy", "value": "frame-ancestors 'self' https://melvz.com http://localhost:*" }
+        { "key": "Content-Security-Policy", "value": "frame-ancestors 'self' https://melvz.com http://localhost:* http://127.0.0.1:*" }
       ]
     }
   ]
