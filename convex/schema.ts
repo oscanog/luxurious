@@ -24,11 +24,42 @@ export default defineSchema({
     adminAssignedAt: v.optional(v.number()),
     uplineId: v.optional(v.union(v.id("users"), v.null())),
     lastUplineId: v.optional(v.union(v.id("users"), v.null())),
+    // ── M025: Multi-Team ──
+    activeTeamId: v.optional(v.id("teams")),
   })
     .index("email", ["email"])
     .index("phone", ["phone"])
     .index("by_name", ["name"])
-    .index("by_upline", ["uplineId"]),
+    .index("by_upline", ["uplineId"])
+    .index("by_activeTeamId", ["activeTeamId"]),
+
+  // ── M025: Multi-Team tables ──────────────────────────────────────────────────
+  teams: defineTable({
+    name: v.string(),
+    slug: v.string(), // server-like address, e.g. "luxxurious-team"
+    description: v.optional(v.string()),
+    createdBy: v.id("users"),
+    masterUplineId: v.optional(v.id("users")),
+    isDefault: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_isDefault", ["isDefault"]),
+
+  teamMemberships: defineTable({
+    teamId: v.id("teams"),
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("super_admin"),
+      v.literal("admin"),
+      v.literal("member"),
+    ),
+    joinedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_teamId_and_userId", ["teamId", "userId"])
+    .index("by_teamId_and_role", ["teamId", "role"]),
 
   wallets: defineTable({
     userId: v.id("users"),
@@ -350,6 +381,8 @@ export default defineSchema({
   networkMembers: defineTable({
     profileId: v.id("mobileProfiles"),
     userId: v.optional(v.id("users")),
+    // ── M025: Multi-Team ──
+    teamId: v.optional(v.id("teams")),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     middleName: v.optional(v.string()),
@@ -393,7 +426,8 @@ export default defineSchema({
     .index("by_createdByUserId", ["createdByUserId"])
     .index("by_ownedByUserId", ["ownedByUserId"])
     .index("by_userId", ["userId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_teamId", ["teamId"]),
 
   memberAssets: defineTable({
     memberId: v.id("networkMembers"),

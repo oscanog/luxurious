@@ -52,6 +52,7 @@ import type * as signals from "../signals.js";
 import type * as simulation from "../simulation.js";
 import type * as socialFeed from "../socialFeed.js";
 import type * as support from "../support.js";
+import type * as teams from "../teams.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   simulation: typeof simulation;
   socialFeed: typeof socialFeed;
   support: typeof support;
+  teams: typeof teams;
   transactions: typeof transactions;
   users: typeof users;
 }>;

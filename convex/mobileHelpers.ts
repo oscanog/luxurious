@@ -387,7 +387,7 @@ export async function getMobileProfileByUserId(
   return await ctx.db
     .query("mobileProfiles")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
+    .first();
 }
 
 export async function getMobileProfileForViewer(ctx: MobileCtx) {
@@ -670,6 +670,15 @@ export async function listUnifiedNetworkMembers(
         };
       }
     }
+  }
+
+  // M025: Team Encapsulation filter
+  const viewerUserId = (await requireMobileViewer(ctx))._id;
+  const viewerUser = await ctx.db.get("users", viewerUserId);
+  const activeTeamId = viewerUser?.activeTeamId;
+
+  if (activeTeamId) {
+    return allMembers.filter((m) => m.teamId === activeTeamId);
   }
 
   return allMembers;

@@ -140,6 +140,12 @@ export function AdminPortalPage() {
           <div className="space-y-3">
             {[
               {
+                title: "Team Management",
+                desc: "Create and configure Multi-Team tenant spaces.",
+                path: "/admin/teams",
+                icon: ShieldCheck,
+              },
+              {
                 title: "Academy Content Manager",
                 desc: "Edit levels, lessons, and slugs.",
                 path: "/admin/academy",

@@ -11,6 +11,7 @@ import { api } from "../convex/_generated/api";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminPortalPage } from "@/pages/admin/AdminPortalPage";
+import { TeamManagementPage } from "@/pages/admin/TeamManagementPage";
 import { ApkManagementPage } from "@/pages/admin/ApkManagementPage";
 import { AcademyManagerPage } from "@/pages/admin/AcademyManagerPage";
 import { AiKnowledgePage } from "@/pages/admin/AiKnowledgePage";
@@ -50,6 +51,8 @@ import {
   getInitialThemeMode,
   persistThemeMode,
 } from "@/lib/theme";
+import { TeamProvider } from "@/lib/TeamContext";
+import { TeamJoinModal } from "@/components/team/TeamJoinModal";
 
 function LaunchScreen() {
   return (
@@ -79,6 +82,7 @@ function AuthenticatedApp({
   const mobileStatus = useQuery(api.mobile.status);
   const bootstrap = useMutation(api.mobile.bootstrap);
   const bootstrapInFlight = useRef(false);
+  const [teamJoined, setTeamJoined] = useState(false);
 
   useEffect(() => {
     if (mobileStatus?.ready !== false || bootstrapInFlight.current) {
@@ -95,7 +99,13 @@ function AuthenticatedApp({
     return <LaunchScreen />;
   }
 
+  // M025: Gate behind team membership
+  if (!mobileStatus.hasTeams && !teamJoined) {
+    return <TeamJoinModal onJoined={() => setTeamJoined(true)} />;
+  }
+
   return (
+    <TeamProvider>
     <AdminLayout themeMode={themeMode} onToggleTheme={onToggleTheme}>
       <Routes>
         <Route path="/" element={<DashboardHomePage />} />
@@ -140,6 +150,7 @@ function AuthenticatedApp({
         <Route path="/admin/ai-settings" element={<AiSettingsPage />} />
         <Route path="/admin/ai-knowledge" element={<AiKnowledgePage />} />
         <Route path="/admin/academy" element={<AcademyManagerPage />} />
+        <Route path="/admin/teams" element={<TeamManagementPage />} />
         <Route path="/admin/trades" element={<TradeMonitorPage />} />
         <Route path="/admin/apk-management" element={<ApkManagementPage />} />
         <Route
@@ -153,6 +164,7 @@ function AuthenticatedApp({
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AdminLayout>
+    </TeamProvider>
   );
 }
 

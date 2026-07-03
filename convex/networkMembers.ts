@@ -188,6 +188,7 @@ export const createMemberRecord = internalMutation({
           : "Active Member"
         : "Prospect";
 
+    const viewer = await ctx.db.get("users", args.viewerUserId);
     const memberId = await ctx.db.insert("networkMembers", {
       profileId: targetProfile._id,
       userId: args.authUserId,
@@ -218,6 +219,7 @@ export const createMemberRecord = internalMutation({
       longitude: args.longitude,
       createdByUserId: args.viewerUserId,
       ownedByUserId: resolveOwnedByUserId(args.viewerUserId, parent),
+      teamId: viewer?.activeTeamId,
       createdAt: now,
       updatedAt: now,
     });

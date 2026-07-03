@@ -1,6 +1,8 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Moon, Sun, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useConvex } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import toast from "react-hot-toast";
 import { ThemeMode } from "@/lib/theme";
 
@@ -20,17 +22,44 @@ export function LoginPage({
   const [termsChecked, setTermsChecked] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [step, setStep] = useState<"team" | "login">("team");
+  const [teamSlug, setTeamSlug] = useState("");
+  const convex = useConvex();
 
   useEffect(() => {
     const savedEmail = localStorage.getItem("lux_saved_email");
     const savedPassword = localStorage.getItem("lux_saved_password");
     const savedRemember = localStorage.getItem("lux_saved_remember") === "true";
+    const savedTeam = localStorage.getItem("lux_saved_team");
+    
+    if (savedTeam) setTeamSlug(savedTeam);
+
     if (savedRemember) {
       if (savedEmail) setEmail(savedEmail);
       if (savedPassword) setPassword(savedPassword);
       setRememberMe(true);
     }
   }, []);
+
+  async function handleVerifyTeam(event: React.FormEvent) {
+    event.preventDefault();
+    if (!teamSlug) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const team = await convex.query(api.teams.getTeamBySlug, { slug: teamSlug });
+      if (!team) {
+        setError("Team not found. Please check your server address.");
+      } else {
+        localStorage.setItem("lux_saved_team", teamSlug);
+        setStep("login");
+      }
+    } catch (e: any) {
+      setError(e.message || "Failed to verify team.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -44,20 +73,34 @@ export function LoginPage({
 
     try {
       await signIn("password", formData);
-      if (rememberMe) {
-        localStorage.setItem("lux_saved_email", email);
-        localStorage.setItem("lux_saved_password", password);
-        localStorage.setItem("lux_saved_remember", "true");
-      } else {
-        localStorage.removeItem("lux_saved_email");
-        localStorage.removeItem("lux_saved_password");
-        localStorage.removeItem("lux_saved_remember");
+      saveCache();
+    } catch (error: any) {
+      // If sign in fails, it might be because the account isn't registered in Auth yet
+      try {
+        formData.set("flow", "signUp");
+        await signIn("password", formData);
+        saveCache();
+        return;
+      } catch (signUpErr) {
+        console.error("SignUp fallback failed", signUpErr);
       }
-    } catch (error) {
+      
       setError("Invalid email or password. Please try again.");
       toast.error("Sign-in failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function saveCache() {
+    if (rememberMe) {
+      localStorage.setItem("lux_saved_email", email);
+      localStorage.setItem("lux_saved_password", password);
+      localStorage.setItem("lux_saved_remember", "true");
+    } else {
+      localStorage.removeItem("lux_saved_email");
+      localStorage.removeItem("lux_saved_password");
+      localStorage.removeItem("lux_saved_remember");
     }
   }
 
@@ -100,88 +143,145 @@ export function LoginPage({
           style={{ background: "linear-gradient(to right, transparent, hsl(43 96% 48% / 0.6), transparent)" }}
         />
 
-        <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="email"
-              className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]"
-            >
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@domain.com"
-              className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="password"
-              className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]"
-            >
-              Password
-            </label>
-            <div className="relative">
+        {step === "team" ? (
+          <form onSubmit={handleVerifyTeam} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]">
+                Server Address
+              </label>
               <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
+                type="text"
                 required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] pl-4 pr-11 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
+                value={teamSlug}
+                onChange={(event) => setTeamSlug(event.target.value.toLowerCase().trim())}
+                placeholder="e.g. luxxurious-team"
+                className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
               />
+            </div>
+            
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+                <p className="text-sm text-red-500">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !teamSlug}
+              className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                background: loading || !teamSlug
+                  ? "hsl(var(--muted))"
+                  : "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))",
+                boxShadow: loading || !teamSlug ? "none" : "0 4px 20px hsl(43 96% 48% / 0.35)",
+              }}
+            >
+              {loading ? "Verifying..." : "Continue"}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--primary)/0.1)] border border-[hsl(var(--primary)/0.2)]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--primary))]" />
+                <span className="text-[10px] font-bold tracking-wider text-[hsl(var(--primary))] uppercase truncate max-w-[150px]">
+                  {teamSlug}
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all focus:outline-none"
+                onClick={() => {
+                  setStep("team");
+                  setError(null);
+                }}
+                className="text-[11px] font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline transition-colors uppercase tracking-wider"
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                Change
               </button>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between mt-1">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="email"
+                className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]"
+              >
+                Email Address
+              </label>
               <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-[hsl(var(--border))] text-[hsl(var(--primary))] focus:ring-0 accent-[hsl(var(--primary))]"
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@domain.com"
+                className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
               />
-              <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
-                Remember Password
-              </span>
-            </label>
-          </div>
-
-          {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-              <p className="text-sm text-red-500">{error}</p>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              background: loading
-                ? "hsl(43 96% 48%)"
-                : "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))",
-              boxShadow: loading ? "none" : "0 4px 20px hsl(43 96% 48% / 0.35)",
-            }}
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="password"
+                className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))]"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] pl-4 pr-11 py-2.5 text-sm font-medium text-[hsl(var(--foreground))] outline-none transition-all placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring)/0.2)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-[hsl(var(--border))] text-[hsl(var(--primary))] focus:ring-0 accent-[hsl(var(--primary))]"
+                />
+                <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+                  Remember Password
+                </span>
+              </label>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+                <p className="text-sm font-medium text-red-500">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                background: loading
+                  ? "hsl(43 96% 48%)"
+                  : "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))",
+                boxShadow: loading ? "none" : "0 4px 20px hsl(43 96% 48% / 0.35)",
+              }}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+        )}
 
         <p className="mt-6 text-center text-xs">
           <button

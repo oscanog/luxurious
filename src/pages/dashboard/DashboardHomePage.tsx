@@ -7,6 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import owlFrontLeft from "@/assets/brand/owl-front-left.png";
 import { SurfaceCard } from "@/components/dashboard/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useTeam } from "@/lib/TeamContext";
 
 import { NetworkDialog } from "@/components/dashboard/NetworkDialog";
 
@@ -104,6 +105,7 @@ function DashboardSkeleton() {
 }
 
 export function DashboardHomePage() {
+  const { activeTeam } = useTeam();
   const dashboard = useQuery(api.network.getDashboard);
   const [quote, setQuote] = useState<{ text: string; author: string } | null>(() => {
     const CACHE_KEY = "luxxurie_daily_quote";
@@ -194,7 +196,9 @@ export function DashboardHomePage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex flex-col gap-1">
-            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">{dateLabel}</p>
+            <p className="text-[14px] font-medium text-[hsl(var(--muted-foreground))]">
+              {activeTeam ? `${activeTeam.name} • ` : ""}{dateLabel}
+            </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
                 PH: <span className="tabular-nums font-bold opacity-80">{phTime}</span>

@@ -76,6 +76,7 @@ export const inviteMember = mutation({
       yepbitUsername: args.yepbitUsername,
       createdByUserId: profile.userId,
       ownedByUserId: profile.userId,
+      teamId: viewer?.teamId,
       createdAt: now,
       updatedAt: now,
     });

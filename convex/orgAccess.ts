@@ -14,6 +14,7 @@ type UserLike = {
   name?: string;
   role?: string;
   adminLevel?: AdminLevel;
+  activeTeamId?: Id<"teams">;
 };
 type ProfileLike =
   | Pick<Doc<"mobileProfiles">, "_id" | "userId">
@@ -29,7 +30,35 @@ type MemberLike = Pick<
   | "ownedByUserId"
   | "directLimitOverride"
   | "status"
+  | "teamId"
 >;
+
+// ── M025: Team Authorization ──
+export async function requireTeamMembership(ctx: Ctx, teamId: Id<"teams"> | undefined) {
+  const user = await requireAuthUser(ctx);
+  const adminLevel = getUserAdminLevel(user);
+  
+  if (adminLevel >= 2) {
+    return { user, adminLevel };
+  }
+  
+  if (!teamId) {
+    throw new Error("Target team is required for authorization.");
+  }
+  
+  const membership = await ctx.db
+    .query("teamMemberships")
+    .withIndex("by_teamId_and_userId", (q) =>
+      q.eq("teamId", teamId).eq("userId", user._id),
+    )
+    .unique();
+    
+  if (!membership) {
+    throw new Error("You do not have access to this team.");
+  }
+  
+  return { user, adminLevel, membership };
+}
 
 function normalize(value: string | undefined) {
   return (value ?? "").trim().toLowerCase();
@@ -117,6 +146,12 @@ export function canManageMember(
   if (adminLevel >= 2) {
     return true;
   }
+  
+  // M025: Enforce strict team boundary check if activeTeamId is present on user
+  if (viewer.activeTeamId !== undefined && member.teamId !== undefined && viewer.activeTeamId !== member.teamId) {
+     return false;
+  }
+  
   if (adminLevel < 1) {
     return false;
   }
@@ -147,6 +182,12 @@ export function canAddUnderParent(
   if (adminLevel >= 2) {
     return true;
   }
+  
+  // M025: Enforce strict team boundary check
+  if (viewer.activeTeamId !== undefined && parent.teamId !== undefined && viewer.activeTeamId !== parent.teamId) {
+     return false;
+  }
+
   if (adminLevel < 1) {
     return false;
   }

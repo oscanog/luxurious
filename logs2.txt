@@ -1,0 +1,65 @@
+﻿node.exe : Watching logs for dev deployment polished-eagle-138...
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Watching logs f...ed-eagle-138...:S 
+   tring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+7/3/2026, 4:01:58 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:01:58 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:01:58 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+7/3/2026, 4:02:52 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:02:52 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:02:52 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+7/3/2026, 4:03:16 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: createAccountFromCredentials'
+7/3/2026, 4:03:16 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:03:37 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:03:37 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:03:37 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+7/3/2026, 4:04:14 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:04:14 PM [CONVEX Q(mobile:status)] Uncaught Error: Authenticated user missing.
+    at async handler (../convex/mobile.ts:62:15)
+
+7/3/2026, 4:04:14 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+7/3/2026, 4:08:49 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: retrieveAccountWithCredentials'
+7/3/2026, 4:08:49 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:08:50 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: createAccountFromCredentials'
+7/3/2026, 4:08:50 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:08:59 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: retrieveAccountWithCredentials'
+7/3/2026, 4:08:59 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:09:00 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: createAccountFromCredentials'
+7/3/2026, 4:09:00 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:09:07 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: retrieveAccountWithCredentials'
+7/3/2026, 4:09:07 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:09:08 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: createAccountFromCredentials'
+7/3/2026, 4:09:08 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:10:09 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: refreshSession'
+7/3/2026, 4:10:09 PM [CONVEX M(auth:store)] [ERROR] 'Expired refresh token'
+7/3/2026, 4:11:04 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: retrieveAccountWithCredentials'
+7/3/2026, 4:11:04 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
+7/3/2026, 4:11:04 PM [CONVEX M(auth:store)] [INFO] '`auth:store` type: createAccountFromCredentials'
+7/3/2026, 4:11:04 PM [CONVEX A(auth:signIn)] Uncaught TypeError: Cannot read properties of null (reading '_id')
+
