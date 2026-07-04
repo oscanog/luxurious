@@ -31,6 +31,8 @@ export const status = query({
     const canPromoteAdmins = adminLevel >= 2;
     const canManageAnyVisibleMember = adminLevel >= 2;
     const canManageCapacity = adminLevel >= 2;
+    // M026: Workspace Admin (Level 3 or Level 2)
+    const canManageWorkspace = adminLevel >= 2;
 
     // ── M025: Team context ──
     const memberships = await ctx.db
@@ -75,6 +77,7 @@ export const status = query({
       canPromoteAdmins,
       canManageAnyVisibleMember,
       canManageCapacity,
+      canManageWorkspace,
       // M025
       activeTeamId,
       teams,

@@ -19,7 +19,7 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     // ── Custom fields ──
     role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
-    adminLevel: v.optional(v.union(v.literal(0), v.literal(1), v.literal(2))),
+    adminLevel: v.optional(v.union(v.literal(0), v.literal(1), v.literal(2), v.literal(3))),
     adminAssignedBy: v.optional(v.id("users")),
     adminAssignedAt: v.optional(v.number()),
     uplineId: v.optional(v.union(v.id("users"), v.null())),

@@ -10,6 +10,7 @@
 
 import type * as academy from "../academy.js";
 import type * as admin from "../admin.js";
+import type * as adminSetupLevel3 from "../adminSetupLevel3.js";
 import type * as aiAgent from "../aiAgent.js";
 import type * as aiContext from "../aiContext.js";
 import type * as aiCrypto from "../aiCrypto.js";
@@ -65,6 +66,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   academy: typeof academy;
   admin: typeof admin;
+  adminSetupLevel3: typeof adminSetupLevel3;
   aiAgent: typeof aiAgent;
   aiContext: typeof aiContext;
   aiCrypto: typeof aiCrypto;

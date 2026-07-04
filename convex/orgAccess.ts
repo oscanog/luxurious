@@ -6,7 +6,7 @@ export const DEFAULT_DIRECT_LIMIT = 3;
 export const ROOT_ADMIN_EMAIL = "admin@luxurious.trade";
 const MARKO_ADMIN_EMAIL = "sehun4244@gmail.com";
 
-export type AdminLevel = 0 | 1 | 2;
+export type AdminLevel = 0 | 1 | 2 | 3;
 type Ctx = QueryCtx | MutationCtx;
 type UserLike = {
   _id?: Id<"users">;
@@ -38,7 +38,7 @@ export async function requireTeamMembership(ctx: Ctx, teamId: Id<"teams"> | unde
   const user = await requireAuthUser(ctx);
   const adminLevel = getUserAdminLevel(user);
   
-  if (adminLevel >= 2) {
+  if (adminLevel >= 2 && adminLevel !== 3) {
     return { user, adminLevel };
   }
   
@@ -74,6 +74,9 @@ export function getUserAdminLevel(
   if (email === ROOT_ADMIN_EMAIL || email === MARKO_ADMIN_EMAIL) {
     return 2;
   }
+  if (user.adminLevel === 3) {
+    return 3;
+  }
   if (user.adminLevel === 2) {
     return 2;
   }
@@ -102,7 +105,8 @@ export async function requireAuthUser(ctx: Ctx) {
 export async function requireAdminLevel(ctx: Ctx, minLevel: AdminLevel) {
   const user = await requireAuthUser(ctx);
   const adminLevel = getUserAdminLevel(user);
-  if (adminLevel < minLevel) {
+  // Level 3 is a specially constrained workspace admin, not automatically > 2.
+  if (adminLevel < minLevel && !(minLevel === 3 && adminLevel === 3)) {
     throw new Error("Admin access required.");
   }
   return { user, adminLevel };

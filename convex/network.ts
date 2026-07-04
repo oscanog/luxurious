@@ -297,7 +297,7 @@ type MobileDeleteCtx = QueryCtx | MutationCtx;
 type OrgAccessContext = {
   viewer: Doc<"users"> | null;
   profile: Doc<"mobileProfiles"> | null;
-  adminLevel: 0 | 1 | 2;
+  adminLevel: 0 | 1 | 2 | 3;
 };
 type DeleteImpact = {
   memberId: Id<"networkMembers">;
