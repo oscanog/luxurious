@@ -79,7 +79,9 @@ export type NavPath =
   | "/admin/academy"
   | "/admin/trades"
   | "/admin/apk-management"
-  | "/admin/presentations";
+  | "/admin/presentations"
+  | "/admin/workspace"
+  | "/admin/teams";
 
 const NETWORK_ITEMS: Array<{
   path: NavPath;
@@ -189,6 +191,8 @@ const PATH_LABELS: Record<NavPath, string> = {
   "/admin/trades": "Trade Monitor",
   "/admin/apk-management": "APK Management",
   "/admin/presentations": "Presentation Studio",
+  "/admin/workspace": "Workspace Settings",
+  "/admin/teams": "Team Management",
 };
 
 function SidebarLink({
@@ -581,6 +585,20 @@ export function AdminLayout({
               <SidebarSection
                 title="Admin"
                 items={ADMIN_ITEMS}
+                collapsed={collapsed}
+                onSelect={() => setMobileMenuOpen(false)}
+              />
+            )}
+            {!isAdmin && mobileStatus?.canManageWorkspace && (
+              <SidebarSection
+                title="Workspace Admin"
+                items={[
+                  {
+                    path: "/admin/workspace",
+                    label: "Workspace Settings",
+                    icon: ShieldCheck,
+                  }
+                ]}
                 collapsed={collapsed}
                 onSelect={() => setMobileMenuOpen(false)}
               />

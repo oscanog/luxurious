@@ -18,6 +18,7 @@ import { AiKnowledgePage } from "@/pages/admin/AiKnowledgePage";
 import { AiSettingsPage } from "@/pages/admin/AiSettingsPage";
 import { TradeMonitorPage } from "@/pages/admin/TradeMonitorPage";
 import { PresentationStudioPage } from "@/pages/admin/PresentationStudioPage";
+import { WorkspaceSettingsPage } from "@/pages/admin/WorkspaceSettingsPage";
 import { AcademyPage } from "@/pages/dashboard/AcademyPage";
 import { AccountsPage } from "@/pages/dashboard/AccountsPage";
 import { ActivityFeedPage } from "@/pages/dashboard/ActivityFeedPage";
@@ -151,6 +152,7 @@ function AuthenticatedApp({
         <Route path="/admin/ai-knowledge" element={<AiKnowledgePage />} />
         <Route path="/admin/academy" element={<AcademyManagerPage />} />
         <Route path="/admin/teams" element={<TeamManagementPage />} />
+        <Route path="/admin/workspace" element={<WorkspaceSettingsPage />} />
         <Route path="/admin/trades" element={<TradeMonitorPage />} />
         <Route path="/admin/apk-management" element={<ApkManagementPage />} />
         <Route
