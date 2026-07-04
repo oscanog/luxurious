@@ -9,7 +9,7 @@ import { getUserAdminLevel } from "./orgAccess";
 export const bootstrap = mutation({
   args: {},
   handler: async (ctx) => {
-    const viewer = await requireMobileViewer(ctx);
+    await requireMobileViewer(ctx);
     const profile = await ensureMobileProfileForViewer(ctx);
 
     // No auto-join. Users must explicitly use TeamJoinScreen if they have no teams.

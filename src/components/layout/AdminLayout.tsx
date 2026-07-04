@@ -460,7 +460,7 @@ export function AdminLayout({
             "fixed inset-y-0 left-0 z-50 flex h-screen shrink-0 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform duration-300 md:sticky md:top-0 md:translate-x-0",
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
           )}
-          style={{ width: collapsed ? 88 : 296 }}
+          style={{ width: collapsed ? 88 : 320 }}
         >
           <div
             className="relative overflow-hidden border-b border-[hsl(var(--border))] p-4"
@@ -501,12 +501,12 @@ export function AdminLayout({
                   <p className="truncate text-xs text-blue-100/90">
                     {mobileStatus?.user.email ?? ""}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-white/14 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
+                  <div className="mt-3 flex flex-col gap-1.5 items-start">
+                    <span className="rounded-full bg-white/14 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white whitespace-nowrap">
                       {isAdmin ? "Admin workspace" : "Member workspace"}
                     </span>
                     {profile && (
-                      <span className="rounded-full bg-[hsl(var(--secondary))] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[hsl(222_47%_11%)]">
+                      <span className="rounded-full bg-[hsl(var(--secondary))] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[hsl(222_47%_11%)] whitespace-nowrap">
                         {profile.rank.name}
                       </span>
                     )}

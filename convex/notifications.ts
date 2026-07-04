@@ -35,30 +35,39 @@ function formatCurrency(amount: number) {
   });
 }
 
-function deriveRank(joinedDownlineCount: number) {
-  if (joinedDownlineCount >= 6) {
+function deriveRank(totalDownlines: number, directReferrals: number) {
+  if (totalDownlines >= 1000) {
     return {
-      tier: 2,
-      name: "Senior Stakeholder",
+      tier: 3,
+      name: "Senior Shareholder",
       frame: "gold",
-      rangeLabel: "6+ joined downlines",
+      rangeLabel: "1000+ total downlines",
       nextTarget: null as number | null,
     };
   }
-  if (joinedDownlineCount >= 3) {
+  if (totalDownlines >= 31 && directReferrals >= 6) {
+    return {
+      tier: 2,
+      name: "Intermediate Shareholder",
+      frame: "silver",
+      rangeLabel: "31+ total, 6+ direct referrals",
+      nextTarget: 1000,
+    };
+  }
+  if (directReferrals >= 3) {
     return {
       tier: 1,
-      name: "Junior Stakeholder",
-      frame: "silver",
-      rangeLabel: "3-5 joined downlines",
-      nextTarget: 6,
+      name: "Junior Shareholder",
+      frame: "bronze",
+      rangeLabel: "3+ direct referrals",
+      nextTarget: 31,
     };
   }
   return {
     tier: 0,
-    name: "Junior Certified",
-    frame: "bronze",
-    rangeLabel: "0-2 joined downlines",
+    name: "Ordinary Member",
+    frame: "none",
+    rangeLabel: "0-2 direct referrals",
     nextTarget: 3,
   };
 }
@@ -71,6 +80,16 @@ function countJoinedDownlines(
   return children.reduce((sum, child) => {
     const childCount = countJoinedDownlines(parentLookup, child._id);
     return sum + (child.status === "joined" ? 1 : 0) + childCount;
+  }, 0);
+}
+
+function countAllDownlines(
+  parentLookup: Map<string, Array<{ _id: string; status: string }>>,
+  parentId: string,
+): number {
+  const children = parentLookup.get(parentId) ?? [];
+  return children.reduce((sum, child) => {
+    return sum + 1 + countAllDownlines(parentLookup, child._id);
   }, 0);
 }
 
@@ -112,7 +131,13 @@ async function buildFeedData(ctx: MobileCtx) {
   const viewerMember = members.find((member) => member.isViewer) ?? null;
   const joinedDownlineCount =
     viewerMember == null ? 0 : countJoinedDownlines(parentLookup, viewerMember._id);
-  const rank = deriveRank(joinedDownlineCount);
+  const allDownlineCount =
+    viewerMember == null ? 0 : countAllDownlines(parentLookup, viewerMember._id);
+    
+  const directChildren = viewerMember == null ? [] : (parentLookup.get(viewerMember._id) ?? []);
+  const directJoinedCount = directChildren.filter(c => c.status === "joined").length;
+  
+  const rank = deriveRank(allDownlineCount, directJoinedCount);
   const accountById = new Map(accounts.map((account) => [account._id, account]));
   const events: FeedEvent[] = [];
 
@@ -283,7 +308,7 @@ function buildPromotions(args: {
           : `${remainingToNextRank} more joined downlines unlock next frame`,
       body:
         args.rank.nextTarget == null
-          ? "Senior Stakeholder tier active. Keep mentoring second-line growth."
+          ? "Senior Shareholder tier active. Keep mentoring second-line growth."
           : `Current status ${args.rank.name}. Next milestone lands at ${args.rank.nextTarget} joined downlines.`,
       ctaLabel: "Open feed",
       tone: "gold",
@@ -436,7 +461,13 @@ export const listPromotions = query({
     const viewerMember = members.find((member) => member.isViewer) ?? null;
     const joinedDownlineCount =
       viewerMember == null ? 0 : countJoinedDownlines(parentLookup, viewerMember._id);
-    const rank = deriveRank(joinedDownlineCount);
+    const allDownlineCount =
+      viewerMember == null ? 0 : countAllDownlines(parentLookup, viewerMember._id);
+      
+    const directChildren = viewerMember == null ? [] : (parentLookup.get(viewerMember._id) ?? []);
+    const directJoinedCount = directChildren.filter(c => c.status === "joined").length;
+    
+    const rank = deriveRank(allDownlineCount, directJoinedCount);
     const transactions = await ctx.db
       .query("financialTransactions")
       .withIndex("by_profileId_and_occurredAt", (q) => q.eq("profileId", profile._id))
