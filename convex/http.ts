@@ -55,6 +55,39 @@ function readErrorMessage(error: unknown) {
   return "Convex RPC failed.";
 }
 
+// ── Public API (No Auth Required) ──────────────────────────────────────────────────
+
+http.route({
+  path: "/mobile/public/query",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const body = (await req.json()) as MobileRpcPayload;
+      if (!body.name) {
+        return jsonResponse({ error: "Missing name." }, 400);
+      }
+
+      let result: unknown;
+
+      switch (body.name) {
+        case "teams:getTeamBySlug":
+          result = await ctx.runQuery(api.teams.getTeamBySlug, {
+            slug: readStringArg(body.args?.slug),
+          });
+          break;
+        default:
+          return jsonResponse({ error: `Unknown public mobile query: ${body.name}` }, 404);
+      }
+
+      return jsonResponse({ result });
+    } catch (error) {
+      return jsonResponse({ error: readErrorMessage(error) }, 500);
+    }
+  }),
+});
+
+// ── Authentication API ─────────────────────────────────────────────────────────────
+
 http.route({
   path: "/mobile/auth/sign-in",
   method: "POST",
@@ -387,6 +420,17 @@ http.route({
           break;
         case "aiKnowledge:listDocuments":
           result = await ctx.runQuery(api.aiKnowledge.listDocuments, {});
+          break;
+        case "teams:getTeamBySlug":
+          result = await ctx.runQuery(api.teams.getTeamBySlug, {
+            slug: readStringArg(body.args?.slug),
+          });
+          break;
+        case "teams:getMyTeams":
+          result = await ctx.runQuery(api.teams.getMyTeams, {});
+          break;
+        case "teams:getActiveTeam":
+          result = await ctx.runQuery(api.teams.getActiveTeam, {});
           break;
         default:
           return jsonResponse({ error: `Unknown mobile query: ${body.name}` }, 404);
@@ -940,6 +984,22 @@ http.route({
             storageId: typeof body.args?.storageId === "string" ? (body.args.storageId as any) : "",
             extractedText: typeof body.args?.extractedText === "string" ? body.args.extractedText : undefined,
           });
+          break;
+        case "teams:joinTeam":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.teams.joinTeam, {
+            slug: readStringArg(body.args?.slug),
+          });
+          break;
+        case "teams:setActiveTeam":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.teams.setActiveTeam, {
+            teamId: typeof body.args?.teamId === "string" ? (body.args.teamId as any) : "",
+          });
+          break;
+        case "teams:leaveAllTeams":
+          await ctx.runMutation(api.mobile.bootstrap, {});
+          result = await ctx.runMutation(api.teams.leaveAllTeams, {});
           break;
         default:
           return jsonResponse({ error: `Unknown mobile mutation: ${body.name}` }, 404);

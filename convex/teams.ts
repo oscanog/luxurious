@@ -313,6 +313,58 @@ export const setActiveTeam = mutation({
   },
 });
 
+export const leaveTeam = mutation({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+
+    // Find and delete membership
+    const membership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_teamId_and_userId", (q) =>
+        q.eq("teamId", args.teamId).eq("userId", user._id),
+      )
+      .unique();
+    if (membership) {
+      await ctx.db.delete(membership._id);
+    }
+
+    // If this was the active team, clear it or switch to the next team
+    if (user.activeTeamId === args.teamId) {
+      const nextMembership = await ctx.db
+        .query("teamMemberships")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .first();
+      await ctx.db.patch(user._id, {
+        activeTeamId: nextMembership?.teamId ?? undefined,
+      });
+    }
+
+    return { success: true, leftTeamId: args.teamId };
+  },
+});
+
+export const leaveAllTeams = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireAuthUser(ctx);
+
+    const memberships = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const m of memberships) {
+      await ctx.db.delete(m._id);
+    }
+
+    // Clear active team
+    await ctx.db.patch(user._id, { activeTeamId: undefined });
+
+    return { success: true, removedCount: memberships.length };
+  },
+});
+
 // ── Migration ───────────────────────────────────────────────────────────────────
 
 export const migrateToDefaultTeam = internalMutation({

@@ -12,28 +12,7 @@ export const bootstrap = mutation({
     const viewer = await requireMobileViewer(ctx);
     const profile = await ensureMobileProfileForViewer(ctx);
 
-    // M025: Auto-join default team if user has no teams and there is a default team
-    const memberships = await ctx.db
-      .query("teamMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
-      .first();
-
-    if (!memberships) {
-      const defaultTeam = await ctx.db
-        .query("teams")
-        .withIndex("by_isDefault", (q) => q.eq("isDefault", true))
-        .first();
-
-      if (defaultTeam) {
-        await ctx.db.insert("teamMemberships", {
-          teamId: defaultTeam._id,
-          userId: viewer._id,
-          role: "member",
-          joinedAt: Date.now(),
-        });
-        await ctx.db.patch(viewer._id, { activeTeamId: defaultTeam._id });
-      }
-    }
+    // No auto-join. Users must explicitly use TeamJoinScreen if they have no teams.
 
     return {
       profileId: profile?._id ?? null,
