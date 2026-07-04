@@ -56,17 +56,31 @@ import { TeamProvider } from "@/lib/TeamContext";
 import { TeamJoinModal } from "@/components/team/TeamJoinModal";
 
 function LaunchScreen() {
+  const [cachedData, setCachedData] = useState<{ name: string; logoUrl: string | null } | null>(null);
+  
+  useEffect(() => {
+    const name = localStorage.getItem("lux_saved_team_name");
+    const logoUrl = localStorage.getItem("lux_saved_team_logo");
+    if (name) {
+      setCachedData({ name, logoUrl });
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] flex items-center justify-center px-6">
+    <div className="min-h-screen bg-[hsl(var(--background))] flex items-center justify-center px-6 animate-pulse">
       <div className="text-center">
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] border border-[hsl(var(--border))] bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] text-3xl font-black text-white shadow-[0_24px_60px_-36px_hsl(221_83%_53%_/_0.55)]">
-          L
-        </div>
+        {cachedData?.logoUrl ? (
+          <img src={cachedData.logoUrl} alt={cachedData.name} className="mx-auto h-24 w-24 object-contain rounded-full shadow-md border border-[hsl(var(--border))]" />
+        ) : (
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.15)] text-4xl font-black text-[hsl(var(--primary))] shadow-md">
+            {(cachedData?.name.charAt(0) || "L").toUpperCase()}
+          </div>
+        )}
         <h1 className="mt-6 text-2xl font-black tracking-tight text-[hsl(var(--foreground))]">
-          Preparing desktop workspace
+          Preparing {cachedData?.name || "desktop"} workspace
         </h1>
         <p className="mt-3 text-sm text-[hsl(var(--muted-foreground))]">
-          Syncing mobile-backed profile, notifications, and dashboard state.
+          Syncing profile, notifications, and team data...
         </p>
       </div>
     </div>

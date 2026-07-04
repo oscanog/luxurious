@@ -19,6 +19,7 @@ export const getTeamBySlug = query({
       name: team.name,
       slug: team.slug,
       description: team.description ?? null,
+      logoUrl: team.logoId ? await ctx.storage.getUrl(team.logoId) : null,
     };
   },
 });
@@ -63,6 +64,7 @@ export const getActiveTeam = query({
           name: team.name,
           slug: team.slug,
           isDefault: team.isDefault,
+          logoUrl: team.logoId ? await ctx.storage.getUrl(team.logoId) : null,
         };
       }
     }
@@ -82,7 +84,72 @@ export const getActiveTeam = query({
       name: team.name,
       slug: team.slug,
       isDefault: team.isDefault,
+      logoUrl: team.logoId ? await ctx.storage.getUrl(team.logoId) : null,
     };
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAuthUser(ctx);
+    // Requires authentication to upload files
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const updateLogo = mutation({
+  args: {
+    teamId: v.id("teams"),
+    logoId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const adminLvl = getUserAdminLevel(user);
+    
+    // Only Level 2 (superadmin) or Level 3 (workspace admin of this team) can update
+    if (adminLvl < 2 && !(adminLvl === 3 && user.activeTeamId === args.teamId)) {
+      throw new Error("Unauthorized to update team logo");
+    }
+
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found");
+
+    // Optional: could delete old logo using ctx.storage.delete(team.logoId) here if required
+
+    await ctx.db.patch(args.teamId, { logoId: args.logoId });
+  },
+});
+
+export const updateTeam = mutation({
+  args: {
+    teamId: v.id("teams"),
+    name: v.string(),
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx);
+    const adminLvl = getUserAdminLevel(user);
+    
+    if (adminLvl < 2 && !(adminLvl === 3 && user.activeTeamId === args.teamId)) {
+      throw new Error("Unauthorized to update team");
+    }
+
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found");
+
+    const normalizedSlug = args.slug.trim().toLowerCase().replace(/\s+/g, "-");
+    
+    // Check if slug is taken by someone else
+    const existing = await ctx.db.query("teams").withIndex("by_slug", q => q.eq("slug", normalizedSlug)).unique();
+    if (existing && existing._id !== args.teamId) {
+      throw new Error("Server address (slug) is already taken.");
+    }
+
+    await ctx.db.patch(args.teamId, { 
+      name: args.name,
+      slug: normalizedSlug,
+    });
   },
 });
 

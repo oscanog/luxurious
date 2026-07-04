@@ -400,6 +400,9 @@ export function AdminLayout({
   const { signOut } = useAuthActions();
   const location = useLocation();
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  
+  const activeTeamId = mobileStatus?.activeTeamId;
+  const activeTeam = mobileStatus?.teams.find(t => t._id === activeTeamId);
 
   const isAdmin = Boolean(isAdminQuery || mobileStatus?.isAdmin);
   const activeLabel = location.pathname.startsWith("/social-feed/post/")
@@ -436,6 +439,13 @@ export function AdminLayout({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [profileMenuOpen]);
 
+  const handleSignOut = () => {
+    localStorage.removeItem("lux_saved_team");
+    localStorage.removeItem("lux_saved_team_name");
+    localStorage.removeItem("lux_saved_team_logo");
+    void signOut();
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-[hsl(var(--background))]">
       <>
@@ -466,13 +476,21 @@ export function AdminLayout({
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-start gap-3"
             >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/16 bg-white/10 text-lg font-black text-white">
-                L
-              </div>
+              {activeTeam?.logoUrl ? (
+                <img
+                  src={activeTeam.logoUrl}
+                  alt={activeTeam.name}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[hsl(var(--border))] object-contain shadow-sm bg-white"
+                />
+              ) : (
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/16 bg-white/10 text-lg font-black text-white">
+                  {activeTeam?.name?.charAt(0).toUpperCase() || "L"}
+                </div>
+              )}
               {!collapsed && (
                 <div className="min-w-0">
                   <p className="truncate text-sm font-extrabold text-white">
-                    Luxurious
+                    {activeTeam?.name || "Loading..."}
                   </p>
                   <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-blue-100">
                     Network workspace
@@ -584,20 +602,17 @@ export function AdminLayout({
             {isAdmin && (
               <SidebarSection
                 title="Admin"
-                items={ADMIN_ITEMS}
-                collapsed={collapsed}
-                onSelect={() => setMobileMenuOpen(false)}
-              />
-            )}
-            {!isAdmin && mobileStatus?.canManageWorkspace && (
-              <SidebarSection
-                title="Workspace Admin"
                 items={[
-                  {
-                    path: "/admin/workspace",
-                    label: "Workspace Settings",
-                    icon: ShieldCheck,
-                  }
+                  ...ADMIN_ITEMS,
+                  ...(mobileStatus?.canManageWorkspace
+                    ? [
+                        {
+                          path: "/admin/workspace" as NavPath,
+                          label: "Workspace Settings",
+                          icon: ShieldCheck,
+                        },
+                      ]
+                    : []),
                 ]}
                 collapsed={collapsed}
                 onSelect={() => setMobileMenuOpen(false)}
@@ -616,7 +631,7 @@ export function AdminLayout({
               )}
             </button>
             <button
-              onClick={() => void signOut()}
+              onClick={handleSignOut}
               className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:bg-red-500/10 hover:text-red-500"
             >
               <LogOut size={18} />

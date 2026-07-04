@@ -69,6 +69,9 @@ export function ProfilePage() {
         newPassword: passwords.newPassword,
       });
       toast.success("Password changed. Sign in again.");
+      localStorage.removeItem("lux_saved_team");
+      localStorage.removeItem("lux_saved_team_name");
+      localStorage.removeItem("lux_saved_team_logo");
       await signOut();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Password change failed");

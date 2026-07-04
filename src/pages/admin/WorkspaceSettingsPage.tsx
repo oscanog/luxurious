@@ -1,14 +1,19 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { ShieldCheck, Save, Users, Building } from "lucide-react";
+import { ShieldCheck, Save, Users, Building, Upload, Image as ImageIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 export function WorkspaceSettingsPage() {
   const mobileStatus = useQuery(api.mobile.status);
+  const generateUploadUrl = useMutation(api.teams.generateUploadUrl);
+  const updateLogoMutation = useMutation(api.teams.updateLogo);
+  const updateTeamMutation = useMutation(api.teams.updateTeam);
   
-  // Example dummy handlers for now, can be wired to real Convex mutations later
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -30,18 +35,91 @@ export function WorkspaceSettingsPage() {
     );
   }
 
-  // Active Team info from mobileStatus
   const activeTeamId = mobileStatus.activeTeamId;
   const activeTeam = mobileStatus.teams.find(t => t._id === activeTeamId);
+  const activeTeamFull = useQuery(api.teams.getTeamBySlug, activeTeam?.slug ? { slug: activeTeam.slug } : "skip");
+
+  const processImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        // Resize to 256x256 max for fast loading
+        const MAX_SIZE = 256;
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("No 2d context"));
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error("Canvas to Blob failed"));
+          const webpFile = new File([blob], "logo.webp", { type: "image/webp" });
+          resolve(webpFile);
+        }, "image/webp", 0.85); // 85% quality webp
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    try {
+      const webpFile = await processImage(file);
+      setLogoFile(webpFile);
+      setLogoPreview(URL.createObjectURL(webpFile));
+    } catch (err) {
+      toast.error("Failed to process image");
+      console.error(err);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeTeamId) return;
     setIsSaving(true);
-    // Wire up to a Convex mutation like `api.teams.updateTeam`
-    setTimeout(() => {
-      toast.success("Workspace settings updated placeholder.");
+    try {
+      if (logoFile) {
+        setIsUploading(true);
+        const postUrl = await generateUploadUrl();
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": logoFile.type },
+          body: logoFile,
+        });
+        const { storageId } = await result.json();
+        await updateLogoMutation({ teamId: activeTeamId, logoId: storageId });
+        setLogoFile(null);
+      }
+      
+      const newName = formData.name || activeTeam?.name || "";
+      const newSlug = formData.slug || activeTeam?.slug || "";
+      
+      if (newName !== activeTeam?.name || newSlug !== activeTeam?.slug) {
+        await updateTeamMutation({ 
+          teamId: activeTeamId, 
+          name: newName, 
+          slug: newSlug 
+        });
+      }
+
+      toast.success("Workspace settings saved!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update settings");
+    } finally {
       setIsSaving(false);
-    }, 1000);
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -66,6 +144,30 @@ export function WorkspaceSettingsPage() {
           </div>
           
           <form onSubmit={handleSave} className="space-y-6">
+            <div className="flex flex-col md:flex-row items-center gap-6 p-4 rounded-3xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-[inset_0_2px_10px_hsl(var(--muted)/0.1)]">
+              <div className="relative group">
+                <div className="flex h-24 w-24 overflow-hidden items-center justify-center rounded-2xl border-2 border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-all group-hover:border-[hsl(var(--primary))]">
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="New Logo" className="h-full w-full object-cover" />
+                  ) : activeTeamFull?.logoUrl ? (
+                    <img src={activeTeamFull.logoUrl} alt="Current Logo" className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon size={32} className="text-[hsl(var(--muted-foreground))]" />
+                  )}
+                </div>
+                <label className="absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow-lg transition-transform hover:scale-110 active:scale-95">
+                  <Upload size={14} strokeWidth={3} />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                </label>
+              </div>
+              <div className="text-center md:text-left flex-1">
+                <h3 className="text-sm font-black text-[hsl(var(--foreground))]">Workspace Logo</h3>
+                <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mt-1 max-w-[250px]">
+                  Upload a square image. Auto-converts to WebP (optimized max 256px resolution).
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Configuration</h3>
               <div>
@@ -90,11 +192,11 @@ export function WorkspaceSettingsPage() {
 
             <button
               type="submit"
-              disabled={isSaving}
+              disabled={isSaving || isUploading}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,hsl(43_96%_48%),hsl(221_83%_53%))] px-6 py-4 text-sm font-black text-white hover:opacity-90 disabled:opacity-50"
             >
               <Save size={18} />
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isUploading ? "Uploading Logo..." : isSaving ? "Saving..." : "Save Changes"}
             </button>
           </form>
         </div>

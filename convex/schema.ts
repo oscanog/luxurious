@@ -38,6 +38,7 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(), // server-like address, e.g. "luxxurious-team"
     description: v.optional(v.string()),
+    logoId: v.optional(v.id("_storage")), // Logo storage ID
     createdBy: v.id("users"),
     masterUplineId: v.optional(v.id("users")),
     isDefault: v.boolean(),

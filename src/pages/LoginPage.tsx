@@ -24,6 +24,7 @@ export function LoginPage({
   const [rememberMe, setRememberMe] = useState(false);
   const [step, setStep] = useState<"team" | "login">("team");
   const [teamSlug, setTeamSlug] = useState("");
+  const [teamData, setTeamData] = useState<{ name: string; logoUrl: string | null } | null>(null);
   const convex = useConvex();
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function LoginPage({
       if (savedPassword) setPassword(savedPassword);
       setRememberMe(true);
     }
-  }, []);
+  }, [convex]);
 
   async function handleVerifyTeam(event: React.FormEvent) {
     event.preventDefault();
@@ -52,6 +53,13 @@ export function LoginPage({
         setError("Team not found. Please check your server address.");
       } else {
         localStorage.setItem("lux_saved_team", teamSlug);
+        localStorage.setItem("lux_saved_team_name", team.name);
+        if (team.logoUrl) {
+          localStorage.setItem("lux_saved_team_logo", team.logoUrl);
+        } else {
+          localStorage.removeItem("lux_saved_team_logo");
+        }
+        setTeamData({ name: team.name, logoUrl: team.logoUrl ?? null });
         setStep("login");
       }
     } catch (e: any) {
@@ -124,24 +132,6 @@ export function LoginPage({
       </button>
 
       <div className="relative z-10 mx-4 w-full max-w-[420px] rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-10 shadow-[0_20px_50px_-38px_hsl(215_44%_70%)]">
-        <div className="mb-8 flex flex-col items-center">
-          <img 
-            src="/luxurious_logo.png" 
-            alt="Luxurious Logo" 
-            className="mb-4 h-16 w-16 object-contain"
-          />
-          <h1 className="text-[28px] font-extrabold tracking-tight text-[hsl(var(--foreground))]">
-            Luxurious
-          </h1>
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))] text-center">
-            Easy tracking and management for our crypto trading
-          </p>
-        </div>
-
-        <div
-          className="mb-8 h-px"
-          style={{ background: "linear-gradient(to right, transparent, hsl(43 96% 48% / 0.6), transparent)" }}
-        />
 
         {step === "team" ? (
           <form onSubmit={handleVerifyTeam} className="flex flex-col gap-4">
@@ -168,11 +158,9 @@ export function LoginPage({
             <button
               type="submit"
               disabled={loading || !teamSlug}
-              className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               style={{
-                background: loading || !teamSlug
-                  ? "hsl(var(--muted))"
-                  : "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))",
+                background: "linear-gradient(135deg, hsl(43 96% 48%), hsl(43 96% 38%))",
                 boxShadow: loading || !teamSlug ? "none" : "0 4px 20px hsl(43 96% 48% / 0.35)",
               }}
             >
@@ -181,6 +169,22 @@ export function LoginPage({
           </form>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="mb-4 flex flex-col items-center gap-3">
+              {teamData?.logoUrl ? (
+                <img
+                  src={teamData.logoUrl}
+                  alt={teamData.name}
+                  className="h-24 w-24 md:h-28 md:w-28 object-contain rounded-full border border-[hsl(var(--border))] shadow-md"
+                />
+              ) : (
+                <div className="flex h-24 w-24 md:h-28 md:w-28 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.3)] shadow-md">
+                  <span className="text-4xl md:text-5xl font-black">{teamData?.name?.charAt(0).toUpperCase() || teamSlug.charAt(0).toUpperCase()}</span>
+                </div>
+              )}
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[hsl(var(--foreground))]">
+                {teamData?.name || teamSlug}
+              </h1>
+            </div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--primary)/0.1)] border border-[hsl(var(--primary)/0.2)]">
                 <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--primary))]" />

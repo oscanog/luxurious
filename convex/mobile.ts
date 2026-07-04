@@ -44,10 +44,15 @@ export const status = query({
     for (const m of memberships) {
       const team = await ctx.db.get(m.teamId);
       if (team) {
+        let logoUrl = null;
+        if (team.logoId) {
+          logoUrl = await ctx.storage.getUrl(team.logoId);
+        }
         teams.push({
           _id: team._id,
           name: team.name,
           slug: team.slug,
+          logoUrl: logoUrl,
           role: m.role,
           isDefault: team.isDefault,
         });
