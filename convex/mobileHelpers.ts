@@ -537,6 +537,11 @@ export async function listUnifiedNetworkMembers(
     )
     .collect();
 
+  // M025: Resolve activeTeamId early so we can back-fill missing teamIds
+  const viewerUserId = (await requireMobileViewer(ctx))._id;
+  const viewerUser = await ctx.db.get("users", viewerUserId);
+  const activeTeamId = viewerUser?.activeTeamId;
+
   const primaryViewer =
     primaryMembers.find((member) => member.isViewer) ?? null;
   const canonicalMembers =
@@ -547,6 +552,19 @@ export async function listUnifiedNetworkMembers(
     canonicalMembers.length > 0 && primaryViewer
       ? [primaryViewer, ...canonicalMembers]
       : [...primaryMembers];
+
+  // M025-FIX: Back-fill teamId on members that were seeded without it.
+  // This covers viewer root nodes and legacy records created before teamId
+  // was propagated through seedDefaultNetworkMembers.
+  if (activeTeamId) {
+    for (let i = 0; i < allMembers.length; i++) {
+      const m = allMembers[i];
+      if (m && !m.teamId) {
+        allMembers[i] = { ...m, teamId: activeTeamId };
+      }
+    }
+  }
+
   const processedUserIds = new Set<string>();
   const profileQueue = [{ profileId, members: allMembers }];
   const userIdToParentMemberId = new Map<Id<"users">, Id<"networkMembers">>();
@@ -621,6 +639,8 @@ export async function listUnifiedNetworkMembers(
             remappedMembers.push({
               ...cm,
               parentMemberId: remappedParentId,
+              // M025-FIX: Inherit teamId for cross-profile remapped members
+              teamId: cm.teamId ?? activeTeamId,
             });
           }
 
@@ -673,10 +693,6 @@ export async function listUnifiedNetworkMembers(
   }
 
   // M025: Team Encapsulation filter
-  const viewerUserId = (await requireMobileViewer(ctx))._id;
-  const viewerUser = await ctx.db.get("users", viewerUserId);
-  const activeTeamId = viewerUser?.activeTeamId;
-
   if (activeTeamId) {
     return allMembers.filter((m) => m.teamId === activeTeamId);
   }
@@ -768,6 +784,7 @@ async function seedDefaultNetworkMembers(
   profileId: Id<"mobileProfiles">,
   seeds: NetworkMemberSeed[],
   now: number,
+  teamId?: Id<"teams">,
 ) {
   const networkIdsByKey = new Map<string, Id<"networkMembers">>();
   for (const member of seeds) {
@@ -783,6 +800,7 @@ async function seedDefaultNetworkMembers(
       userId: member.userId,
       createdByUserId: member.userId,
       ownedByUserId: member.userId,
+      teamId,
       createdAt: now,
       updatedAt: now,
     });
@@ -813,7 +831,8 @@ async function syncNetworkMembersForViewer(
     await ctx.db.delete("networkMembers", member._id);
   }
   const seeds = await buildNetworkSeedsForViewer(ctx, viewer);
-  await seedDefaultNetworkMembers(ctx, profileId, seeds, now);
+  // M025-FIX: Propagate viewer's activeTeamId to all seeded members
+  await seedDefaultNetworkMembers(ctx, profileId, seeds, now, viewer.activeTeamId);
 }
 
 async function buildNetworkSeedsForViewer(
