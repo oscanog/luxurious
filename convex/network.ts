@@ -398,7 +398,7 @@ function buildTree(
       latestAsset,
       investmentStartedAt: member.investmentStartedAt,
       member: {
-        id: member.userId ?? (member._id as any),
+        id: member._id as any,
         name: member.name,
         email: member.email ?? "",
         roleTitle: member.roleTitle,
@@ -871,7 +871,7 @@ function buildOverview(
       latestAsset,
       investmentStartedAt: viewer.investmentStartedAt,
       member: {
-        id: viewer.userId ?? (viewer._id as any),
+        id: viewer._id as any,
         name: viewer.name,
         email: viewer.email ?? "",
         roleTitle: viewer.roleTitle,
@@ -937,7 +937,7 @@ function buildOverview(
           latestAsset: uplineAsset,
           investmentStartedAt: directUpline.investmentStartedAt,
           member: {
-            id: directUpline.userId ?? (directUpline._id as any),
+            id: directUpline._id as any,
             name: directUpline.name,
             email: directUpline.email ?? "",
             roleTitle: directUpline.roleTitle,
