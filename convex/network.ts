@@ -893,7 +893,7 @@ function buildOverview(
         locationAddress: viewer.locationAddress,
         latitude: viewer.latitude,
         longitude: viewer.longitude,
-        allowAdd: true,
+        allowAdd: canAdd,
         latestAsset,
         investmentStartedAt: viewer.investmentStartedAt,
       },

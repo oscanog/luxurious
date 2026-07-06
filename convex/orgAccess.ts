@@ -155,10 +155,7 @@ export function canManageMember(
   if (viewer.activeTeamId !== undefined && member.teamId !== undefined && viewer.activeTeamId !== member.teamId) {
      return false;
   }
-  
-  if (adminLevel < 1) {
-    return false;
-  }
+
   if (viewer._id && member.userId === viewer._id) {
     return true;
   }
@@ -190,10 +187,6 @@ export function canAddUnderParent(
   // M025: Enforce strict team boundary check
   if (viewer.activeTeamId !== undefined && parent.teamId !== undefined && viewer.activeTeamId !== parent.teamId) {
      return false;
-  }
-
-  if (adminLevel < 1) {
-    return false;
   }
   return (
     (viewer._id !== undefined && parent.userId === viewer._id) ||
