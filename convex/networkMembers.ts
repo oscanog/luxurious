@@ -238,30 +238,19 @@ export const createMemberRecord = internalMutation({
         role: memberRole,
         uplineId: parent.userId ?? args.viewerUserId,
         lastUplineId: authUser.uplineId ?? null,
+        activeTeamId: viewer?.activeTeamId,
       });
 
-      const existingProfile = await getMobileProfileByUserId(ctx, authUser._id);
-      if (!existingProfile) {
-        await ctx.db.insert("mobileProfiles", {
+      if (viewer?.activeTeamId) {
+        await ctx.db.insert("teamMemberships", {
+          teamId: viewer.activeTeamId,
           userId: authUser._id,
-          viewerKey: `auth_${authUser._id}`,
-          displayName: name,
-          preferredCurrencyCode: "USD",
-          birthday: args.birthday,
-          bonchatId: args.bonchatId?.trim() || undefined,
-          bonchatUsername: args.bonchatUsername?.trim() || undefined,
-          yepbitId: args.yepbitId?.trim() || undefined,
-          yepbitUsername: args.yepbitUsername?.trim() || undefined,
-          avatarFilter: "natural",
-          avatarMirror: false,
-          avatarOffsetX: 0,
-          avatarOffsetY: 0,
-          avatarRotationQuarterTurns: 0,
-          avatarScale: 1,
-          createdAt: now,
-          updatedAt: now,
+          role: "member",
+          joinedAt: now,
         });
       }
+
+      // Profile creation deferred to user's first login via mobile:bootstrap
     }
 
     return { memberId };
@@ -579,6 +568,7 @@ export const completeMemberJoin = internalMutation({
       sourceId: args.memberId,
     });
 
+    const viewer = await ctx.db.get("users", args.viewerUserId);
     const authUser = await ctx.db.get("users", args.authUserId);
     if (authUser) {
       const parent = member.parentMemberId
@@ -588,30 +578,19 @@ export const completeMemberJoin = internalMutation({
         role: "member",
         uplineId: parent?.userId ?? member.ownedByUserId ?? args.viewerUserId,
         lastUplineId: authUser.uplineId ?? null,
+        activeTeamId: viewer?.activeTeamId,
       });
 
-      const existingProfile = await getMobileProfileByUserId(ctx, authUser._id);
-      if (!existingProfile) {
-        await ctx.db.insert("mobileProfiles", {
+      if (viewer?.activeTeamId) {
+        await ctx.db.insert("teamMemberships", {
+          teamId: viewer.activeTeamId,
           userId: authUser._id,
-          viewerKey: `auth_${authUser._id}`,
-          displayName: member.name,
-          preferredCurrencyCode: "USD",
-          birthday: args.birthday,
-          bonchatId: args.bonchatId,
-          bonchatUsername: args.bonchatUsername,
-          yepbitId: args.yepbitId,
-          yepbitUsername: args.yepbitUsername,
-          avatarFilter: "natural",
-          avatarMirror: false,
-          avatarOffsetX: 0,
-          avatarOffsetY: 0,
-          avatarRotationQuarterTurns: 0,
-          avatarScale: 1,
-          createdAt: now,
-          updatedAt: now,
+          role: "member",
+          joinedAt: now,
         });
       }
+
+      // Profile creation deferred to user's first login via mobile:bootstrap
     }
   },
 });
